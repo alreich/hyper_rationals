@@ -9,8 +9,8 @@ sys.path.insert(0, os.path.abspath("../../src"))
 # -- Project information -----------------------------------------------
 
 project = "hyprat"
-copyright = "2026, Al"
-author = "Al"
+copyright = "2026, Alfred J. Reich"
+author = "Alfred J. Reich"
 
 try:
     from hyprat import __version__ as release
