@@ -63,11 +63,28 @@ automatically by the constructor -- see below).
 
 ``repr()`` returns Python source that reconstructs an equal value,
 e.g. ``Hy('5/2', '-16/5')``.
+
+Random values and flat-array conversion
+----------------------------------------
+
+``Hy.random(rank)`` produces a random rank-``rank`` value; see
+``Hy.seed()``/the ``rng=``/``seed=`` keywords on ``Hy.random`` for how to
+make the sequence reproducible.
+
+``Hy.from_array([...])`` builds a Hy from a flat list of ``2**rank``
+coefficients (ints, floats, ``Fraction``s and/or fraction strings like
+``'5/2'``, freely mixed); ``some_hy.to_array()`` is the inverse::
+
+    >>> Hy.from_array([1, '2/3', 3.5, '-1/4'])
+    Hy(Hy('1', '2/3'), Hy('7/2', '-1/4'))
+    >>> Hy(Hy(1, 2), Hy(3, 4)).to_array(as_str=True)
+    ['1', '2', '3', '4']
 """
 
 from __future__ import annotations
 
 import math
+import random
 import re
 from fractions import Fraction
 from numbers import Number
@@ -87,6 +104,13 @@ class _Missing:
 _MISSING = _Missing()
 
 _ScalarLike = (int, float, Fraction, str)
+
+# --------------------------------------------------------------------------
+# A module-wide default RNG used by Hy.random() whenever the caller doesn't
+# supply its own random.Random instance or an explicit one-off seed. Call
+# Hy.seed(value) to make subsequent Hy.random(...) calls reproducible.
+# --------------------------------------------------------------------------
+_default_rng = random.Random()
 
 
 class Hy:
@@ -327,6 +351,121 @@ class Hy:
 
     from_string = parse  # convenient alias
 
+    # ---------------------------------------------------------------- #
+    # Randomness
+    # ---------------------------------------------------------------- #
+    @classmethod
+    def seed(cls, seed_value=None) -> None:
+        """Seed the module-wide default RNG used by :meth:`random`
+        whenever *that* call isn't given its own ``rng=`` or ``seed=``.
+
+        Call this once (e.g. at the top of a script or a test module) to
+        make an entire sequence of subsequent, argument-free
+        ``Hy.random(rank)`` calls reproducible. Pass ``seed_value=None``
+        (the default) to reseed unpredictably from OS entropy, exactly
+        like ``random.seed(None)``.
+        """
+        _default_rng.seed(seed_value)
+
+    @classmethod
+    def random(
+        cls,
+        rank: int,
+        *,
+        lo: int = -9,
+        hi: int = 9,
+        dmax: int = 6,
+        rng: "random.Random | None" = None,
+        seed=None,
+    ) -> "Hy":
+        """A random rank-``rank`` Hy.
+
+        Each of the ``2**rank`` real coefficients is an independent random
+        ``Fraction(n, d)``, with the numerator ``n`` drawn uniformly from
+        the inclusive range ``[lo, hi]`` and the denominator ``d`` drawn
+        uniformly from ``[1, dmax]``.
+
+        There are three, mutually exclusive ways to control reproducibility:
+
+        * do nothing -- draws from the module-wide default RNG, which is
+          shared and unseeded (i.e. non-reproducible) unless...
+        * ...you've called ``Hy.seed(value)`` beforehand, which reseeds
+          that shared default RNG once, making every subsequent
+          argument-free ``Hy.random(rank)`` call reproducible; or
+        * pass ``seed=value`` to this call for a one-off, freshly created
+          ``random.Random(value)`` used just for this single call, without
+          touching any shared state; or
+        * pass ``rng=some_random.Random_instance`` to fully control (and
+          optionally share across several calls) the random stream
+          yourself.
+
+        Raises ``ValueError`` if ``rank`` isn't a positive int, or if both
+        ``rng`` and ``seed`` are given.
+        """
+        if not isinstance(rank, int) or isinstance(rank, bool) or rank < 1:
+            raise ValueError(f"rank must be a positive int, got {rank!r}")
+        if rng is not None and seed is not None:
+            raise ValueError("pass either `rng` or `seed`, not both")
+        if seed is not None:
+            rng = random.Random(seed)
+        elif rng is None:
+            rng = _default_rng
+
+        def rand_coeff() -> Fraction:
+            return Fraction(rng.randint(lo, hi), rng.randint(1, dmax))
+
+        def build(r: int):
+            if r == 0:
+                return rand_coeff()
+            return Hy._make(build(r - 1), build(r - 1))
+
+        return build(rank)
+
+    # ---------------------------------------------------------------- #
+    # Flat-array conversion
+    # ---------------------------------------------------------------- #
+    @classmethod
+    def from_array(cls, coeffs) -> "Hy":
+        """Build a Hy from a flat sequence of its ``2**rank`` real
+        coefficients, in the same Cayley-Dickson order used by
+        :meth:`components` / :meth:`to_array` (e.g., for a quaternion:
+        1, i, j, k).
+
+        Each element may be an ``int``, ``float``, ``Fraction``, or a
+        string holding a plain fraction such as ``'5/2'`` or a decimal
+        such as ``'3.2'`` -- these types may be freely mixed within a
+        single call, e.g.::
+
+            Hy.from_array([1, '2/3', 3.5, '-1/4'])   # a quaternion
+
+        ``len(coeffs)`` must be a power of 2 that is >= 2 (2 -> rank 1
+        "complex", 4 -> rank 2 "quaternion", 8 -> rank 3 "octonion", etc.)
+        since every Hy has rank >= 1.
+        """
+        values = list(coeffs)
+        n = len(values)
+        if n < 2 or (n & (n - 1)) != 0:
+            raise ValueError(
+                "from_array() requires a length that is a power of 2 "
+                f"and at least 2; got {n}"
+            )
+        rank = n.bit_length() - 1
+        fracs = [_coerce_flat_element(v) for v in values]
+        return _unflatten(fracs, rank)
+
+    def to_array(self, as_str: bool = False) -> list:
+        """This Hy's ``2**rank`` real coefficients, flattened into a plain
+        Python list in Cayley-Dickson order -- the inverse of
+        :meth:`from_array`.
+
+        By default the entries are ``Fraction`` objects; pass
+        ``as_str=True`` to get their string form instead (e.g. ``'5/2'``),
+        which is convenient for JSON or other text-based serialization,
+        and which :meth:`from_array` will happily read back in.
+        """
+        coeffs = _flatten(self)
+        return [str(c) for c in coeffs] if as_str else list(coeffs)
+
 
 # ============================================================================
 # Module-level recursive algebra (Cayley-Dickson construction)
@@ -488,6 +627,34 @@ def _coerce_component(v):
     raise TypeError(f"cannot use {v!r} (type {type(v).__name__}) as a Hy component")
 
 
+def _coerce_flat_element(v) -> Fraction:
+    """Coerce a single ``Hy.from_array()`` element to a plain Fraction.
+
+    This is deliberately narrower than ``_coerce_component``: a string
+    element here must be a *plain* fraction/decimal like ``'5/2'`` or
+    ``'3.2'``, not a composite expression like ``'1+2j'`` -- from_array()
+    always supplies coefficients one real coordinate at a time.
+    """
+    if isinstance(v, Fraction):
+        return v
+    if isinstance(v, bool):  # bool is a subclass of int; handle it first
+        return Fraction(int(v))
+    if isinstance(v, int):
+        return Fraction(v)
+    if isinstance(v, float):
+        return Fraction(str(v))
+    if isinstance(v, str):
+        try:
+            return Fraction(v)
+        except ValueError as e:
+            raise ValueError(
+                f"cannot parse {v!r} as a plain fraction for from_array()"
+            ) from e
+    raise TypeError(
+        f"cannot use {v!r} (type {type(v).__name__}) as a from_array() element"
+    )
+
+
 # ============================================================================
 # String formatting
 # ============================================================================
@@ -627,5 +794,22 @@ if __name__ == "__main__":
     # hash consistency
     assert hash(Hy("3")) == hash(Hy(Hy("3", "0"), Hy("0", "0")))
     print("hash consistency across ranks: OK")
+
+    # random(), with a reproducible seed
+    Hy.seed(42)
+    r1 = Hy.random(2)
+    Hy.seed(42)
+    r2 = Hy.random(2)
+    assert r1 == r2 and r1.rank == 2
+    print("Hy.seed()/Hy.random() reproducibility: OK, e.g. random quaternion =", r1)
+
+    # from_array() / to_array(), including a mix of numbers and strings
+    arr = [1, "2/3", 3.5, "-1/4"]
+    h_from_arr = Hy.from_array(arr)
+    assert h_from_arr.rank == 2
+    assert h_from_arr.to_array() == [Fraction(1), Fraction(2, 3), Fraction(7, 2), Fraction(-1, 4)]
+    assert h_from_arr.to_array(as_str=True) == ["1", "2/3", "7/2", "-1/4"]
+    assert Hy.from_array(h_from_arr.to_array(as_str=True)) == h_from_arr
+    print("Hy.from_array()/to_array() round trip, mixed input types: OK")
 
     print("\nAll self-tests passed.")

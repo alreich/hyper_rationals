@@ -45,6 +45,9 @@ Quickstart
     >>> str(i * j)
     '(k)'
 
+    >>> Hy.from_array([1, 2, 3, 4])   # same quaternion, from a flat list
+    Hy(Hy('1', '2'), Hy('3', '4'))
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents

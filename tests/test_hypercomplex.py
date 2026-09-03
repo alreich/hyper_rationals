@@ -24,6 +24,9 @@ Organization:
                               called directly (incl. on raw Fractions,
                               i.e. "rank 0")
     TestImmutability        - __slots__/locked-down __setattr__
+    TestRandom              - Hy.random(rank), Hy.seed(), rng=/seed= kwargs
+    TestArrayConversion     - Hy.from_array()/.to_array(), ranks 1-4,
+                              mixed-type input, error cases
 
 As with the gint project, algebraic laws are checked empirically via
 seeded random fuzzing (deterministic across runs) in addition to fixed,
@@ -709,6 +712,134 @@ class TestModuleFunctions(unittest.TestCase):
             coeffs = _flatten(h)
             self.assertEqual(len(coeffs), 2 ** rank)
             self.assertEqual(_unflatten(coeffs, rank), h)
+
+
+# ---------------------------------------------------------------------------
+# Hy.random()
+# ---------------------------------------------------------------------------
+
+class TestRandom(unittest.TestCase):
+
+    def test_random_returns_hy_of_requested_rank(self):
+        for rank in RANKS[1:]:
+            h = Hy.random(rank, seed=rank)
+            self.assertIsInstance(h, Hy)
+            self.assertEqual(h.rank, rank)
+            self.assertEqual(h.dimension, 2 ** rank)
+
+    def test_random_rejects_non_positive_or_non_int_rank(self):
+        for bad_rank in (0, -1, 2.5, "2", True, False):
+            with self.assertRaises(ValueError):
+                Hy.random(bad_rank)
+
+    def test_random_seed_kw_is_reproducible(self):
+        a = Hy.random(3, seed=12345)
+        b = Hy.random(3, seed=12345)
+        self.assertEqual(a, b)
+
+    def test_random_different_seeds_differ_with_overwhelming_probability(self):
+        a = Hy.random(3, seed=1)
+        b = Hy.random(3, seed=2)
+        self.assertNotEqual(a, b)
+
+    def test_random_rng_kw_is_reproducible_and_shareable(self):
+        a = Hy.random(2, rng=random.Random(999))
+        b = Hy.random(2, rng=random.Random(999))
+        self.assertEqual(a, b)
+
+    def test_random_rejects_both_rng_and_seed(self):
+        with self.assertRaises(ValueError):
+            Hy.random(1, rng=random.Random(0), seed=0)
+
+    def test_hy_seed_makes_default_rng_reproducible(self):
+        Hy.seed(2024)
+        a = Hy.random(2)
+        Hy.seed(2024)
+        b = Hy.random(2)
+        self.assertEqual(a, b)
+
+    def test_random_respects_lo_hi_dmax_bounds(self):
+        rng = random.Random(7)
+        for _ in range(20):
+            h = Hy.random(3, lo=-2, hi=2, dmax=3, rng=rng)
+            for c in h.components():
+                self.assertGreaterEqual(c.numerator, -2)
+                self.assertLessEqual(c.numerator, 2)
+                self.assertGreaterEqual(c.denominator, 1)
+                self.assertLessEqual(c.denominator, 3)
+
+    def test_random_values_are_exact_fractions(self):
+        h = Hy.random(2, seed=0)
+        for c in h.components():
+            self.assertIsInstance(c, Fraction)
+
+
+# ---------------------------------------------------------------------------
+# Hy.from_array() / Hy.to_array()
+# ---------------------------------------------------------------------------
+
+class TestArrayConversion(unittest.TestCase):
+
+    def test_to_array_matches_components_as_fractions(self):
+        q = Hy(Hy(1, 2), Hy(3, 4))
+        self.assertEqual(q.to_array(), [Fraction(1), Fraction(2), Fraction(3), Fraction(4)])
+        self.assertEqual(q.to_array(), list(q.components()))
+
+    def test_to_array_as_str(self):
+        h = Hy('5/2', '-16/5')
+        self.assertEqual(h.to_array(as_str=True), ['5/2', '-16/5'])
+
+    def test_from_array_numbers_only(self):
+        q = Hy.from_array([1, 2, 3, 4])
+        self.assertEqual(q, Hy(Hy(1, 2), Hy(3, 4)))
+        self.assertEqual(q.rank, 2)
+
+    def test_from_array_strings_only(self):
+        h = Hy.from_array(['5/2', '-16/5'])
+        self.assertEqual(h, Hy('5/2', '-16/5'))
+
+    def test_from_array_mixed_numbers_and_strings(self):
+        h = Hy.from_array([1, '2/3', 3.5, '-1/4'])
+        self.assertEqual(h, Hy(Hy('1', '2/3'), Hy('7/2', '-1/4')))
+
+    def test_from_array_accepts_tuple_and_generator(self):
+        self.assertEqual(Hy.from_array((1, 2)), Hy(1, 2))
+        self.assertEqual(Hy.from_array(x for x in (1, 2, 3, 4)), Hy(Hy(1, 2), Hy(3, 4)))
+
+    def test_from_array_length_must_be_power_of_two(self):
+        for bad_len in (0, 1, 3, 5, 6, 7, 9):
+            with self.assertRaises(ValueError):
+                Hy.from_array(list(range(bad_len)))
+
+    def test_from_array_rejects_composite_string_element(self):
+        # from_array elements must be *plain* fractions, not composite
+        # Hy expressions like '1+2j' (that's what Hy.parse is for).
+        with self.assertRaises(ValueError):
+            Hy.from_array(['1+2j', '3'])
+
+    def test_from_array_rejects_bad_element_type(self):
+        with self.assertRaises(TypeError):
+            Hy.from_array([object(), 1])
+
+    def test_from_array_octonion_length_8(self):
+        vals = list(range(8))
+        o = Hy.from_array(vals)
+        self.assertEqual(o.rank, 3)
+        self.assertEqual(o.components(), tuple(Fraction(v) for v in vals))
+
+    def test_round_trip_to_array_from_array_all_ranks(self):
+        for rank in RANKS[1:]:
+            rng = random.Random(4000 + rank)
+            h = rand_value(rank, rng)
+            self.assertEqual(Hy.from_array(h.to_array()), h)
+            self.assertEqual(Hy.from_array(h.to_array(as_str=True)), h)
+
+    def test_round_trip_from_array_to_array_random_values(self):
+        for rank in RANKS[1:]:
+            h = Hy.random(rank, seed=5000 + rank)
+            arr = h.to_array(as_str=True)
+            self.assertEqual(len(arr), 2 ** rank)
+            self.assertEqual(Hy.from_array(arr), h)
 
 
 # ---------------------------------------------------------------------------
