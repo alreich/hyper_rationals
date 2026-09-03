@@ -112,7 +112,7 @@ import math
 import random
 import re
 from fractions import Fraction
-from numbers import Number
+# from numbers import Number
 
 __all__ = ["Hy"]
 
