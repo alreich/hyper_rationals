@@ -19,6 +19,8 @@ Organization:
     TestSequenceProtocol    - __iter__, __getitem__, __len__, __bool__
     TestConversions         - __abs__, __complex__, __pow__
     TestStringForms         - __str__, __repr__ (and repr round trip)
+    TestUnits               - Hy.units(rank), .is_unit(), ranks 0-4
+    TestLatex               - .latex(), vinculum=/mode= options, ranks 1-4
     TestParsing             - Hy.parse / Hy.from_string, ranks 1-4, errors
     TestModuleFunctions     - add, sub, neg, conj, mul, abs2, inverse, div
                               called directly (incl. on raw Fractions,
@@ -54,6 +56,8 @@ from hyprat.hypercomplex import (
     _unflatten,
     _is_zero_val,
     _parse,
+    _latex_unit_label,
+    _format_fraction_latex,
 )
 
 
@@ -603,6 +607,170 @@ class TestStringForms(unittest.TestCase):
 
     def test_repr_uses_quoted_fraction_strings_at_leaves(self):
         self.assertEqual(repr(Hy('5/2', '-16/5')), "Hy('5/2', '-16/5')")
+
+
+# ---------------------------------------------------------------------------
+# Hy.units() / .is_unit()
+# ---------------------------------------------------------------------------
+
+class TestUnits(unittest.TestCase):
+
+    def test_units_rank_0_returns_plain_fractions(self):
+        u = Hy.units(0)
+        self.assertEqual(u, {"1": Fraction(1), "-1": Fraction(-1)})
+        for v in u.values():
+            self.assertIsInstance(v, Fraction)
+            self.assertNotIsInstance(v, Hy)
+
+    def test_units_rank_1(self):
+        self.assertEqual(
+            Hy.units(1),
+            {"1": Hy(1, 0), "-1": Hy(-1, 0), "j": Hy(0, 1), "-j": Hy(0, -1)},
+        )
+
+    def test_units_rank_1_key_order(self):
+        # 1, -1, j, -j -- grouped +/- per basis element, in basis order.
+        self.assertEqual(list(Hy.units(1).keys()), ["1", "-1", "j", "-j"])
+
+    def test_units_rank_2(self):
+        u = Hy.units(2)
+        self.assertEqual(
+            set(u.keys()), {"1", "-1", "i", "-i", "j", "-j", "k", "-k"}
+        )
+        self.assertEqual(u["i"], Hy(Hy(0, 1), Hy(0, 0)))
+        self.assertEqual(u["-k"], Hy(Hy(0, 0), Hy(0, -1)))
+
+    def test_units_rank_3_uses_e_labels(self):
+        u = Hy.units(3)
+        self.assertEqual(len(u), 16)  # 2 * 2**3
+        self.assertIn("e5", u)
+        self.assertIn("-e7", u)
+        self.assertEqual(str(u["e5"]), "(e5)")
+
+    def test_units_count_matches_2_times_dimension(self):
+        for rank in RANKS:
+            self.assertEqual(len(Hy.units(rank)), 2 * (2 ** rank))
+
+    def test_units_values_all_satisfy_is_unit(self):
+        for rank in RANKS[1:]:
+            for v in Hy.units(rank).values():
+                self.assertTrue(v.is_unit())
+
+    def test_units_string_keys_match_str_of_values(self):
+        for rank in RANKS[1:]:
+            for key, val in Hy.units(rank).items():
+                self.assertEqual(str(val), f"({key})")
+
+    def test_units_rejects_bad_rank(self):
+        for bad_rank in (-1, 2.5, "2", True, False):
+            with self.assertRaises(ValueError):
+                Hy.units(bad_rank)
+
+    def test_is_unit_true_for_basis_units(self):
+        self.assertTrue(Hy(1, 0).is_unit())
+        self.assertTrue(Hy(-1, 0).is_unit())
+        self.assertTrue(Hy(0, 1).is_unit())
+        self.assertTrue(Hy(0, -1).is_unit())
+        self.assertTrue(Hy(Hy(0, 1), Hy(0, 0)).is_unit())  # quaternion i
+
+    def test_is_unit_false_for_zero(self):
+        self.assertFalse(Hy(0, 0).is_unit())
+
+    def test_is_unit_false_for_non_unit_values(self):
+        self.assertFalse(Hy(1, 1).is_unit())
+        self.assertFalse(Hy(2, 0).is_unit())
+        self.assertFalse(Hy('1/2', 0).is_unit())
+
+    def test_is_unit_consistent_with_units_membership(self):
+        for rank in RANKS[1:]:
+            rng = random.Random(6000 + rank)
+            unit_values = list(Hy.units(rank).values())
+            for _ in range(10):
+                h = rand_value(rank, rng)
+                self.assertEqual(h.is_unit(), h in unit_values)
+
+
+# ---------------------------------------------------------------------------
+# Hy.latex()
+# ---------------------------------------------------------------------------
+
+class TestLatex(unittest.TestCase):
+
+    def test_latex_integer_coefficients_rank_1(self):
+        self.assertEqual(Hy(3, -2).latex(), "3-2j")
+        self.assertEqual(Hy(0, 1).latex(), "j")
+        self.assertEqual(Hy(0, -1).latex(), "-j")
+        self.assertEqual(Hy(0, 0).latex(), "0")
+
+    def test_latex_default_vinculum_is_horizontal(self):
+        self.assertEqual(Hy('5/2', '-16/5').latex(), r'\frac{5}{2}-\frac{16}{5}j')
+
+    def test_latex_diagonal_vinculum(self):
+        self.assertEqual(
+            Hy('5/2', '-16/5').latex(vinculum='diagonal'), '5/2-16/5j'
+        )
+
+    def test_latex_rejects_bad_vinculum(self):
+        with self.assertRaises(ValueError):
+            Hy(1, 2).latex(vinculum='vertical')
+
+    def test_latex_rank_2_uses_ijk_unchanged(self):
+        self.assertEqual(Hy(Hy(1, 2), Hy(3, 4)).latex(), "1+2i+3j+4k")
+
+    def test_latex_rank_3_subscripts_e_labels(self):
+        o = Hy(Hy(Hy(1, 0), Hy(0, 0)), Hy(Hy(0, 1), Hy(0, 0)))
+        self.assertEqual(o.latex(), "1+e_{5}")
+
+    def test_latex_rank_4_subscripts_multidigit_e_labels(self):
+        coeffs = [Fraction(0)] * 16
+        coeffs[0] = Fraction(1)
+        coeffs[15] = Fraction(-2)
+        h = _unflatten(coeffs, 4)
+        self.assertEqual(h.latex(), "1-2e_{15}")
+
+    def test_latex_mode_plain_default(self):
+        self.assertEqual(Hy(1, 2).latex(mode='plain'), Hy(1, 2).latex())
+
+    def test_latex_mode_inline_wraps_in_dollar_signs(self):
+        self.assertEqual(Hy('1/2', 0).latex(mode='inline'), r'$\frac{1}{2}$')
+
+    def test_latex_mode_display_wraps_in_display_delimiters(self):
+        self.assertEqual(Hy('1/2', 0).latex(mode='display'), r'\[\frac{1}{2}\]')
+
+    def test_latex_rejects_bad_mode(self):
+        with self.assertRaises(ValueError):
+            Hy(1, 2).latex(mode='bogus')
+
+    def test_latex_unit_coefficient_omits_the_1(self):
+        # a coefficient of exactly 1 (or -1) drops the leading "1", just
+        # like str() does -- e.g. "e_{5}", not "1e_{5}".
+        self.assertEqual(Hy(0, 1).latex(), "j")
+        self.assertEqual(Hy(0, -1).latex(), "-j")
+
+    def test_latex_unit_label_helper(self):
+        self.assertEqual(_latex_unit_label(""), "")
+        self.assertEqual(_latex_unit_label("j"), "j")
+        self.assertEqual(_latex_unit_label("i"), "i")
+        self.assertEqual(_latex_unit_label("k"), "k")
+        self.assertEqual(_latex_unit_label("e1"), "e_{1}")
+        self.assertEqual(_latex_unit_label("e15"), "e_{15}")
+
+    def test_format_fraction_latex_helper(self):
+        self.assertEqual(_format_fraction_latex(Fraction(3), "horizontal"), "3")
+        self.assertEqual(
+            _format_fraction_latex(Fraction(5, 2), "horizontal"), r"\frac{5}{2}"
+        )
+        self.assertEqual(_format_fraction_latex(Fraction(5, 2), "diagonal"), "5/2")
+
+    def test_latex_random_values_all_ranks_smoke_test(self):
+        # No fixed expected string here -- just confirm it runs cleanly
+        # and produces a non-empty string for every rank/vinculum combo.
+        for rank in RANKS[1:]:
+            h = Hy.random(rank, seed=7000 + rank)
+            for vinculum in ("horizontal", "diagonal"):
+                s = h.latex(vinculum=vinculum)
+                self.assertIsInstance(s, str)
+                self.assertTrue(s)
 
 
 # ---------------------------------------------------------------------------

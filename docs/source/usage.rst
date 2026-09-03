@@ -120,4 +120,66 @@ There are a few ways to control reproducibility:
 construction, so there's no rank-0 ``Hy``), and ``rng``/``seed`` are
 mutually exclusive.
 
+Units
+------
+
+``Hy.units(rank)`` returns every *unit* element of the rank-``rank``
+algebra -- the values with exactly one real coordinate equal to
+``+-1`` and every other coordinate 0 (``+-1``, ``+-i``, ``+-j``, ...)
+-- as a dict keyed by each unit's string form:
+
+.. code-block:: python
+
+    Hy.units(1)
+    # {'1': Hy('1', '0'), '-1': Hy('-1', '0'), 'j': Hy('0', '1'), '-j': Hy('0', '-1')}
+
+    Hy.units(2).keys()
+    # dict_keys(['1', '-1', 'i', '-i', 'j', '-j', 'k', '-k'])
+
+``some_hy.is_unit()`` answers the corresponding membership question
+for a single value, without building the whole dict:
+
+.. code-block:: python
+
+    Hy(0, 1).is_unit()   # True   (it's j)
+    Hy(1, 1).is_unit()   # False
+
+(``rank == 0`` is the one case where the "hypercomplex value" in
+question is a plain ``Fraction`` rather than a ``Hy``, so
+``Hy.units(0)`` returns ``{'1': Fraction(1), '-1': Fraction(-1)}``.)
+
+LaTeX rendering
+-----------------
+
+``some_hy.latex()`` renders a value as a LaTeX math expression, which
+is especially handy in a Jupyter notebook:
+
+.. code-block:: python
+
+    from IPython.display import Math
+
+    Math(Hy('5/2', '-16/5').latex())   # displays  5/2 - 16/5 j, with a
+                                        # horizontal fraction bar
+
+Basis units are subscripted the same way :doc:`the API reference <api>`
+describes for ``str()`` -- ``j`` at rank 1, ``i``/``j``/``k`` at rank
+2, and ``e1, e2, ...`` (rendered as ``e_{1}``, ``e_{2}``, ...) from
+rank 3 up.
+
+Two keyword-only options are available:
+
+* ``vinculum`` controls how a non-integer coefficient's fraction bar
+  is typeset: ``"horizontal"`` (the default) uses ``\frac{num}{den}``;
+  ``"diagonal"`` uses a plain slash, ``num/den``:
+
+  .. code-block:: python
+
+      Hy('5/2', '-16/5').latex()                     # '\\frac{5}{2}-\\frac{16}{5}j'
+      Hy('5/2', '-16/5').latex(vinculum='diagonal')   # '5/2-16/5j'
+
+* ``mode`` controls whether the result is wrapped in LaTeX math
+  delimiters: ``"plain"`` (the default) returns the bare expression,
+  ``"inline"`` wraps it in ``$...$``, and ``"display"`` wraps it in
+  ``\[...\]``.
+
 See :doc:`api` for the full reference.

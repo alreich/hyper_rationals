@@ -31,13 +31,13 @@ complex, quaternion and octonion values, and continues to make sense
 Quick tour
 ----------
 
-    >>> from hypercomplex import Hy
+    >>> from hyprat import Hy
     >>> z = Hy('5/2', '-16/5')          # a rational complex number
     >>> str(z)
     '(5/2-16/5j)'
-    >>> q = Hy(Hy(1, 0), Hy(0, 1))      # the quaternion j
+    >>> q = Hy(Hy(0, 0), Hy(1, 0))      # the quaternion j
     >>> str(q)
-    '(1j)'
+    '(j)'
     >>> str(q * q)
     '(-1)'
 
@@ -79,6 +79,31 @@ coefficients (ints, floats, ``Fraction``s and/or fraction strings like
     Hy(Hy('1', '2/3'), Hy('7/2', '-1/4'))
     >>> Hy(Hy(1, 2), Hy(3, 4)).to_array(as_str=True)
     ['1', '2', '3', '4']
+
+Units and LaTeX rendering
+--------------------------
+
+``Hy.units(rank)`` returns a dict of every unit element (``+-1``,
+``+-j``, ``+-i``, ...) of the rank-``rank`` algebra, keyed by their
+string form; ``some_hy.is_unit()`` reports whether a value is one of
+the units for its own rank::
+
+    >>> Hy.units(1)
+    {'1': Hy('1', '0'), '-1': Hy('-1', '0'), 'j': Hy('0', '1'), '-j': Hy('0', '-1')}
+    >>> Hy(0, 1).is_unit()
+    True
+
+``some_hy.latex()`` renders a value as a LaTeX math expression, for
+display in a Jupyter notebook (e.g. via ``IPython.display.Math``).
+Basis units ``e1, e2, ...`` are subscripted (``e_{1}``, ``e_{2}``,
+...); non-integer coefficients are rendered as ``\\frac{num}{den}``
+(the default, ``vinculum='horizontal'``) or as a plain slash,
+``num/den`` (``vinculum='diagonal'``)::
+
+    >>> Hy('5/2', '-16/5').latex()
+    '\\\\frac{5}{2}-\\\\frac{16}{5}j'
+    >>> Hy('5/2', '-16/5').latex(vinculum='diagonal')
+    '5/2-16/5j'
 """
 
 from __future__ import annotations
@@ -206,6 +231,22 @@ class Hy:
 
     def is_zero(self) -> bool:
         return _is_zero_val(self)
+
+    def is_unit(self) -> bool:
+        """True iff this value is one of the *units* of its own rank --
+        i.e. exactly one of its ``2**rank`` real coordinates is ``+-1``
+        and every other coordinate is 0. Equivalent to (but cheaper
+        than) checking membership in ``Hy.units(self.rank).values()``.
+
+            >>> Hy(0, 1).is_unit()
+            True
+            >>> Hy(1, 1).is_unit()
+            False
+            >>> Hy(0, 0).is_unit()
+            False
+        """
+        nonzero = [c for c in _flatten(self) if c != 0]
+        return len(nonzero) == 1 and abs(nonzero[0]) == 1
 
     # ---------------------------------------------------------------- #
     # Arithmetic
@@ -466,6 +507,102 @@ class Hy:
         coeffs = _flatten(self)
         return [str(c) for c in coeffs] if as_str else list(coeffs)
 
+    # ---------------------------------------------------------------- #
+    # Units
+    # ---------------------------------------------------------------- #
+    @classmethod
+    def units(cls, rank: int) -> dict:
+        """The unit elements of the rank-``rank`` algebra: the ``2 *
+        2**rank`` values with exactly one real coordinate equal to
+        ``+-1`` and every other coordinate 0 (e.g. for rank 1: ``+-1``
+        and ``+-j``; for rank 2: ``+-1, +-i, +-j, +-k``).
+
+        Returns a dict mapping each unit's string form (matching
+        :func:`str`) to the value itself, in ``+1, -1, +unit, -unit,
+        ...`` order::
+
+            >>> Hy.units(1)
+            {'1': Hy('1', '0'), '-1': Hy('-1', '0'), 'j': Hy('0', '1'), '-j': Hy('0', '-1')}
+
+        For ``rank == 0`` -- the base case where a hypercomplex value is
+        just a plain ``Fraction`` rather than a ``Hy`` -- the two units
+        ``Fraction(1)`` and ``Fraction(-1)`` are returned directly
+        (every other rank returns ``Hy`` instances).
+
+        See also :meth:`is_unit`. Raises ``ValueError`` if ``rank``
+        isn't a non-negative int.
+        """
+        if not isinstance(rank, int) or isinstance(rank, bool) or rank < 0:
+            raise ValueError(f"rank must be a non-negative int, got {rank!r}")
+        if rank == 0:
+            return {"1": Fraction(1), "-1": Fraction(-1)}
+        n = 2 ** rank
+        labels = _basis_labels(rank)
+        result = {}
+        for idx, lbl in enumerate(labels):
+            pos_key = lbl if lbl else "1"
+            neg_key = f"-{lbl}" if lbl else "-1"
+            coeffs = [Fraction(0)] * n
+            coeffs[idx] = Fraction(1)
+            result[pos_key] = _unflatten(coeffs, rank)
+            coeffs[idx] = Fraction(-1)
+            result[neg_key] = _unflatten(coeffs, rank)
+        return result
+
+    # ---------------------------------------------------------------- #
+    # LaTeX rendering
+    # ---------------------------------------------------------------- #
+    def latex(self, *, vinculum: str = "horizontal", mode: str = "plain") -> str:
+        """Render this value as a LaTeX math expression -- handy for
+        displaying a ``Hy`` in a Jupyter notebook, e.g.::
+
+            from IPython.display import Math
+            Math(some_hy.latex())
+
+        Basis-unit labels are rendered the same way :func:`str` renders
+        them (``j`` at rank 1; ``i``, ``j``, ``k`` at rank 2), except
+        that the ``e1, e2, ...`` labels used from rank 3 up are
+        subscripted: ``e5`` becomes ``e_{5}``.
+
+        Parameters
+        ----------
+        vinculum : {"horizontal", "diagonal"}, default "horizontal"
+            How to typeset a non-integer coefficient's fraction bar
+            (its *vinculum*). ``"horizontal"`` renders it as
+            ``\\frac{num}{den}``; ``"diagonal"`` renders it as a plain
+            slash, ``num/den``.
+        mode : {"plain", "inline", "display"}, default "plain"
+            Whether to wrap the expression in LaTeX math delimiters.
+            ``"plain"`` returns the bare expression (for embedding in a
+            larger expression); ``"inline"`` wraps it in ``$...$``;
+            ``"display"`` wraps it in ``\\[...\\]``.
+
+        Examples
+        --------
+            >>> Hy('5/2', '-16/5').latex()
+            '\\\\frac{5}{2}-\\\\frac{16}{5}j'
+            >>> Hy('5/2', '-16/5').latex(vinculum='diagonal')
+            '5/2-16/5j'
+            >>> Hy(Hy(Hy(1, 0), Hy(0, 0)), Hy(Hy(0, 1), Hy(0, 0))).latex()
+            '1+e_{5}'
+        """
+        if vinculum not in ("horizontal", "diagonal"):
+            raise ValueError(
+                f"vinculum must be 'horizontal' or 'diagonal', got {vinculum!r}"
+            )
+        if mode not in ("plain", "inline", "display"):
+            raise ValueError(
+                f"mode must be 'plain', 'inline', or 'display', got {mode!r}"
+            )
+        coeffs = _flatten(self)
+        labels = [_latex_unit_label(lbl) for lbl in _basis_labels(self.rank)]
+        body = _format_terms_latex(coeffs, labels, vinculum)
+        if mode == "inline":
+            return f"${body}$"
+        if mode == "display":
+            return f"\\[{body}\\]"
+        return body
+
 
 # ============================================================================
 # Module-level recursive algebra (Cayley-Dickson construction)
@@ -691,6 +828,46 @@ def _format_terms(coeffs, labels) -> str:
 
 
 # ============================================================================
+# LaTeX formatting (used by Hy.latex())
+# ============================================================================
+
+def _latex_unit_label(lbl: str) -> str:
+    """'' / 'i' / 'j' / 'k' pass through unchanged; 'e12' -> 'e_{12}'."""
+    if lbl.startswith("e") and lbl[1:].isdigit():
+        return f"e_{{{lbl[1:]}}}"
+    return lbl
+
+
+def _format_fraction_latex(c: Fraction, vinculum: str) -> str:
+    if c.denominator == 1:
+        return str(c.numerator)
+    if vinculum == "diagonal":
+        return f"{c.numerator}/{c.denominator}"
+    return f"\\frac{{{c.numerator}}}{{{c.denominator}}}"
+
+
+def _format_terms_latex(coeffs, labels, vinculum: str) -> str:
+    parts = []
+    for c, u in zip(coeffs, labels):
+        if c == 0:
+            continue
+        negative = c < 0
+        mag = -c if negative else c
+        mag_str = _format_fraction_latex(mag, vinculum)
+        if u == "":
+            body = mag_str
+        elif mag == 1:
+            body = u
+        else:
+            body = f"{mag_str}{u}"
+        if not parts:
+            parts.append(f"-{body}" if negative else body)
+        else:
+            parts.append(f"{'-' if negative else '+'}{body}")
+    return "".join(parts) if parts else "0"
+
+
+# ============================================================================
 # Parsing
 # ============================================================================
 
@@ -811,5 +988,22 @@ if __name__ == "__main__":
     assert h_from_arr.to_array(as_str=True) == ["1", "2/3", "7/2", "-1/4"]
     assert Hy.from_array(h_from_arr.to_array(as_str=True)) == h_from_arr
     print("Hy.from_array()/to_array() round trip, mixed input types: OK")
+
+    # Hy.units() / is_unit()
+    units1 = Hy.units(1)
+    assert units1 == {"1": Hy(1, 0), "-1": Hy(-1, 0), "j": Hy(0, 1), "-j": Hy(0, -1)}
+    assert all(u.is_unit() for u in units1.values())
+    assert not Hy(1, 1).is_unit()
+    assert not Hy(0, 0).is_unit()
+    assert Hy.units(0) == {"1": Fraction(1), "-1": Fraction(-1)}
+    print("Hy.units()/is_unit(): OK, e.g. Hy.units(1) =", units1)
+
+    # latex()
+    assert Hy("5/2", "-16/5").latex() == r"\frac{5}{2}-\frac{16}{5}j"
+    assert Hy("5/2", "-16/5").latex(vinculum="diagonal") == "5/2-16/5j"
+    oct_e = Hy(Hy(Hy(1, 0), Hy(0, 0)), Hy(Hy(0, 1), Hy(0, 0)))
+    assert oct_e.latex() == "1+e_{5}"
+    assert Hy("1/2").latex(mode="inline") == r"$\frac{1}{2}$"
+    print("Hy.latex(): OK, e.g. Hy('5/2', '-16/5').latex() =", Hy("5/2", "-16/5").latex())
 
     print("\nAll self-tests passed.")
