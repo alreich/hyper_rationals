@@ -218,3 +218,7 @@ __marimo__/
 .streamlit/secrets.toml
 
 .DS_Store
+
+# Anaconda Navigator project cache — local machine state, not source
+anaconda_projects/
+
