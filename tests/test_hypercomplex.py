@@ -30,9 +30,8 @@ Organization:
     TestArrayConversion     - Hy.from_array()/.to_array(), ranks 1-4,
                               mixed-type input, error cases
 
-As with the gint project, algebraic laws are checked empirically via
-seeded random fuzzing (deterministic across runs) in addition to fixed,
-hand-verified examples.
+Algebraic laws are checked empirically via seeded random fuzzing
+(deterministic across runs) in addition to fixed, hand-verified examples.
 """
 
 import math
