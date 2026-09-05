@@ -585,9 +585,9 @@ class TestStringForms(unittest.TestCase):
         self.assertEqual(str(Hy(Hy(0, 1), Hy(0, 0))), '(i)')
         self.assertEqual(str(Hy(Hy(0, 0), Hy(0, -1))), '(-k)')
 
-    def test_str_rank_3_uses_e_labels(self):
+    def test_str_rank_3_uses_octonion_labels(self):
         o = Hy(Hy(Hy(1, 0), Hy(0, 0)), Hy(Hy(0, 1), Hy(0, 0)))
-        self.assertEqual(str(o), '(1+e5)')
+        self.assertEqual(str(o), '(1+il)')
 
     def test_str_rank_4_uses_e_labels_up_to_e15(self):
         coeffs = [Fraction(0)] * 16
@@ -639,12 +639,12 @@ class TestUnits(unittest.TestCase):
         self.assertEqual(u["i"], Hy(Hy(0, 1), Hy(0, 0)))
         self.assertEqual(u["-k"], Hy(Hy(0, 0), Hy(0, -1)))
 
-    def test_units_rank_3_uses_e_labels(self):
+    def test_units_rank_3_uses_octonion_labels(self):
         u = Hy.units(3)
         self.assertEqual(len(u), 16)  # 2 * 2**3
-        self.assertIn("e5", u)
-        self.assertIn("-e7", u)
-        self.assertEqual(str(u["e5"]), "(e5)")
+        self.assertIn("il", u)
+        self.assertIn("-kl", u)
+        self.assertEqual(str(u["il"]), "(il)")
 
     def test_units_count_matches_2_times_dimension(self):
         for rank in RANKS:
@@ -716,9 +716,9 @@ class TestLatex(unittest.TestCase):
     def test_latex_rank_2_uses_ijk_unchanged(self):
         self.assertEqual(Hy(Hy(1, 2), Hy(3, 4)).latex(), "1+2i+3j+4k")
 
-    def test_latex_rank_3_subscripts_e_labels(self):
+    def test_latex_rank_3_uses_octonion_labels_unsubscripted(self):
         o = Hy(Hy(Hy(1, 0), Hy(0, 0)), Hy(Hy(0, 1), Hy(0, 0)))
-        self.assertEqual(o.latex(), "1+e_{5}")
+        self.assertEqual(o.latex(), "1+il")
 
     def test_latex_rank_4_subscripts_multidigit_e_labels(self):
         coeffs = [Fraction(0)] * 16
@@ -751,6 +751,10 @@ class TestLatex(unittest.TestCase):
         self.assertEqual(_latex_unit_label("j"), "j")
         self.assertEqual(_latex_unit_label("i"), "i")
         self.assertEqual(_latex_unit_label("k"), "k")
+        self.assertEqual(_latex_unit_label("l"), "l")
+        self.assertEqual(_latex_unit_label("il"), "il")
+        self.assertEqual(_latex_unit_label("jl"), "jl")
+        self.assertEqual(_latex_unit_label("kl"), "kl")
         self.assertEqual(_latex_unit_label("e1"), "e_{1}")
         self.assertEqual(_latex_unit_label("e15"), "e_{15}")
 
@@ -791,8 +795,17 @@ class TestParsing(unittest.TestCase):
         self.assertEqual(Hy.parse('i+k'), Hy(Hy(0, 1), Hy(0, 1)))
 
     def test_parse_rank_3_and_4(self):
-        self.assertEqual(Hy.parse('1+e5'), Hy(Hy(Hy(1, 0), Hy(0, 0)), Hy(Hy(0, 1), Hy(0, 0))))
+        self.assertEqual(Hy.parse('1+il'), Hy(Hy(Hy(1, 0), Hy(0, 0)), Hy(Hy(0, 1), Hy(0, 0))))
         self.assertEqual(Hy.parse('1-2e15').rank, 4)
+
+    def test_parse_rank_3_octonion_labels(self):
+        self.assertEqual(
+            Hy.parse('l'), Hy(Hy(Hy(0, 0), Hy(0, 0)), Hy(Hy(1, 0), Hy(0, 0)))
+        )
+        self.assertEqual(
+            Hy.parse('-jl'), Hy(Hy(Hy(0, 0), Hy(0, 0)), Hy(Hy(0, 0), Hy(-1, 0)))
+        )
+        self.assertEqual(Hy.parse('1-k+2kl').rank, 3)
 
     def test_parse_from_string_alias(self):
         self.assertEqual(Hy.from_string('5/2+16/5j'), Hy('5/2', '16/5'))
@@ -815,9 +828,16 @@ class TestParsing(unittest.TestCase):
             Hy.parse('()')
 
     def test_parse_inconsistent_units_raises(self):
-        # 'i' forces quaternion (n=4); e5 needs n=8: inconsistent together
+        # 'i' is a rank <= 3 label; 'e5' only appears from rank 4 up
+        # (labels e1..e15), so the two are inconsistent together.
         with self.assertRaises(ValueError):
             Hy.parse('1+i+e5')
+
+    def test_parse_inconsistent_octonion_and_e_label_raises(self):
+        # 'l' is an octonion-only (rank 3) label; 'e5' only appears from
+        # rank 4 up, so the two are inconsistent together.
+        with self.assertRaises(ValueError):
+            Hy.parse('1+l+e5')
 
     def test_module_level_parse_function(self):
         self.assertEqual(_parse('5/2+16/5j'), Hy('5/2', '16/5'))

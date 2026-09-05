@@ -50,13 +50,14 @@ String forms
 ------------
 
 ``str()`` renders a value the way Python renders ``complex`` numbers
-for rank 1 (using ``j``), and the customary ``a+bi+cj+dk`` notation for
-rank 2, and ``e1 .. e7`` (etc.) imaginary units for rank >= 3::
+for rank 1 (using ``j``), the customary ``a+bi+cj+dk`` notation for
+rank 2, ``i, j, k, l, il, jl, kl`` basis labels for rank 3 ("octonions"),
+and ``e1 .. e(2**rank - 1)`` (etc.) imaginary units for rank >= 4::
 
     str(Hy('5/2', '16/5'))                 -> '(5/2+16/5j)'
     str(Hy(Hy(1, 2), Hy(3, 4)))            -> '(1+2i+3j+4k)'
     str(Hy(Hy(Hy(1,0),Hy(0,0)), Hy(Hy(0,1),Hy(0,0))))
-                                            -> '(1+e2)'   (etc.)
+                                            -> '(1+il)'   (etc.)
 
 ``Hy.parse(s)`` is the inverse of ``str`` (and is also used
 automatically by the constructor -- see below).
@@ -95,8 +96,10 @@ the units for its own rank::
 
 ``some_hy.latex()`` renders a value as a LaTeX math expression, for
 display in a Jupyter notebook (e.g. via ``IPython.display.Math``).
-Basis units ``e1, e2, ...`` are subscripted (``e_{1}``, ``e_{2}``,
-...); non-integer coefficients are rendered as ``\\frac{num}{den}``
+Basis units at rank 1-3 (``j``; ``i, j, k``; ``i, j, k, l, il, jl,
+kl``) render unchanged; the ``e1, e2, ...`` labels used from rank 4
+up are subscripted (``e_{1}``, ``e_{2}``, ...); non-integer
+coefficients are rendered as ``\\frac{num}{den}``
 (the default, ``vinculum='horizontal'``) or as a plain slash,
 ``num/den`` (``vinculum='diagonal'``)::
 
@@ -386,7 +389,7 @@ class Hy:
     @classmethod
     def parse(cls, s: str) -> "Hy":
         """Parse the kind of string produced by ``str(some_hy)`` -- e.g.
-        ``'(5/2-16/5j)'``, ``'1+2i+3j+4k'``, ``'1-e3+2e7'`` -- into a Hy.
+        ``'(5/2-16/5j)'``, ``'1+2i+3j+4k'``, ``'1-k+2kl'`` -- into a Hy.
         """
         return _parse(s)
 
@@ -560,9 +563,10 @@ class Hy:
             Math(some_hy.latex())
 
         Basis-unit labels are rendered the same way :func:`str` renders
-        them (``j`` at rank 1; ``i``, ``j``, ``k`` at rank 2), except
-        that the ``e1, e2, ...`` labels used from rank 3 up are
-        subscripted: ``e5`` becomes ``e_{5}``.
+        them (``j`` at rank 1; ``i``, ``j``, ``k`` at rank 2; ``i, j,
+        k, l, il, jl, kl`` at rank 3), except that the ``e1, e2, ...``
+        labels used from rank 4 up are subscripted: ``e5`` becomes
+        ``e_{5}``.
 
         Parameters
         ----------
@@ -584,7 +588,7 @@ class Hy:
             >>> Hy('5/2', '-16/5').latex(vinculum='diagonal')
             '5/2-16/5j'
             >>> Hy(Hy(Hy(1, 0), Hy(0, 0)), Hy(Hy(0, 1), Hy(0, 0))).latex()
-            '1+e_{5}'
+            '1+il'
         """
         if vinculum not in ("horizontal", "diagonal"):
             raise ValueError(
@@ -796,6 +800,9 @@ def _coerce_flat_element(v) -> Fraction:
 # String formatting
 # ============================================================================
 
+_OCTONION_LABELS = ["", "i", "j", "k", "l", "il", "jl", "kl"]
+
+
 def _basis_labels(rank: int):
     n = 2 ** rank
     if rank <= 0:
@@ -804,6 +811,8 @@ def _basis_labels(rank: int):
         return ["", "j"]
     if rank == 2:
         return ["", "i", "j", "k"]
+    if rank == 3:
+        return list(_OCTONION_LABELS)
     return [""] + [f"e{i}" for i in range(1, n)]
 
 
@@ -871,7 +880,9 @@ def _format_terms_latex(coeffs, labels, vinculum: str) -> str:
 # Parsing
 # ============================================================================
 
-_TERM_RE = re.compile(r"^([+-]?)(\d+/\d+|\d+\.\d+|\d+)?(i|j|k|e\d+)?$")
+_TERM_RE = re.compile(
+    r"^([+-]?)(\d+/\d+|\d+\.\d+|\d+)?(il|jl|kl|i|j|k|l|e\d+)?$"
+)
 
 
 def _parse(s: str) -> Hy:
@@ -886,6 +897,7 @@ def _parse(s: str) -> Hy:
     coeff_map: dict = {}
     max_e_index = 0
     has_i = has_k = False
+    has_octonion_only = False  # 'l', 'il', 'jl', 'kl' -- unique to rank 3
 
     for tok in tokens:
         m = _TERM_RE.match(tok)
@@ -902,15 +914,22 @@ def _parse(s: str) -> Hy:
             has_i = True
         elif label == "k":
             has_k = True
+        elif label in ("l", "il", "jl", "kl"):
+            has_octonion_only = True
         elif label.startswith("e"):
             max_e_index = max(max_e_index, int(label[1:]))
         coeff_map[label] = coeff_map.get(label, Fraction(0)) + value
 
     if max_e_index > 0:
-        n = 2
+        # 'e1, e2, ...' labels are only used from rank 4 up (octonions,
+        # rank 3, use the 'i/j/k/l/il/jl/kl' labels instead).
+        n = 16
         while n - 1 < max_e_index:
             n *= 2
         rank = n.bit_length() - 1
+        labels = _basis_labels(rank)
+    elif has_octonion_only:
+        rank = 3
         labels = _basis_labels(rank)
     elif has_i or has_k:
         rank = 2
@@ -1002,7 +1021,7 @@ if __name__ == "__main__":
     assert Hy("5/2", "-16/5").latex() == r"\frac{5}{2}-\frac{16}{5}j"
     assert Hy("5/2", "-16/5").latex(vinculum="diagonal") == "5/2-16/5j"
     oct_e = Hy(Hy(Hy(1, 0), Hy(0, 0)), Hy(Hy(0, 1), Hy(0, 0)))
-    assert oct_e.latex() == "1+e_{5}"
+    assert oct_e.latex() == "1+il"
     assert Hy("1/2").latex(mode="inline") == r"$\frac{1}{2}$"
     print("Hy.latex(): OK, e.g. Hy('5/2', '-16/5').latex() =", Hy("5/2", "-16/5").latex())
 

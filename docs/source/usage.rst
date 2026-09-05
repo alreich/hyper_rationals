@@ -64,9 +64,10 @@ Parsing and printing
 ---------------------
 
 ``str()`` renders a value the way Python renders ``complex`` numbers
-for rank 1 (using ``j``), and the customary ``a+bi+cj+dk`` notation for
-rank 2, and ``e1 .. e_{2^rank - 1}`` imaginary units for rank >= 3.
-``Hy.parse`` is the inverse operation:
+for rank 1 (using ``j``), the customary ``a+bi+cj+dk`` notation for
+rank 2, ``i, j, k, l, il, jl, kl`` basis labels for rank 3
+("octonions"), and ``e1 .. e_{2^rank - 1}`` imaginary units for
+rank >= 4. ``Hy.parse`` is the inverse operation:
 
 .. code-block:: python
 
@@ -75,6 +76,10 @@ rank 2, and ``e1 .. e_{2^rank - 1}`` imaginary units for rank >= 3.
 
     str(Hy(Hy(1, 2), Hy(3, 4)))     # '(1+2i+3j+4k)'
     Hy.parse('1+2i+3j+4k')          # a rational quaternion
+
+    o = Hy(Hy(Hy(1, 2), Hy(3, 4)), Hy(Hy(5, 6), Hy(7, 8)))
+    str(o)                          # '(1+2i+3j+4k+5l+6il+7jl+8kl)'
+    Hy.parse('1+2i+3j+4k+5l+6il+7jl+8kl') == o   # True
 
 ``repr()`` returns Python source that reconstructs an equal value,
 e.g. ``Hy('5/2', '-16/5')``.
@@ -161,10 +166,11 @@ is especially handy in a Jupyter notebook:
     Math(Hy('5/2', '-16/5').latex())   # displays  5/2 - 16/5 j, with a
                                         # horizontal fraction bar
 
-Basis units are subscripted the same way :doc:`the API reference <api>`
+Basis units render the same way :doc:`the API reference <api>`
 describes for ``str()`` -- ``j`` at rank 1, ``i``/``j``/``k`` at rank
-2, and ``e1, e2, ...`` (rendered as ``e_{1}``, ``e_{2}``, ...) from
-rank 3 up.
+2, and ``i``/``j``/``k``/``l``/``il``/``jl``/``kl`` at rank 3, all
+unchanged -- except that the ``e1, e2, ...`` labels used from rank 4
+up are subscripted (rendered as ``e_{1}``, ``e_{2}``, ...).
 
 Two keyword-only options are available:
 
