@@ -115,7 +115,7 @@ import math
 import random
 import re
 from fractions import Fraction
-# from numbers import Number
+
 
 __all__ = ["Hy"]
 
@@ -800,7 +800,7 @@ def _coerce_flat_element(v) -> Fraction:
 # String formatting
 # ============================================================================
 
-_OCTONION_LABELS = ["", "i", "j", "k", "L", "iL", "jL", "kL"]
+# _OCTONION_LABELS = ["", "i", "j", "k", "L", "iL", "jL", "kL"]
 
 
 def _basis_labels(rank: int):
@@ -812,7 +812,8 @@ def _basis_labels(rank: int):
     if rank == 2:
         return ["", "i", "j", "k"]
     if rank == 3:
-        return list(_OCTONION_LABELS)
+        # return list(_OCTONION_LABELS)
+        return ["", "i", "j", "k", "L", "iL", "jL", "kL"]
     return [""] + [f"e{i}" for i in range(1, n)]
 
 
