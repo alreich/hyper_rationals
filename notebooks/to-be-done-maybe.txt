@@ -1,0 +1,20 @@
+Hyper-Rational To-Be-Done (maybe)
+
+* quaternion-to-complex-matrix & -to-real-matrix methods
+* octonion-to-quaternion-matrix method and non-associative quaternionic matrix multiplication
+* support for split-quaternions & Hurwitz quaternions
+* support for split-octonions
+
+I would like to continue working on my rational hypercomplex class, Hy, in my public repo: https://github.com/alreich/hyper_rationals. Currently, the Hy class uses the Cayley-Dickson construction to recursively represent rational complex numbers, rational quaternions, rational octonions, and so on. Without making any edits to the existing code at this time, I would like to discuss the possibility of also representing the following types of mult-dimensional rational numbers:
+
+* split-complex numbers
+* split-quaternions
+* split-biquaternions
+* Hurwitz quaternions
+* split-octonions
+
+I'd like to start with 
+
+The first question is, "Can the Cayley-Dickson construction, or a Cayley-Dickson-like construction" support any of these additional types of hypercomplex numbers? For example, can we use split-complex numbers within a Cayley-Dickson construction to produce split-quaternions, and then split-octonions, and so on?
+
+If one or more of these types can be represented by Hy, I'd like to have a control mechanism, probably a class method, for switching the hyprat module between representations. Would it be possible to implement a class-level switch to us either "normal" (the current version) or "split" hypercomplex numbers?
