@@ -8,6 +8,8 @@ numbers, quaternions, octonions, and beyond -- built via the
 [Cayley-Dickson construction](https://en.wikipedia.org/wiki/Cayley%E2%80%93Dickson_construction),
 implemented in the `hyprat` package.
 
+![hypercomplex numbers](notebooks/hypercomplex_numbers_figure_1.png)
+
 
 ### Rational Complex Numbers (rank 1)
 
