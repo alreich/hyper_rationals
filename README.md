@@ -9,6 +9,7 @@ numbers, quaternions, octonions, and beyond -- built via the
 implemented in the `hyprat` package.
 
 ![hypercomplex numbers](notebooks/hypercomplex_numbers_figure_1.png)
+<sub><sup>(Source: "Hypercomplex Numbers - A Tool for Enhanced Efficiency and Intelligence in Digital Signal Processing" by Zlatka Valkova-Jarvis, et al.)</sup></sub>
 
 
 ### Rational Complex Numbers (rank 1)
