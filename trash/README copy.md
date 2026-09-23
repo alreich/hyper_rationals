@@ -8,6 +8,9 @@ numbers, quaternions, octonions, and beyond -- built via the
 [Cayley-Dickson construction](https://en.wikipedia.org/wiki/Cayley%E2%80%93Dickson_construction),
 implemented in the `hyprat` package.
 
+![hypercomplex numbers](notebooks/hypercomplex_numbers_figure_1.png)
+<sub><sup>(Figure 1 Source: "Hypercomplex Numbers - A Tool for Enhanced Efficiency and Intelligence in Digital Signal Processing" by Zlatka Valkova-Jarvis, et al.)</sup></sub>
+
 
 ### Rational Complex Numbers (rank 1)
 
@@ -19,15 +22,12 @@ implemented in the `hyprat` package.
 >>> z = Hy('5/2', '-16/5')
 >>> print(f"{z = }\n")
 >>> print(f"{str(z) = }\n")
->>> print(f"{complex(z) = }\n")
 >>> display(Math(z.latex()))
 ```
 
     z = Hy('5/2', '-16/5')
     
     str(z) = '(5/2-16/5j)'
-    
-    complex(z) = (2.5-3.2j)
     
 
 
@@ -122,12 +122,8 @@ rank n  ->  Hy(x, y),   where x & y are rank (n-1) ("sedenion", "pathion", ...)
 recursive Cayley-Dickson formulas, using exact `fractions.Fraction`
 arithmetic throughout -- no floating-point rounding.
 
-## Documentation
-
 Full documentation, including the API reference, is on
 [Read the Docs](https://hyper-rationals.readthedocs.io/).
-
-Also, see the Jupyter notebook, ['hyprat_examples.ipynb'](https://github.com/alreich/hyper_rationals/blob/main/notebooks/hyprat_examples.ipynb) in the ``notebooks/`` directory
 
 ## Installation
 
@@ -176,8 +172,3 @@ hyper_rationals/
 
 MIT -- see [LICENSE](LICENSE).
 
-
-
-```python
-
-```
