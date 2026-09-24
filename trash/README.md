@@ -8,34 +8,129 @@ numbers, quaternions, octonions, and beyond -- built via the
 [Cayley-Dickson construction](https://en.wikipedia.org/wiki/Cayley%E2%80%93Dickson_construction),
 implemented in the `hyprat` package.
 
+![hypercomplex numbers](notebooks/hypercomplex_numbers_figure_1.png)
+<sub><sup>(Figure 1 Source: "Hypercomplex Numbers - A Tool for Enhanced Efficiency and Intelligence in Digital Signal Processing" by Zlatka Valkova-Jarvis, et al.)</sup></sub>
+
+
+### Rational Complex Numbers (rank 1)
+
+
 ```python
-from hyprat import Hy
+>>> from hyprat import Hy
+>>> from IPython.display import display, Math
 
-z = Hy('5/2', '-16/5')          # a rational complex number
-str(z)                          # '(5/2-16/5j)'
-
-q = Hy(Hy(1, 2), Hy(3, 4))      # a rational quaternion: 1 + 2i + 3j + 4k
-i = Hy(Hy(0, 1), Hy(0, 0))
-j = Hy(Hy(0, 0), Hy(1, 0))
-i * j                           # -> Hy(Hy('0','0'), Hy('0','1'))   (== k)
+>>> z = Hy('5/2', '-16/5')
+>>> print(f"{z = }\n")
+>>> print(f"{str(z) = }\n")
+>>> print(f"{complex(z) = }\n")
+>>> display(Math(z.latex()))
 ```
+
+    z = Hy('5/2', '-16/5')
+    
+    str(z) = '(5/2-16/5j)'
+    
+    complex(z) = (2.5-3.2j)
+    
+
+
+
+$\displaystyle \frac{5}{2}-\frac{16}{5}j$
+
+
+### Rational Quaternions (rank 2)
+
+
+```python
+>>> quat = Hy(Hy(1.5, '2/3'), Hy('3/7', 4))
+>>> print(f"{quat = }\n")
+>>> print(f"{str(quat) = }\n")
+>>> display(Math(quat.latex()))
+```
+
+    quat = Hy(Hy('3/2', '2/3'), Hy('3/7', '4'))
+    
+    str(quat) = '(3/2+2/3i+3/7j+4k)'
+    
+
+
+
+$\displaystyle \frac{3}{2}+\frac{2}{3}i+\frac{3}{7}j+4k$
+
+
+
+```python
+>>> Hy.from_array([1.5, '2/3', '3/7', 4]) == quat
+```
+
+
+
+
+    True
+
+
+
+
+```python
+>>> Hy.parse('(3/2+2/3i+3/7j+4k)') == quat
+```
+
+
+
+
+    True
+
+
+
+### Rational Octonions (rank 3)
+
+
+```python
+>>> oct = Hy.from_array(['2/3', 0, 3, -5, '-2/3', '2/5', '-4/5', 2])
+>>> print(f"{oct = }\n")
+>>> print(f"{str(oct) = }\n")
+>>> display(Math(oct.latex()))
+>>> print(f"\n{Hy.parse(str(oct)) == oct = }")
+```
+
+    oct = Hy(Hy(Hy('2/3', '0'), Hy('3', '-5')), Hy(Hy('-2/3', '2/5'), Hy('-4/5', '2')))
+    
+    str(oct) = '(2/3+3j-5k-2/3L+2/5iL-4/5jL+2kL)'
+    
+
+
+
+$\displaystyle \frac{2}{3}+3j-5k-\frac{2}{3}L+\frac{2}{5}iL-\frac{4}{5}jL+2kL$
+
+
+    
+    Hy.parse(str(oct)) == oct = True
+
+
+### And So On ...
+
+-----------------------
 
 The single immutable `Hy` class represents every rank:
 
 ```text
-rank 0  ->  a plain fractions.Fraction        (a "real")
-rank 1  ->  Hy(real, imag)                    (a "complex" number)
-rank 2  ->  Hy(h1, h2), h1/h2 rank 1          (a "quaternion")
-rank 3  ->  Hy(h3, h4), h3/h4 rank 2          (an "octonion")
-rank n  ->  Hy(x, y),   x/y  rank (n-1)
+rank 0  ->  a plain fractions.Fraction             (a "real")
+rank 1  ->  Hy(real, imag)                         (a "complex")
+rank 2  ->  Hy(h1, h2), where h1 & h2 are rank 1   (a "quaternion")
+rank 3  ->  Hy(h3, h4), where h3 & h4 are rank 2   (an "octonion")
+rank n  ->  Hy(x, y),   where x & y are rank (n-1) ("sedenion", "pathion", ...)
 ```
 
 `+ - * /`, conjugation, norms, and inverses all follow the standard
 recursive Cayley-Dickson formulas, using exact `fractions.Fraction`
 arithmetic throughout -- no floating-point rounding.
 
+## Documentation
+
 Full documentation, including the API reference, is on
 [Read the Docs](https://hyper-rationals.readthedocs.io/).
+
+Also, see the Jupyter notebook, ['hyprat_examples.ipynb'](https://github.com/alreich/hyper_rationals/blob/main/notebooks/hyprat_examples.ipynb) in the ``notebooks/`` directory
 
 ## Installation
 
@@ -73,6 +168,8 @@ hyper_rationals/
 +-- src/hyprat/          the hyprat package  (import as `from hyprat import Hy`)
 +-- tests/                unit tests (unittest, run via pytest or unittest)
 +-- docs/source/          Sphinx documentation source
++-- notebooks/            Jupyter notebooks (examples, Claude dialog, ...)
++-- papers/               Papers on hypercomplex numbers (quaternions, octonions, ...)
 +-- .github/workflows/    CI (tests + docs build)
 +-- pyproject.toml        packaging / metadata
 +-- .readthedocs.yaml     Read the Docs build config
@@ -81,3 +178,9 @@ hyper_rationals/
 ## License
 
 MIT -- see [LICENSE](LICENSE).
+
+
+
+```python
+
+```
