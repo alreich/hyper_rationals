@@ -33,6 +33,46 @@ jobs:
       - name: Run doctests
         run: pytest --doctest-modules src/hyprat
 
+  test-interop:
+    name: Test interoperability extras (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      # sympy, numpy-quaternion and quaternionic are optional -- Hy's
+      # to_sympy/from_sympy, to_numpy_quaternion/from_numpy_quaternion and
+      # to_quaternionic/from_quaternionic methods import them lazily and are
+      # never a runtime dependency of hyprat. The "test" job above runs the
+      # full suite without them installed, where the tests that need one are
+      # skipped; this job installs the "interop" extra instead, so those
+      # same tests actually run.
+      - name: Install hyprat with test and interop extras
+        run: pip install -e ".[test,interop]"
+
+      - name: Run unit tests (including interoperability tests)
+        run: pytest -v -k Interop
+
+      - name: Fail if any interoperability test was skipped
+        run: |
+          pytest -k Interop -rs 2>&1 | tee /tmp/interop.log
+          if grep -q "^SKIPPED" /tmp/interop.log; then
+            echo "::error::an interoperability test was skipped even though its package is installed"
+            exit 1
+          fi
+
+      - name: Run doctests
+        run: pytest --doctest-modules src/hyprat
+
   docs:
     name: Build docs
     runs-on: ubuntu-latest

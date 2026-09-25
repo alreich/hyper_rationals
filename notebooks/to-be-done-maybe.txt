@@ -13,8 +13,19 @@ I would like to continue working on my rational hypercomplex class, Hy, in my pu
 * Hurwitz quaternions
 * split-octonions
 
+* Add a "floats" (or perhaps, "numeric") option to the "to_array" method. This option returns an array where any strings in the array are converted to ints or floats.
+
 I'd like to start with 
 
 The first question is, "Can the Cayley-Dickson construction, or a Cayley-Dickson-like construction" support any of these additional types of hypercomplex numbers? For example, can we use split-complex numbers within a Cayley-Dickson construction to produce split-quaternions, and then split-octonions, and so on?
 
 If one or more of these types can be represented by Hy, I'd like to have a control mechanism, probably a class method, for switching the hyprat module between representations. Would it be possible to implement a class-level switch to us either "normal" (the current version) or "split" hypercomplex numbers?
+
+
+----------------------
+
+Interoperability with:
+
+Continuing where we left off with respect to the hypercomplex number class, Hy, in my github repo, "https://github.com/alreich/hyper_rationals", I would like you to write interoperability methods that convert Hy's to and from the following other types of quaternions: scipy quaternions, numpy quaternions, and quaternionic. Please add the new methods to a copy of the source file, "src/hyprat/hypercomplex.py".
+
+

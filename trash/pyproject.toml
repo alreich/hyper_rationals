@@ -36,14 +36,7 @@ dependencies = []
 [project.optional-dependencies]
 test = ["pytest>=7"]
 docs = ["sphinx>=7", "sphinx-rtd-theme>=2"]
-# Third-party quaternion packages used only by Hy's interoperability
-# methods (to_sympy/from_sympy, to_numpy_quaternion/from_numpy_quaternion,
-# to_quaternionic/from_quaternionic). None of these is a runtime
-# dependency of hyprat -- each is imported lazily by the one method that
-# needs it -- but installing this extra lets the tests for those methods
-# run instead of being skipped.
-interop = ["sympy>=1.12", "numpy-quaternion>=2023.0.3", "quaternionic>=1.0"]
-dev = ["pytest>=7", "sphinx>=7", "sphinx-rtd-theme>=2", "sympy>=1.12", "numpy-quaternion>=2023.0.3", "quaternionic>=1.0"]
+dev = ["pytest>=7", "sphinx>=7", "sphinx-rtd-theme>=2"]
 
 [project.urls]
 Homepage = "https://github.com/alreich/hyper_rationals"
