@@ -54,6 +54,7 @@ Quickstart
 
    usage
    api
+   bibliography
 
 Indices and tables
 -------------------
