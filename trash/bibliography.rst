@@ -203,36 +203,3 @@ graduate newcomers.
   complement to a Python implementation like ``hyprat``, since it
   spells out exactly which algebraic identities each level of the
   construction does and does not satisfy.
-
-Matrix Representations of Octonions and the Cayley-Dickson Tower
--------------------------------------------------------------------
-
-Papers specifically on representing octonions (and higher
-Cayley-Dickson algebras) as matrices, and on what goes wrong once
-associativity fails -- background for ``hyprat``'s
-``to_matrix()``/``from_matrix()`` methods.
-
-* Yongge Tian, `"Matrix Representations of Octonions and Their
-  Applications" <https://arxiv.org/abs/math/0003166>`_, 2000. Gives
-  an explicit 8x8 real matrix representation of an octonion built
-  from its eight coordinates, and explains why it can only be a
-  "pseudo" representation: octonion multiplication is not
-  associative, so no real matrix algebra can be truly isomorphic to
-  :math:`\mathbb{O}`.
-
-* Jamil Daboul and Robert Delbourgo, `"Matrix Representation of
-  Octonions and Generalizations"
-  <https://arxiv.org/abs/hep-th/9906065>`_, *Journal of Mathematical
-  Physics* **40** (1999), 4134-4150. Introduces a special,
-  non-standard matrix multiplication rule -- generalizing Zorn's
-  vector-matrix construction above -- under which octonions and
-  their generalizations *do* have a faithful matrix representation,
-  and ties the construction back to the Cayley-Dickson doubling
-  process itself.
-
-* Jean-Pierre Gazeau, `"A Mnemonic Matrix Rule for (Split) Octonionic
-  Multiplication and its Extension to the Cayley-Dickson Tower"
-  <https://arxiv.org/abs/2512.22134>`_, 2025. A recent, very readable
-  2x2-quaternionic-block pattern for computing octonion products by
-  hand, which extends verbatim to every level of the Cayley-Dickson
-  tower as a computational mnemonic.

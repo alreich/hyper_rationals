@@ -20,13 +20,6 @@ Organization:
     TestConversions         - __abs__, __complex__, __pow__
     TestStringForms         - __str__, __repr__ (and repr round trip)
     TestUnits               - Hy.units(rank), .is_unit(), ranks 0-4
-    TestMatrixRepresentation
-                            - .to_matrix()/Hy.from_matrix(): roundtrips,
-                              the algebra-homomorphism property at ranks
-                              0-2, its deliberate failure at rank >= 3,
-                              the allow_nonassociative=True guard, and a
-                              known rank-4 (sedenion) zero-divisor giving
-                              a singular matrix    (needs numpy)
     TestLatex               - .latex(), vinculum=/mode= options, ranks 1-4
     TestParsing             - Hy.parse / Hy.from_string, ranks 1-4, errors
     TestModuleFunctions     - add, sub, neg, conj, mul, abs2, inverse, div
@@ -99,7 +92,6 @@ except ImportError:                                     # pragma: no cover
 HAVE_SYMPY = sympy is not None
 HAVE_NPQUAT = np is not None and npquat is not None
 HAVE_QUATERNIONIC = np is not None and quaternionic is not None
-HAVE_NUMPY = np is not None
 
 from hyprat import Hy
 from hyprat.hypercomplex import (
@@ -751,167 +743,6 @@ class TestUnits(unittest.TestCase):
             for _ in range(10):
                 h = rand_value(rank, rng)
                 self.assertEqual(h.is_unit(), h in unit_values)
-
-
-# ---------------------------------------------------------------------------
-# Hy.to_matrix() / Hy.from_matrix()
-# ---------------------------------------------------------------------------
-
-@unittest.skipUnless(HAVE_NUMPY, "numpy not installed")
-class TestMatrixRepresentation(unittest.TestCase):
-
-    def test_rank1_hand_checked_matrix(self):
-        z = Hy("2", "3")
-        M = z.to_matrix()
-        self.assertEqual(M.shape, (2, 2))
-        self.assertEqual(M.dtype, object)
-        expected = [[Fraction(2), Fraction(-3)], [Fraction(3), Fraction(2)]]
-        self.assertTrue(np.array_equal(M, np.array(expected, dtype=object)))
-
-    def test_roundtrip_ranks_1_and_2(self):
-        for rank in (1, 2):
-            rng = random.Random(7000 + rank)
-            for _ in range(FUZZ_TRIALS):
-                x = rand_value(rank, rng)
-                self.assertEqual(Hy.from_matrix(x.to_matrix()), x)
-                self.assertEqual(
-                    Hy.from_matrix(x.to_matrix(kind="right"), kind="right"), x
-                )
-
-    def test_homomorphism_holds_ranks_1_and_2(self):
-        for rank in (1, 2):
-            rng = random.Random(7100 + rank)
-            for _ in range(FUZZ_TRIALS):
-                x = rand_value(rank, rng)
-                y = rand_value(rank, rng)
-                lhs = np.dot(x.to_matrix(), y.to_matrix())
-                rhs = (x * y).to_matrix()
-                self.assertTrue(np.array_equal(lhs, rhs), (x, y))
-
-    @unittest.skipUnless(HAVE_SYMPY, "sympy not installed")
-    def test_determinant_equals_norm_power_ranks_1_and_2(self):
-        for rank in (1, 2):
-            rng = random.Random(7200 + rank)
-            for _ in range(10):
-                x = rand_value(rank, rng)
-                if x.is_zero():
-                    continue
-                det = sympy.Matrix(x.to_matrix().tolist()).det()
-                n = x.norm()
-                expected = sympy.Rational(n.numerator, n.denominator) ** (2 ** (rank - 1))
-                self.assertEqual(det, expected, x)
-
-    def test_kind_left_and_right_agree_for_commutative_ranks(self):
-        # rank 1 (complex) is commutative, so left/right regular
-        # representations coincide.
-        rng = random.Random(7300)
-        for _ in range(10):
-            x = rand_value(1, rng)
-            self.assertTrue(np.array_equal(x.to_matrix(), x.to_matrix(kind="right")))
-
-    def test_kind_left_and_right_can_differ_for_rank2(self):
-        # Quaternions are noncommutative, so left/right reps generally differ.
-        i = Hy(Hy(0, 1), Hy(0, 0))
-        j = Hy(Hy(0, 0), Hy(1, 0))
-        self.assertFalse(np.array_equal(i.to_matrix(), j.to_matrix(kind="right")))
-
-    def test_rank3_to_matrix_raises_without_flag(self):
-        o = Hy.random(3, seed=1)
-        with self.assertRaises(ValueError):
-            o.to_matrix()
-
-    def test_rank3_to_matrix_allowed_with_flag(self):
-        o = Hy.random(3, seed=1)
-        M = o.to_matrix(allow_nonassociative=True)
-        self.assertEqual(M.shape, (8, 8))
-
-    def test_rank3_homomorphism_fails_in_general(self):
-        # Non-associativity means M(x) @ M(y) != M(x*y) for at least some
-        # octonion pairs -- confirm this is actually true rather than
-        # just documented.
-        mismatch_found = False
-        for seed in range(20):
-            a = Hy.random(3, seed=seed)
-            b = Hy.random(3, seed=seed + 500)
-            lhs = np.dot(
-                a.to_matrix(allow_nonassociative=True),
-                b.to_matrix(allow_nonassociative=True),
-            )
-            rhs = (a * b).to_matrix(allow_nonassociative=True)
-            if not np.array_equal(lhs, rhs):
-                mismatch_found = True
-                break
-        self.assertTrue(mismatch_found)
-
-    def test_rank3_from_matrix_raises_without_flag(self):
-        o = Hy.random(3, seed=2)
-        M = o.to_matrix(allow_nonassociative=True)
-        with self.assertRaises(ValueError):
-            Hy.from_matrix(M)
-
-    def test_rank3_from_matrix_allowed_with_flag_roundtrips(self):
-        o = Hy.random(3, seed=2)
-        M = o.to_matrix(allow_nonassociative=True)
-        self.assertEqual(Hy.from_matrix(M, allow_nonassociative=True), o)
-
-    def test_sedenion_zero_divisor_gives_singular_matrix(self):
-        # A known rank-4 zero divisor under this library's basis ordering:
-        # (e1 + e10) * (e4 - e15) == 0, even though neither factor is zero.
-        units = Hy.units(4)
-        positive = [u for name, u in units.items() if not name.startswith("-")]
-        a = positive[1] + positive[10]
-        b = positive[4] - positive[15]
-        self.assertFalse(a.is_zero())
-        self.assertFalse(b.is_zero())
-        self.assertTrue((a * b).is_zero())
-        M = a.to_matrix(allow_nonassociative=True, as_float=True)
-        self.assertAlmostEqual(np.linalg.det(M), 0.0, places=6)
-
-    def test_as_float_option(self):
-        x = Hy("5/2", "-1/4")
-        M = x.to_matrix(as_float=True)
-        self.assertEqual(M.dtype, np.float64)
-        self.assertAlmostEqual(M[0, 0], 2.5)
-
-    def test_invalid_kind_raises(self):
-        x = Hy(1, 2)
-        with self.assertRaises(ValueError):
-            x.to_matrix(kind="sideways")
-        with self.assertRaises(ValueError):
-            Hy.from_matrix(x.to_matrix(), kind="sideways")
-
-    def test_from_matrix_infers_rank_from_shape(self):
-        x = Hy(Hy(1, 2), Hy(3, 4))
-        result = Hy.from_matrix(x.to_matrix())
-        self.assertEqual(result.rank, 2)
-
-    def test_from_matrix_rank_mismatch_raises(self):
-        x = Hy(Hy(1, 2), Hy(3, 4))  # rank 2 -> 4x4 matrix
-        with self.assertRaises(ValueError):
-            Hy.from_matrix(x.to_matrix(), rank=1)
-
-    def test_from_matrix_rejects_bad_shapes(self):
-        with self.assertRaises(ValueError):
-            Hy.from_matrix(np.zeros((2, 3)))          # not square
-        with self.assertRaises(ValueError):
-            Hy.from_matrix(np.zeros((3, 3)))           # not a power of 2
-        with self.assertRaises(ValueError):
-            Hy.from_matrix(np.zeros((1, 1)))           # too small (rank 0)
-
-    def test_from_matrix_validate_true_detects_inconsistent_matrix(self):
-        x = Hy(Hy(1, 2), Hy(3, 4))
-        M = x.to_matrix()
-        bad = np.array(M, dtype=object, copy=True)
-        bad[2, 3] = bad[2, 3] + 1  # corrupt one entry away from column 0
-        with self.assertRaises(ValueError):
-            Hy.from_matrix(bad, validate=True)
-
-    def test_from_matrix_validate_true_passes_for_genuine_matrix(self):
-        rng = random.Random(7400)
-        for _ in range(10):
-            x = rand_value(2, rng)
-            M = x.to_matrix()
-            self.assertEqual(Hy.from_matrix(M, validate=True), x)
 
 
 # ---------------------------------------------------------------------------

@@ -129,27 +129,6 @@ coefficients are rendered as ``\\frac{num}{den}``
     '\\\\frac{5}{2}-\\\\frac{16}{5}j'
     >>> Hy('5/2', '-16/5').latex(vinculum='diagonal')
     '5/2-16/5j'
-
-Matrix (regular) representation
---------------------------------
-
-``some_hy.to_matrix()`` returns the *regular representation* of a
-value as a ``2**rank x 2**rank`` ``numpy`` array of exact
-``Fraction``s -- the classical "complex numbers as 2x2 real matrices"
-/ "quaternions as 4x4 real matrices" construction, generalized to any
-rank via the value's own multiplication (column ``i`` is ``self *
-units[i]``). ``Hy.from_matrix()`` is the inverse. This requires
-``numpy`` (not a runtime dependency of ``hyprat``; imported lazily).
-
-For rank 0-2 (real, complex, quaternion) this is a genuine algebra
-isomorphism: ``M(x) @ M(y) == M(x * y)``. Rank >= 3 (octonions and
-beyond) is **not** associative, so the same equality fails there --
-``to_matrix()``/``from_matrix()`` raise ``ValueError`` at rank >= 3
-unless ``allow_nonassociative=True`` is passed::
-
-    >>> Hy('2', '3').to_matrix()  # doctest: +SKIP
-    array([[Fraction(2, 1), Fraction(-3, 1)],
-           [Fraction(3, 1), Fraction(2, 1)]], dtype=object)
 """
 
 from __future__ import annotations
@@ -598,167 +577,6 @@ class Hy:
         return result
 
     # ---------------------------------------------------------------- #
-    # Matrix (regular) representation
-    # ---------------------------------------------------------------- #
-    def to_matrix(self, kind: str = "left", *, as_float: bool = False,
-                  allow_nonassociative: bool = False):
-        """The *regular representation* of this value as a ``2**rank x
-        2**rank`` ``numpy`` array: the matrix of the linear map ``y ->
-        self * y`` (``kind="left"``, the default) or ``y -> y * self``
-        (``kind="right"``), acting on the ``2**rank``-dimensional real
-        vector space of rank-``rank`` values.
-
-        Column ``i`` of the matrix is simply ``(self * e_i).to_array()``
-        (or ``(e_i * self).to_array()`` for ``kind="right"``), where
-        ``e_i`` is the ``i``-th positive unit from :meth:`units` -- so
-        this is literally "the images of the basis vectors", the
-        textbook definition of the matrix of a linear map, computed
-        directly from ``Hy``'s own multiplication rather than from any
-        derived closed-form formula.
-
-        Entries are exact ``fractions.Fraction`` objects (``dtype=object``)
-        by default; pass ``as_float=True`` to get an ordinary ``float64``
-        array instead (convenient for feeding to ``numpy.linalg``, but no
-        longer exact). Requires ``numpy`` (``pip install numpy``), which
-        is *not* a runtime dependency of ``hyprat`` and is imported lazily.
-
-        For an associative algebra (rank 0-2: real, complex, quaternion)
-        this matrix representation is a genuine algebra homomorphism::
-
-            M(x) @ M(y) == M(x * y)
-
-        and in particular ``det(M(x)) == x.norm() ** (2 ** (rank - 1))``.
-        This is exactly the classical "complex numbers as 2x2 real
-        matrices" / "quaternions as 4x4 real matrices" construction.
-
-        **Rank >= 3 (octonions and beyond) are not associative**, so
-        ``M(x) @ M(y) != M(x * y)`` in general there: the map ``x ->
-        M(x)`` is still an injective *linear* embedding (a faithful
-        vector-space representation), but it is **not** a ring
-        homomorphism, because ordinary matrix multiplication is
-        associative and ``Hy`` multiplication isn't past rank 2. (From
-        rank 4, sedenions, up, ``Hy`` also has zero divisors, so ``M(x)``
-        can even be *singular* -- i.e. ``det(M(x)) == 0`` -- for some
-        nonzero ``x``.) Because this is a common trap, ``to_matrix()``
-        raises ``ValueError`` at rank >= 3 unless you pass
-        ``allow_nonassociative=True`` to build the (non-homomorphic)
-        matrix anyway. See the "Matrix representation" section of the
-        docs for the literature on faithful, non-matrix-multiplication
-        representations of octonions (e.g. Zorn vector matrices).
-
-        Examples
-        --------
-            >>> import numpy as np  # doctest: +SKIP
-            >>> Hy('2', '3').to_matrix()  # doctest: +SKIP
-            array([[Fraction(2, 1), Fraction(-3, 1)],
-                   [Fraction(3, 1), Fraction(2, 1)]], dtype=object)
-            >>> x, y = Hy.random(2), Hy.random(2)  # doctest: +SKIP
-            >>> np.array_equal(  # doctest: +SKIP
-            ...     np.dot(x.to_matrix(), y.to_matrix()), (x * y).to_matrix()
-            ... )
-            True
-
-        See also :meth:`from_matrix`, the inverse of this method.
-        """
-        if kind not in ("left", "right"):
-            raise ValueError(f"kind must be 'left' or 'right', got {kind!r}")
-        rank = self.rank
-        if rank >= 3 and not allow_nonassociative:
-            raise ValueError(
-                f"rank-{rank} values (octonions and beyond) are not "
-                "associative, so their regular-representation matrix is a "
-                "faithful *linear* embedding but NOT an algebra "
-                "homomorphism: M(x) @ M(y) != M(x * y) in general, and "
-                "(from rank 4 up) M(x) can even be singular for nonzero x. "
-                "Pass allow_nonassociative=True to build the matrix anyway, "
-                "or see the 'Matrix representation' section of the docs "
-                "for faithful alternatives (e.g. Zorn vector matrices)."
-            )
-        np = _import_optional("numpy", "numpy")
-        basis = _positive_units(rank)
-        if kind == "left":
-            columns = [(self * e).to_array() for e in basis]
-        else:
-            columns = [(e * self).to_array() for e in basis]
-        matrix = np.array(columns, dtype=object).T
-        if as_float:
-            matrix = matrix.astype(float)
-        return matrix
-
-    @classmethod
-    def from_matrix(cls, matrix, *, kind: str = "left", rank: "int | None" = None,
-                     allow_nonassociative: bool = False, validate: bool = False) -> "Hy":
-        """Build a ``Hy`` from its regular-representation matrix, the
-        inverse of :meth:`to_matrix`.
-
-        Column 0 of a regular-representation matrix is always ``self *
-        1 == self`` (or, for ``kind="right"``, ``1 * self == self``), so
-        reconstruction is just ``Hy.from_array(matrix[:, 0])``; ``kind``
-        only matters when ``validate=True`` (see below).
-
-        ``rank`` is inferred from ``matrix``'s shape (which must be
-        ``2**r x 2**r`` for some ``r >= 1``) if omitted; passing an
-        explicit ``rank`` that disagrees with the shape raises
-        ``ValueError``. As with :meth:`to_matrix`, rank >= 3 raises
-        ``ValueError`` unless ``allow_nonassociative=True``, since a
-        rank >= 3 matrix isn't the image of a true algebra homomorphism
-        in the first place.
-
-        ``validate=True`` rebuilds every other column from the
-        recovered value and checks it against ``matrix`` exactly
-        (``Fraction`` equality) -- a cheap way to catch a matrix that
-        isn't actually anyone's regular representation. Use this with
-        the exact (``as_float=False``) matrix produced by
-        :meth:`to_matrix`; validating a float matrix can spuriously fail
-        or pass due to rounding.
-
-        Examples
-        --------
-            >>> x = Hy(Hy(1, 2), Hy(3, 4))  # doctest: +SKIP
-            >>> Hy.from_matrix(x.to_matrix()) == x  # doctest: +SKIP
-            True
-        """
-        np = _import_optional("numpy", "numpy")
-        arr = np.asarray(matrix)
-        if arr.ndim != 2 or arr.shape[0] != arr.shape[1]:
-            raise ValueError(
-                f"from_matrix() expects a square 2D matrix, got shape {arr.shape}"
-            )
-        n = arr.shape[0]
-        if n < 2 or (n & (n - 1)) != 0:
-            raise ValueError(
-                "from_matrix() expects a size that is a power of 2 and "
-                f"at least 2; got {n}"
-            )
-        inferred_rank = n.bit_length() - 1
-        if rank is not None and rank != inferred_rank:
-            raise ValueError(
-                f"matrix of shape {arr.shape} implies rank {inferred_rank}, "
-                f"not the given rank={rank}"
-            )
-        rank = inferred_rank
-        if rank >= 3 and not allow_nonassociative:
-            raise ValueError(
-                f"rank-{rank} matrices (octonions and beyond) are not the "
-                "image of a true algebra homomorphism (see to_matrix()); "
-                "pass allow_nonassociative=True to reconstruct anyway."
-            )
-        if kind not in ("left", "right"):
-            raise ValueError(f"kind must be 'left' or 'right', got {kind!r}")
-
-        result = cls.from_array(list(arr[:, 0]))
-
-        if validate:
-            rebuilt = result.to_matrix(kind=kind, allow_nonassociative=True)
-            if not np.array_equal(rebuilt, arr):
-                raise ValueError(
-                    "from_matrix(): the given matrix is not the regular "
-                    f"representation of any rank-{rank} Hy value (its "
-                    "columns are inconsistent with column 0)"
-                )
-        return result
-
-    # ---------------------------------------------------------------- #
     # LaTeX rendering
     # ---------------------------------------------------------------- #
     def latex(self, *, vinculum: str = "horizontal", mode: str = "plain") -> str:
@@ -1179,17 +997,6 @@ def _coerce_flat_element(v) -> Fraction:
 
 
 # ============================================================================
-# Helper for to_matrix()/from_matrix()
-# ============================================================================
-
-def _positive_units(rank: int) -> list:
-    """The 2**rank positive units of the rank-`rank` algebra (1, then each
-    imaginary unit), in the same order as `components()`/`to_array()`.
-    Just Hy.units(rank) filtered down to its non-negated entries."""
-    return [u for name, u in Hy.units(rank).items() if not name.startswith("-")]
-
-
-# ============================================================================
 # Helpers for interoperability with other quaternion packages
 # ============================================================================
 
@@ -1494,23 +1301,5 @@ if __name__ == "__main__":
     assert oct_e.latex() == "1+iL"
     assert Hy("1/2").latex(mode="inline") == r"$\frac{1}{2}$"
     print("Hy.latex(): OK, e.g. Hy('5/2', '-16/5').latex() =", Hy("5/2", "-16/5").latex())
-
-    # to_matrix() / from_matrix()
-    try:
-        import numpy as _np
-
-        assert Hy.from_matrix(q.to_matrix()) == q
-        assert _np.array_equal(
-            _np.dot(x.to_matrix(), y.to_matrix()), (x * y).to_matrix()
-        )
-        try:
-            o.to_matrix()
-            raise AssertionError("expected ValueError for rank >= 3 to_matrix()")
-        except ValueError:
-            pass
-        print("Hy.to_matrix()/Hy.from_matrix(): OK (roundtrip + homomorphism "
-              "at rank 2, rank>=3 guard raises as expected)")
-    except ImportError:
-        print("Hy.to_matrix()/Hy.from_matrix(): skipped (numpy not installed)")
 
     print("\nAll self-tests passed.")

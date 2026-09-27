@@ -115,9 +115,9 @@ Other Ways to Construct Hypercomplex Numbers
 
 There are three more ways to build a Hy:
 
--  from a flat list of coefficients (``to_array`` and ``Hy.from_array``)
--  from a string representation (``Hy.parse``)
--  randomly generated (``Hy.random``)
+- from a flat list of coefficients (``to_array`` and ``Hy.from_array``)
+- from a string representation (``Hy.parse``)
+- randomly generated (``Hy.random``)
 
 Examples follow:
 
@@ -191,10 +191,10 @@ From a Random Number Generator (RNG)
 
 .. parsed-literal::
 
-       complex: (7-8/5j)
-    quaternion: (1-3i-3/5j-8/3k)
-      octonion: (4+7/5i+6/5j-k+8L+2iL-9jL+5kL)
-      sedenion: (9/2-3/5e1+6/5e2-4/3e3-5e4-e5-8/5e6+e7+7e8+1/2e9-6e10+6e11+5/3e12-e13-7/5e14+1/2e15)
+       complex: (9-8/3j)
+    quaternion: (-8-3/2i+6/5j+1/2k)
+      octonion: (2-3/2i-9/2j+7/5k+3/2L+5/2iL-7/3jL-5/6kL)
+      sedenion: (1+1/2e1+4e2-2e3-6e4+4/3e5-e6+4e7-5/6e8-2e9+9e10+3e11+2/3e12+3/2e13+6/5e14+3e15)
 
 
 There’s more below on random generation of hypercomplex numbers.
@@ -376,13 +376,13 @@ useful in a Jupyter notebook.
 
 Two keyword-only options are available:
 
--  ``vinculum`` controls how a non-integer coefficient’s fraction bar is
-   typeset: ``"horizontal"`` (the default) uses ``\frac{num}{den}``;
-   ``"diagonal"`` uses a plain slash, ``num/den``:
--  ``mode`` controls whether the result is wrapped in LaTeX math
-   delimiters: ``"plain"`` (the default) returns the bare expression,
-   ``"inline"`` wraps it in ``$...$``, and ``"display"`` wraps it in
-   ``\[...\]``.
+- ``vinculum`` controls how a non-integer coefficient’s fraction bar is
+  typeset: ``"horizontal"`` (the default) uses ``\frac{num}{den}``;
+  ``"diagonal"`` uses a plain slash, ``num/den``:
+- ``mode`` controls whether the result is wrapped in LaTeX math
+  delimiters: ``"plain"`` (the default) returns the bare expression,
+  ``"inline"`` wraps it in ``$...$``, and ``"display"`` wraps it in
+  ``\[...\]``.
 
 Basis units render the same way `the API reference <api.rst>`__
 describes for ``str()``: ``j`` at rank 1, ``i``/``j``/``k`` at rank 2,
@@ -491,183 +491,6 @@ The following shows how to display ``Hy``\ s in a Jupyter notebook:
     \displaystyle \frac{9}{5}+\frac{6}{5}e_{1}+\frac{5}{2}e_{2}-\frac{9}{5}e_{3}-7e_{4}+5e_{6}+e_{7}+\frac{1}{2}e_{8}+e_{9}+\frac{2}{3}e_{10}+\frac{1}{2}e_{11}+\frac{7}{6}e_{12}-\frac{7}{6}e_{13}+e_{14}+\frac{8}{5}e_{15}
 
 
-Matrix representation
----------------------
-
-``some_hy.to_matrix()`` returns the *regular representation* of a value
-as a ``2**rank x 2**rank`` NumPy array of exact ``Fraction``\ s – this
-is the classical “complex numbers as 2x2 real matrices” / “quaternions
-as 4x4 real matrices” construction, computed directly from ``Hy``\ ’s
-own multiplication rather than from a derived formula: column ``i`` is
-``self * units[i]``. ``Hy.from_matrix()`` is the inverse. This needs
-NumPy (``pip install numpy``), which is not a runtime dependency of
-``hyprat`` and is imported lazily.
-
-For rank 0-2 (real, complex, quaternion) ``to_matrix()`` is a genuine
-algebra isomorphism onto a matrix subalgebra:
-
-::
-
-   M(x) @ M(y) == M(x * y)
-
-.. code:: ipython3
-
-    >>> import numpy as np
-    >>> z1.to_matrix()
-
-
-
-
-.. parsed-literal::
-
-    array([[Fraction(2, 3), Fraction(-3, 2)],
-           [Fraction(3, 2), Fraction(2, 3)]], dtype=object)
-
-
-
-.. code:: ipython3
-
-    >>> Hy.from_matrix(z1.to_matrix()) == z1
-
-
-
-
-.. parsed-literal::
-
-    True
-
-
-
-The homomorphism property holds at rank 1 and rank 2:
-
-.. code:: ipython3
-
-    >>> a, b = Hy.random(2, seed=10), Hy.random(2, seed=11)
-    >>> np.array_equal(np.dot(a.to_matrix(), b.to_matrix()), (a * b).to_matrix())
-
-
-
-
-.. parsed-literal::
-
-    True
-
-
-
-It’s also a nice cross-check on ``.norm()``: the determinant of the
-regular representation equals the (squared) norm raised to a power that
-depends on rank (``norm(x) ** (2 ** (rank - 1))``):
-
-.. code:: ipython3
-
-    >>> import sympy
-    >>> det_q1 = sympy.Matrix(q1.to_matrix().tolist()).det()
-    >>> det_q1 == sympy.Rational(q1.norm().numerator, q1.norm().denominator) ** 2
-
-
-
-
-.. parsed-literal::
-
-    True
-
-
-
-Rank >= 3 (octonions and beyond): not a homomorphism
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Octonions (and everything beyond) are **not associative**, so ordinary
-matrix multiplication – which *is* associative – cannot faithfully
-represent their multiplication. ``to_matrix()``/``from_matrix()`` raise
-a ``ValueError`` at rank >= 3 by default, to flag this rather than let
-it be a silent trap:
-
-.. code:: ipython3
-
-    >>> try:
-    ...     o1.to_matrix()
-    ... except ValueError as e:
-    ...     print(e)
-
-
-.. parsed-literal::
-
-    rank-3 values (octonions and beyond) are not associative, so their regular-representation matrix is a faithful *linear* embedding but NOT an algebra homomorphism: M(x) @ M(y) != M(x * y) in general, and (from rank 4 up) M(x) can even be singular for nonzero x. Pass allow_nonassociative=True to build the matrix anyway, or see the 'Matrix representation' section of the docs for faithful alternatives (e.g. Zorn vector matrices).
-
-
-Passing ``allow_nonassociative=True`` builds the matrix anyway – it’s
-still a faithful *linear* embedding (useful for some purposes), just not
-a ring homomorphism:
-
-.. code:: ipython3
-
-    >>> Mo = o1.to_matrix(allow_nonassociative=True)
-    >>> Mo.shape
-
-
-
-
-.. parsed-literal::
-
-    (8, 8)
-
-
-
-.. code:: ipython3
-
-    >>> c, d = Hy.random(3, seed=20), Hy.random(3, seed=21)
-    >>> lhs = np.dot(c.to_matrix(allow_nonassociative=True), d.to_matrix(allow_nonassociative=True))
-    >>> rhs = (c * d).to_matrix(allow_nonassociative=True)
-    >>> np.array_equal(lhs, rhs)   # False in general -- non-associativity breaks the homomorphism
-
-
-
-
-.. parsed-literal::
-
-    False
-
-
-
-Starting at rank 4 (sedenions), the algebra even has *zero divisors* –
-nonzero values whose product is zero – so ``to_matrix()`` can be
-singular for a nonzero input. For example, with this library’s basis
-ordering, ``(e1 + e10) * (e4 - e15) == 0``:
-
-.. code:: ipython3
-
-    >>> units4 = [u for name, u in Hy.units(4).items() if not name.startswith('-')]
-    >>> a4 = units4[1] + units4[10]
-    >>> b4 = units4[4] - units4[15]
-    >>> a4 * b4
-
-
-
-
-.. parsed-literal::
-
-    Hy(Hy(Hy(Hy('0', '0'), Hy('0', '0')), Hy(Hy('0', '0'), Hy('0', '0'))), Hy(Hy(Hy('0', '0'), Hy('0', '0')), Hy(Hy('0', '0'), Hy('0', '0'))))
-
-
-
-.. code:: ipython3
-
-    >>> Ma4 = a4.to_matrix(allow_nonassociative=True, as_float=True)
-    >>> round(np.linalg.det(Ma4), 6)   # singular, even though a4 != 0
-
-
-
-
-.. parsed-literal::
-
-    np.float64(0.0)
-
-
-
-See the `bibliography <bibliography.rst>`__ for references on faithful,
-non-matrix-multiplication representations of octonions (e.g. Zorn vector
-matrices), which sidestep this associativity obstruction.
-
 Interoperability with Other Quaternion Packages
 -----------------------------------------------
 
@@ -680,17 +503,17 @@ that needs it is called, so install whichever you use:
 
    pip install sympy numpy-quaternion quaternionic
 
--  **SymPy**, ``sympy.algebras.quaternion.Quaternion``:
-   ``some_hy.to_sympy()`` and ``Hy.from_sympy(sq)``. SymPy, like ``Hy``,
-   represents rational numbers exactly, so this pair round-trips with no
-   rounding at all.
--  **numpy-quaternion**, imported as ``quaternion``:
-   ``some_hy.to_numpy_quaternion()`` and
-   ``Hy.from_numpy_quaternion(nq)``. It stores
-   ``numpy.quaternion(w, x, y, z)`` as ``float64``.
--  **quaternionic**: ``some_hy.to_quaternionic()`` and
-   ``Hy.from_quaternionic(qa)``. It stores an array ``[w, x, y, z]`` as
-   ``float64``.
+- **SymPy**, ``sympy.algebras.quaternion.Quaternion``:
+  ``some_hy.to_sympy()`` and ``Hy.from_sympy(sq)``. SymPy, like ``Hy``,
+  represents rational numbers exactly, so this pair round-trips with no
+  rounding at all.
+- **numpy-quaternion**, imported as ``quaternion``:
+  ``some_hy.to_numpy_quaternion()`` and
+  ``Hy.from_numpy_quaternion(nq)``. It stores
+  ``numpy.quaternion(w, x, y, z)`` as ``float64``.
+- **quaternionic**: ``some_hy.to_quaternionic()`` and
+  ``Hy.from_quaternionic(qa)``. It stores an array ``[w, x, y, z]`` as
+  ``float64``.
 
 All three packages use the same Hamilton convention as ``Hy``
 (``i*j == k``) and the coordinates always correspond to ``1, i, j, k``,
@@ -806,13 +629,13 @@ rounds, and converting *back* requires a choice of which rational each
 float stands for. Their ``from_*`` methods offer three choices, selected
 with two optional keyword arguments:
 
--  By default, each float becomes the rational with the same shortest
-   decimal representation (``0.1`` becomes ``1/10``), just as
-   ``Hy.from_array()`` does.
--  ``max_denominator=N`` chooses the closest fraction whose denominator
-   is at most ``N``. This recovers simple fractions such as ``1/3``.
--  ``exact=True`` uses the exact binary value of each float. (This
-   cannot be combined with ``max_denominator``.)
+- By default, each float becomes the rational with the same shortest
+  decimal representation (``0.1`` becomes ``1/10``), just as
+  ``Hy.from_array()`` does.
+- ``max_denominator=N`` chooses the closest fraction whose denominator
+  is at most ``N``. This recovers simple fractions such as ``1/3``.
+- ``exact=True`` uses the exact binary value of each float. (This cannot
+  be combined with ``max_denominator``.)
 
 .. code:: ipython3
 
