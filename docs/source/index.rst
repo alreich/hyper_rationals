@@ -22,9 +22,20 @@ arithmetic, no floating-point rounding.
 Installation
 ------------
 
+``hyprat`` requires Python 3.9 or later and has no runtime dependencies.
+
 .. code-block:: bash
 
     pip install git+https://github.com/alreich/hyper_rationals.git
+
+Optional extras: ``interop`` (SymPy, numpy-quaternion, quaternionic and NumPy,
+needed by the ``to_*``/``from_*`` interoperability methods and by
+``to_matrix``/``from_matrix``), ``test``, ``docs`` and ``dev`` (everything).
+For example:
+
+.. code-block:: bash
+
+    pip install "hyprat[interop] @ git+https://github.com/alreich/hyper_rationals.git"
 
 Quickstart
 ----------

@@ -49,24 +49,25 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      # sympy, numpy-quaternion and quaternionic are optional -- Hy's
-      # to_sympy/from_sympy, to_numpy_quaternion/from_numpy_quaternion and
-      # to_quaternionic/from_quaternionic methods import them lazily and are
-      # never a runtime dependency of hyprat. The "test" job above runs the
-      # full suite without them installed, where the tests that need one are
-      # skipped; this job installs the "interop" extra instead, so those
-      # same tests actually run.
+      # sympy, numpy-quaternion, quaternionic and numpy are optional -- the
+      # interoperability methods (to_sympy/from_sympy, to_numpy_quaternion/
+      # from_numpy_quaternion, to_quaternionic/from_quaternionic) and the
+      # matrix methods (to_matrix/from_matrix) import them lazily, and none
+      # of them is ever a runtime dependency of hyprat.  The "test" job above
+      # runs the full suite without them installed, where the tests that need
+      # one are skipped; this job installs the "interop" extra instead, so the
+      # whole suite (interoperability AND matrix-representation tests) runs.
       - name: Install hyprat with test and interop extras
         run: pip install -e ".[test,interop]"
 
-      - name: Run unit tests (including interoperability tests)
-        run: pytest -v -k Interop
+      - name: Run the full unit-test suite (including interoperability and matrix tests)
+        run: pytest -v
 
-      - name: Fail if any interoperability test was skipped
+      - name: Fail if any test was skipped
         run: |
-          pytest -k Interop -rs 2>&1 | tee /tmp/interop.log
-          if grep -q "^SKIPPED" /tmp/interop.log; then
-            echo "::error::an interoperability test was skipped even though its package is installed"
+          pytest -rs -q 2>&1 | tee /tmp/pytest.log
+          if grep -q "^SKIPPED" /tmp/pytest.log; then
+            echo "::error::a test was skipped even though all optional packages are installed"
             exit 1
           fi
 

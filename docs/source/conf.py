@@ -26,6 +26,9 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.intersphinx",
     "sphinx.ext.doctest",
+    # registers the "ipython3" Pygments lexer used by the nbconvert-generated
+    # code blocks in usage.rst (otherwise Sphinx warns and skips highlighting)
+    "IPython.sphinxext.ipython_console_highlighting",
 ]
 
 templates_path = ["_templates"]
