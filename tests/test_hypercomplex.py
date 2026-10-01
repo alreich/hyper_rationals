@@ -57,6 +57,31 @@ Organization:
     TestInteropAcrossPackages
                             - all three packages agree with each other
                               (and with Hy) on the same value
+    TestSignatureBasics     - Hy(..., mu=...), .mu / .signs, validation,
+                              mixed-rank embedding, copy semantics, the
+                              named presets and ``signs=`` arguments
+    TestSplitComplex        - split-complex numbers (mu = +1)
+    TestSplitQuaternions    - split-quaternions (signs (-1, +1))
+    TestSplitOctonions      - split-octonions (signs (-1, -1, +1))
+    TestGeneralRationalMu   - arbitrary nonzero rational mu
+    TestSignatureAlgebraFuzz
+                            - algebraic laws across many signatures,
+                              ranks 1-4 (unit squares, norm
+                              multiplicativity, (non)associativity, ...)
+    TestSignatureEqualityHashRepr
+                            - equality/hash across signatures; repr only
+                              shows a non-default signature
+    TestSignatureCoercionAndMixing
+                            - scalars, strings, complex literals and
+                              mixed signatures/ranks in arithmetic
+    TestSignatureParsing    - Hy.parse(..., signs=...)
+    TestSignatureNormAndPredicates
+                            - norm()/norm_squared(), abs(), is_null(),
+                              pow with null elements
+    TestSignatureMatrixRepresentation
+                            - to_matrix()/from_matrix() with signs (needs numpy)
+    TestSignatureInterop    - interop converters reject non-classical algebras
+    TestSignatureHelpers    - module-level functions, immutability, latex, units
 
 The tests that need a third-party package are skipped (not failed) when
 that package is not installed.
@@ -1741,6 +1766,1027 @@ class TestInteropAcrossPackages(unittest.TestCase):
         # sympy round-trips the same value exactly (it's already rational)
         exact = Hy.from_array(['1/2', '-1/4', '3/2', '2'])
         self.assertEqual(Hy.from_sympy(exact.to_sympy()), exact)
+
+
+# ---------------------------------------------------------------------------
+# Signatures: split-hypercomplex numbers and general rational mu
+# ---------------------------------------------------------------------------
+
+# A battery of signatures (lowest doubling level first) used by the fuzz
+# tests: classical, each split pattern through rank 3, and general rational
+# mu, plus a few rank-4 ones.
+SIGNATURES_UP_TO_RANK_3 = (
+    (-1,), (1,), (2,), (Fraction(-3, 2),),
+    (-1, -1), (-1, 1), (1, -1), (1, 1), (-1, 2), (3, -5),
+    (-1, -1, -1), (-1, -1, 1), (1, 1, 1), (-1, -1, 2), (Fraction(1, 2), -1, 3),
+)
+SIGNATURES_RANK_4 = ((-1, -1, -1, -1), (-1, -1, 1, -1), (1, -1, 1, 1))
+
+
+def rand_signed(signs, rng):
+    """A random Hy living in the algebra with the given signature."""
+    return Hy.random(signs=signs, rng=rng)
+
+
+class TestSignatureBasics(unittest.TestCase):
+    """The mu / signs properties, construction, validation, presets."""
+
+    def test_default_signature_is_all_minus_one(self):
+        for rank in (1, 2, 3, 4):
+            h = Hy.random(rank, seed=rank)
+            self.assertEqual(h.signs, (-1,) * rank)
+            self.assertEqual(h.mu, -1)
+
+    def test_mu_is_stored_as_a_fraction(self):
+        for given in (1, Fraction(1), '1', 1.0):
+            h = Hy(1, 2, mu=given)
+            self.assertIsInstance(h.mu, Fraction)
+            self.assertEqual(h.mu, 1)
+        self.assertEqual(Hy(1, 2, mu='3/2').mu, Fraction(3, 2))
+        self.assertEqual(Hy(1, 2, mu=0.25).mu, Fraction(1, 4))
+
+    def test_mu_must_be_nonzero_rational(self):
+        for bad in (0, 0.0, '0', Fraction(0)):
+            with self.assertRaises(ValueError):
+                Hy(1, 2, mu=bad)
+        with self.assertRaises(ValueError):
+            Hy(1, 2, mu='not a number')
+        for bad in (True, False, [1], None.__class__):
+            with self.assertRaises(TypeError):
+                Hy(1, 2, mu=bad)
+
+    def test_top_mu_is_independent_of_component_mus(self):
+        inner = Hy(1, 2, mu=1), Hy(3, 4, mu=1)
+        h = Hy(*inner)                       # top level defaults to -1
+        self.assertEqual(h.signs, (1, -1))
+        h2 = Hy(*inner, mu=3)
+        self.assertEqual(h2.signs, (1, 3))
+        self.assertEqual(h2.mu, 3)
+        self.assertEqual(h2.real.mu, 1)
+
+    def test_components_must_share_a_signature(self):
+        with self.assertRaises(ValueError):
+            Hy(Hy(1, 2, mu=1), Hy(3, 4))      # (1,) vs (-1,)
+
+    def test_mixed_rank_components_embed_when_signature_is_a_prefix(self):
+        # a bare rational pairs with a split-complex value: the rational
+        # is embedded using the *other* component's signature
+        h = Hy(3, Hy(1, 2, mu=1))
+        self.assertEqual(h.signs, (1, -1))
+        self.assertEqual(h.real, Hy(3, 0, mu=1))
+        # rank-1 (-1) value pairs with a rank-2 (-1, 1) value
+        q = Hy(Hy(1, 2), Hy(3, 4), mu=1)
+        h3 = Hy(Hy(5, 6), Hy(q, 0))              # Hy(q, 0) is rank 3
+        self.assertEqual(h3.signs, (-1, 1, -1, -1))
+        self.assertEqual(h3.real.signs, (-1, 1, -1))
+        with self.assertRaises(ValueError):
+            Hy(Hy(5, 6, mu=1), q)            # (1,) is not a prefix of (-1, 1)
+
+    def test_copy_construction_keeps_signature(self):
+        q = Hy(Hy(1, 2), Hy(3, 4), mu=1)
+        c = Hy(q)
+        self.assertEqual(c, q)
+        self.assertEqual(c.signs, q.signs)
+        self.assertEqual(Hy(q, mu=1).signs, q.signs)   # same mu: fine
+
+    def test_copy_construction_cannot_change_mu(self):
+        q = Hy(Hy(1, 2), Hy(3, 4), mu=1)
+        with self.assertRaises(ValueError):
+            Hy(q, mu=-1)
+
+    def test_plain_scalar_construction_with_mu(self):
+        h = Hy(3, mu=1)
+        self.assertEqual(h.rank, 1)
+        self.assertEqual(h.signs, (1,))
+        self.assertEqual(h, 3)
+
+    def test_preset_constants(self):
+        self.assertEqual(Hy.COMPLEX, (-1,))
+        self.assertEqual(Hy.QUATERNION, (-1, -1))
+        self.assertEqual(Hy.OCTONION, (-1, -1, -1))
+        self.assertEqual(Hy.SEDENION, (-1, -1, -1, -1))
+        self.assertEqual(Hy.SPLIT_COMPLEX, (1,))
+        self.assertEqual(Hy.SPLIT_QUATERNION, (-1, 1))
+        self.assertEqual(Hy.SPLIT_OCTONION, (-1, -1, 1))
+
+    def test_presets_accepted_as_tuples_or_names(self):
+        a = Hy.random(signs=Hy.SPLIT_QUATERNION, seed=1)
+        b = Hy.random(signs="split-quaternion", seed=1)
+        c = Hy.random(signs="Split_Quaternion", seed=1)
+        d = Hy.random(signs="split quaternion", seed=1)
+        self.assertEqual(a, b)
+        self.assertEqual(a, c)
+        self.assertEqual(a, d)
+        self.assertEqual(a.signs, (-1, 1))
+
+    def test_every_named_preset_matches_its_constant(self):
+        pairs = {
+            "complex": Hy.COMPLEX, "quaternion": Hy.QUATERNION,
+            "octonion": Hy.OCTONION, "sedenion": Hy.SEDENION,
+            "split-complex": Hy.SPLIT_COMPLEX,
+            "split-quaternion": Hy.SPLIT_QUATERNION,
+            "split-octonion": Hy.SPLIT_OCTONION,
+        }
+        for name, tup in pairs.items():
+            self.assertEqual(Hy.random(signs=name, seed=0).signs, tup)
+
+    def test_unknown_preset_raises(self):
+        with self.assertRaises(ValueError):
+            Hy.random(signs="split-sedenion-ish")
+        with self.assertRaises(ValueError):
+            Hy.units(signs="nope")
+
+    def test_signs_must_be_a_name_or_sequence(self):
+        with self.assertRaises(TypeError):
+            Hy.random(2, signs=5)
+
+    def test_rank_is_inferred_from_signs(self):
+        self.assertEqual(Hy.random(signs="split-octonion", seed=1).rank, 3)
+        self.assertEqual(len(Hy.units(signs=(1, -1))), 8)
+
+    def test_rank_and_signs_must_agree(self):
+        with self.assertRaises(ValueError):
+            Hy.random(3, signs="split-quaternion")
+        with self.assertRaises(ValueError):
+            Hy.units(2, signs=(1,))
+        with self.assertRaises(ValueError):
+            Hy.from_array([1, 2, 3, 4], signs=(1,))
+
+    def test_rank_or_signs_required(self):
+        with self.assertRaises(ValueError):
+            Hy.random()
+        with self.assertRaises(ValueError):
+            Hy.units()
+
+    def test_from_array_and_to_array_with_signs(self):
+        x = Hy.from_array([1, 2, 3, 4], signs="split-quaternion")
+        self.assertEqual(x.signs, (-1, 1))
+        self.assertEqual(x.to_array(as_str=True), ['1', '2', '3', '4'])
+        self.assertEqual(Hy.from_array(x.to_array(), signs=x.signs), x)
+
+    def test_random_with_signs_is_reproducible(self):
+        a = Hy.random(signs="split-octonion", seed=42)
+        b = Hy.random(signs="split-octonion", seed=42)
+        self.assertEqual(a, b)
+        self.assertEqual(a.signs, (-1, -1, 1))
+
+
+class TestSplitComplex(unittest.TestCase):
+    """The split-complex numbers: Cayley-Dickson with mu = +1."""
+
+    def setUp(self):
+        self.j = Hy(0, 1, mu=1)
+
+    def test_j_squares_to_plus_one(self):
+        self.assertEqual(self.j * self.j, 1)
+        self.assertEqual(str(self.j * self.j), '(1)')
+
+    def test_fixed_product(self):
+        # (a + bj)(c + dj) = (ac + bd) + (ad + bc) j
+        x, y = Hy(2, 3, mu=1), Hy(5, 7, mu=1)
+        self.assertEqual(x * y, Hy(2 * 5 + 3 * 7, 2 * 7 + 3 * 5, mu=1))
+
+    def test_commutative_and_associative(self):
+        rng = random.Random(1)
+        for _ in range(FUZZ_TRIALS):
+            x, y, z = (rand_signed((1,), rng) for _ in range(3))
+            self.assertEqual(x * y, y * x)
+            self.assertEqual((x * y) * z, x * (y * z))
+
+    def test_null_elements_and_zero_divisors(self):
+        p, m = Hy(1, 1, mu=1), Hy(1, -1, mu=1)
+        self.assertEqual(p * m, 0)
+        self.assertTrue(p.is_null())
+        self.assertTrue(m.is_null())
+        self.assertFalse(bool(p * m))
+        self.assertTrue(bool(p))
+
+    def test_null_elements_are_not_invertible(self):
+        for null in (Hy(1, 1, mu=1), Hy(-3, 3, mu=1)):
+            with self.assertRaises(ZeroDivisionError) as ctx:
+                null.inverse()
+            self.assertIn('null', str(ctx.exception))
+            with self.assertRaises(ZeroDivisionError):
+                Hy(1, 0, mu=1) / null
+            with self.assertRaises(ZeroDivisionError):
+                null ** -1
+
+    def test_zero_is_not_invertible_either(self):
+        with self.assertRaises(ZeroDivisionError):
+            Hy(0, 0, mu=1).inverse()
+
+    def test_inverse_of_non_null(self):
+        x = Hy(2, 1, mu=1)                       # N = 4 - 1 = 3
+        self.assertEqual(x.norm_squared(), 3)
+        self.assertEqual(x.inverse(), Hy(Fraction(2, 3), Fraction(-1, 3), mu=1))
+        self.assertEqual(x * x.inverse(), 1)
+        self.assertEqual(x.inverse() * x, 1)
+
+    def test_norm_squared_is_the_hyperbolic_quadratic_form(self):
+        self.assertEqual(Hy(5, 3, mu=1).norm_squared(), 16)      # a^2 - b^2
+        self.assertEqual(Hy(3, 5, mu=1).norm_squared(), -16)
+        self.assertEqual(Hy(4, 4, mu=1).norm_squared(), 0)
+
+    def test_norm_is_multiplicative(self):
+        rng = random.Random(2)
+        for _ in range(FUZZ_TRIALS):
+            x, y = rand_signed((1,), rng), rand_signed((1,), rng)
+            self.assertEqual((x * y).norm_squared(),
+                             x.norm_squared() * y.norm_squared())
+
+    def test_conjugate_flips_the_sign_of_j_only(self):
+        x = Hy(2, 3, mu=1)
+        self.assertEqual(x.conjugate(), Hy(2, -3, mu=1))
+        self.assertEqual(x * x.conjugate(), x.norm_squared())
+
+    def test_idempotents(self):
+        # e = (1 + j)/2 and 1 - e are orthogonal idempotents
+        e = Hy(Fraction(1, 2), Fraction(1, 2), mu=1)
+        f = 1 - e
+        self.assertEqual(e * e, e)
+        self.assertEqual(f * f, f)
+        self.assertEqual(e * f, 0)
+
+    def test_units_and_is_unit(self):
+        u = Hy.units(signs=Hy.SPLIT_COMPLEX)
+        self.assertEqual(list(u), ['1', '-1', 'j', '-j'])
+        self.assertEqual(u['j'], self.j)
+        self.assertEqual(u['j'].signs, (1,))
+        self.assertTrue(all(v.is_unit() for v in u.values()))
+        # an invertible value that is not a basis unit
+        self.assertFalse(Hy(2, 1, mu=1).is_unit())
+
+    def test_pow(self):
+        self.assertEqual(self.j ** 2, 1)
+        self.assertEqual(self.j ** 3, self.j)
+        self.assertEqual(self.j ** 0, Hy(1, 0, mu=1))
+        x = Hy(2, 1, mu=1)
+        self.assertEqual(x ** -2, (x * x).inverse())
+
+    def test_hyperbolic_rotation_preserves_the_form(self):
+        # (cosh, sinh) with rational stand-ins: (5/4, 3/4) has N = 1
+        b = Hy(Fraction(5, 4), Fraction(3, 4), mu=1)
+        self.assertEqual(b.norm_squared(), 1)
+        v = Hy(7, 2, mu=1)
+        self.assertEqual((b * v).norm_squared(), v.norm_squared())
+
+    def test_abs_raises_when_the_form_is_negative(self):
+        with self.assertRaises(ValueError):
+            abs(Hy(3, 5, mu=1))
+        self.assertAlmostEqual(abs(Hy(5, 3, mu=1)), 4.0)
+        self.assertEqual(abs(Hy(4, 4, mu=1)), 0.0)
+
+    def test_not_an_ordinary_complex_number(self):
+        with self.assertRaises(ValueError):
+            complex(Hy(1, 2, mu=1))
+        self.assertEqual(complex(Hy(1, 2)), 1 + 2j)
+
+
+class TestSplitQuaternions(unittest.TestCase):
+    """Split-quaternions (coquaternions): signs (-1, +1)."""
+
+    def setUp(self):
+        u = Hy.units(signs="split-quaternion")
+        self.one, self.i, self.j, self.k = (u[n] for n in ('1', 'i', 'j', 'k'))
+
+    def test_squares_match_the_standard_convention(self):
+        # i^2 = -1, j^2 = k^2 = +1 (Cockle)
+        self.assertEqual(self.i * self.i, -1)
+        self.assertEqual(self.j * self.j, 1)
+        self.assertEqual(self.k * self.k, 1)
+
+    def test_ij_equals_k_and_anticommutes(self):
+        self.assertEqual(self.i * self.j, self.k)
+        self.assertEqual(self.j * self.i, -self.k)
+        self.assertEqual(self.j * self.k, -self.i)
+        self.assertEqual(self.k * self.j, self.i)
+        self.assertEqual(self.k * self.i, self.j)
+        self.assertEqual(self.i * self.k, -self.j)
+
+    def test_ijk_product(self):
+        self.assertEqual(self.i * self.j * self.k, 1)
+
+    def test_str_labels_are_positional(self):
+        x = Hy.from_array([1, 2, 3, 4], signs="split-quaternion")
+        self.assertEqual(str(x), '(1+2i+3j+4k)')
+
+    def test_associative_fuzz(self):
+        rng = random.Random(3)
+        for _ in range(FUZZ_TRIALS):
+            x, y, z = (rand_signed((-1, 1), rng) for _ in range(3))
+            self.assertEqual((x * y) * z, x * (y * z))
+
+    def test_not_commutative(self):
+        self.assertNotEqual(self.i * self.j, self.j * self.i)
+
+    def test_norm_squared_is_indefinite_with_signature_two_two(self):
+        x = Hy.from_array([1, 2, 3, 4], signs="split-quaternion")
+        # N = a^2 + b^2 - c^2 - d^2
+        self.assertEqual(x.norm_squared(), 1 + 4 - 9 - 16)
+        self.assertEqual(self.i.norm_squared(), 1)
+        self.assertEqual(self.j.norm_squared(), -1)
+        self.assertEqual(self.k.norm_squared(), -1)
+
+    def test_norm_is_multiplicative(self):
+        rng = random.Random(4)
+        for _ in range(FUZZ_TRIALS):
+            x, y = (rand_signed((-1, 1), rng) for _ in range(2))
+            self.assertEqual((x * y).norm_squared(),
+                             x.norm_squared() * y.norm_squared())
+
+    def test_zero_divisors(self):
+        a, b = self.one + self.j, self.one - self.j
+        self.assertEqual(a * b, 0)
+        self.assertTrue(a.is_null())
+        with self.assertRaises(ZeroDivisionError):
+            a.inverse()
+
+    def test_nonzero_null_elements_are_exactly_the_zero_divisors(self):
+        # at rank 2 the form's null cone is exactly the zero-divisor set
+        rng = random.Random(5)
+        found_null = 0
+        for _ in range(400):
+            x = Hy.random(signs="split-quaternion", rng=rng, lo=-2, hi=2, dmax=1)
+            y = Hy.random(signs="split-quaternion", rng=rng, lo=-2, hi=2, dmax=1)
+            if x and y and not (x * y):
+                self.assertTrue(x.is_null() and y.is_null())
+            if x.is_null():
+                found_null += 1
+        self.assertGreater(found_null, 0)
+
+    def test_inverse_both_sides(self):
+        rng = random.Random(6)
+        done = 0
+        while done < FUZZ_TRIALS:
+            x = rand_signed((-1, 1), rng)
+            if x.is_zero() or x.is_null():
+                continue
+            done += 1
+            self.assertEqual(x * x.inverse(), 1)
+            self.assertEqual(x.inverse() * x, 1)
+
+    def test_alternative_split_forms_all_give_split_quaternions(self):
+        # (-1,+1), (+1,-1) and (+1,+1) all produce algebras with
+        # indefinite norm, zero divisors, and the same dimension
+        for sg in ((-1, 1), (1, -1), (1, 1)):
+            a = Hy.units(signs=sg)
+            lone = a['j'] * a['j']
+            self.assertIn(lone.norm_squared(), (1,))
+            x = (a['1'] + a['i']) * (a['1'] - a['i'])
+            self.assertEqual(x.rank, 2)
+
+    def test_isomorphic_to_2x2_matrices_homomorphism(self):
+        if not HAVE_NUMPY:
+            self.skipTest("numpy not installed")
+        rng = random.Random(7)
+        for _ in range(FUZZ_TRIALS):
+            x, y = (rand_signed((-1, 1), rng) for _ in range(2))
+            self.assertTrue(np.array_equal(
+                np.dot(x.to_matrix(), y.to_matrix()), (x * y).to_matrix()))
+
+
+class TestSplitOctonions(unittest.TestCase):
+    """Split-octonions (Zorn): signs (-1, -1, +1)."""
+
+    def setUp(self):
+        self.u = Hy.units(signs="split-octonion")
+        self.pos = {n: v for n, v in self.u.items() if not n.startswith('-')}
+
+    def test_unit_squares(self):
+        # i, j, k square to -1; L, iL, jL, kL to +1
+        for name in ('i', 'j', 'k'):
+            self.assertEqual(self.pos[name] * self.pos[name], -1)
+        for name in ('L', 'iL', 'jL', 'kL'):
+            self.assertEqual(self.pos[name] * self.pos[name], 1)
+
+    def test_quaternion_subalgebra_is_the_usual_one(self):
+        i, j, k = (self.pos[n] for n in 'ijk')
+        self.assertEqual(i * j, k)
+        self.assertEqual(j * k, i)
+        self.assertEqual(k * i, j)
+
+    def test_norm_has_four_plus_four_signature(self):
+        norms = [v.norm_squared() for v in self.pos.values()]
+        self.assertEqual(sorted(norms), [-1] * 4 + [1] * 4)
+
+    def test_norm_is_multiplicative(self):
+        rng = random.Random(8)
+        for _ in range(FUZZ_TRIALS):
+            x, y = (rand_signed((-1, -1, 1), rng) for _ in range(2))
+            self.assertEqual((x * y).norm_squared(),
+                             x.norm_squared() * y.norm_squared())
+
+    def test_alternative_but_not_associative(self):
+        rng = random.Random(9)
+        nonassoc = 0
+        for _ in range(FUZZ_TRIALS):
+            x, y, z = (rand_signed((-1, -1, 1), rng) for _ in range(3))
+            self.assertEqual((x * x) * y, x * (x * y))        # left alternative
+            self.assertEqual((y * x) * x, y * (x * x))        # right alternative
+            if (x * y) * z != x * (y * z):
+                nonassoc += 1
+        self.assertGreater(nonassoc, 0)
+
+    def test_has_zero_divisors(self):
+        L = self.pos['L']
+        a, b = 1 + L, 1 - L
+        self.assertEqual(a * b, 0)
+        self.assertTrue(a.is_null())
+        with self.assertRaises(ZeroDivisionError):
+            a.inverse()
+
+    def test_inverse_of_non_null(self):
+        rng = random.Random(10)
+        done = 0
+        while done < FUZZ_TRIALS:
+            x = rand_signed((-1, -1, 1), rng)
+            if x.is_zero() or x.is_null():
+                continue
+            done += 1
+            self.assertEqual(x * x.inverse(), 1)
+            self.assertEqual(x.inverse() * x, 1)
+
+    def test_str_uses_the_octonion_labels(self):
+        x = Hy.from_array([1, 2, 3, 4, 5, 6, 7, 8], signs="split-octonion")
+        self.assertEqual(str(x), '(1+2i+3j+4k+5L+6iL+7jL+8kL)')
+
+
+class TestGeneralRationalMu(unittest.TestCase):
+    """mu may be any nonzero rational: quaternion algebras (a, b) etc."""
+
+    def test_j_squares_to_mu(self):
+        for mu in (2, Fraction(-3, 2), 5, Fraction(1, 4)):
+            j = Hy(0, 1, mu=mu)
+            self.assertEqual(j * j, mu)
+
+    def test_quaternion_algebra_with_mu_two(self):
+        # (-1, 2): i^2 = -1, j^2 = 2, k^2 = -(i^2 j^2) = 2 ... via the formula
+        u = Hy.units(signs=(-1, 2))
+        i, j, k = u['i'], u['j'], u['k']
+        self.assertEqual(i * i, -1)
+        self.assertEqual(j * j, 2)
+        self.assertEqual(i * j, k)
+        self.assertEqual(k * k, Hy.unit_square(3, (-1, 2)))
+        self.assertEqual(k * k, 2)
+
+    def test_definite_forms_are_division_algebras_up_to_rank_two(self):
+        # mu = -2: N(a, b) = a^2 + 2 b^2 > 0 for nonzero values
+        rng = random.Random(11)
+        for _ in range(FUZZ_TRIALS):
+            x = rand_signed((-2,), rng)
+            self.assertGreaterEqual(x.norm_squared(), 0)
+            if x:
+                self.assertGreater(x.norm_squared(), 0)
+                self.assertEqual(x * x.inverse(), 1)
+
+    def test_abs_for_a_positive_definite_general_mu(self):
+        self.assertAlmostEqual(abs(Hy(1, 1, mu=-2)), math.sqrt(3))
+
+    def test_non_square_mu_can_still_make_a_field(self):
+        # mu = 2: N = a^2 - 2 b^2, which never vanishes for nonzero
+        # rationals (sqrt 2 is irrational), so every nonzero value is
+        # invertible even though the form is indefinite over the reals
+        rng = random.Random(12)
+        for _ in range(FUZZ_TRIALS):
+            x = rand_signed((2,), rng)
+            if x:
+                self.assertNotEqual(x.norm_squared(), 0)
+                self.assertFalse(x.is_null())
+                self.assertEqual(x * x.inverse(), 1)
+
+    def test_square_mu_is_split(self):
+        # mu = 4 = 2^2: (2 + j)(2 - j) = 4 - 4 = 0, a null element
+        x, y = Hy(2, 1, mu=4), Hy(2, -1, mu=4)
+        self.assertEqual(x * y, 0)
+        self.assertTrue(x.is_null())
+
+    def test_repr_with_rational_mu(self):
+        h = Hy(1, 2, mu='3/2')
+        self.assertEqual(repr(h), "Hy('1', '2', mu='3/2')")
+        self.assertEqual(eval(repr(h)), h)
+
+
+class TestSignatureAlgebraFuzz(unittest.TestCase):
+    """Algebraic laws across many signatures, ranks 1-4."""
+
+    def test_unit_square_formula_matches_actual_squares(self):
+        for sg in SIGNATURES_UP_TO_RANK_3 + SIGNATURES_RANK_4:
+            pos = [v for n, v in Hy.units(signs=sg).items()
+                   if not n.startswith('-')]
+            for idx, u in enumerate(pos):
+                self.assertEqual(u * u, Hy.unit_square(idx, sg),
+                                 msg=f"signs={sg}, index={idx}")
+
+    def test_unit_square_validation(self):
+        with self.assertRaises(ValueError):
+            Hy.unit_square(4, (-1, -1))
+        with self.assertRaises(ValueError):
+            Hy.unit_square(-1, (-1, -1))
+        with self.assertRaises(ValueError):
+            Hy.unit_square(True, (-1, -1))
+        self.assertEqual(Hy.unit_square(0, "split-quaternion"), 1)
+
+    def test_classical_signature_makes_every_imaginary_unit_square_to_minus_one(self):
+        for rank in (1, 2, 3, 4):
+            sg = (-1,) * rank
+            for idx in range(1, 2 ** rank):
+                self.assertEqual(Hy.unit_square(idx, sg), -1)
+
+    def test_x_times_conjugate_is_norm_squared(self):
+        for n, sg in enumerate(SIGNATURES_UP_TO_RANK_3 + SIGNATURES_RANK_4):
+            rng = random.Random(1000 + n)
+            for _ in range(FUZZ_TRIALS):
+                x = rand_signed(sg, rng)
+                self.assertEqual(x * x.conjugate(), x.norm_squared())
+                self.assertEqual(x.conjugate() * x, x.norm_squared())
+
+    def test_conjugate_of_product_reverses_order(self):
+        for n, sg in enumerate(SIGNATURES_UP_TO_RANK_3 + SIGNATURES_RANK_4):
+            rng = random.Random(1100 + n)
+            for _ in range(FUZZ_TRIALS):
+                x, y = rand_signed(sg, rng), rand_signed(sg, rng)
+                self.assertEqual((x * y).conjugate(),
+                                 y.conjugate() * x.conjugate())
+
+    def test_distributivity(self):
+        for n, sg in enumerate(SIGNATURES_UP_TO_RANK_3 + SIGNATURES_RANK_4):
+            rng = random.Random(1200 + n)
+            for _ in range(FUZZ_TRIALS):
+                a, b, c = (rand_signed(sg, rng) for _ in range(3))
+                self.assertEqual(a * (b + c), a * b + a * c)
+                self.assertEqual((a + b) * c, a * c + b * c)
+
+    def test_norm_is_multiplicative_up_to_rank_three(self):
+        for n, sg in enumerate(SIGNATURES_UP_TO_RANK_3):
+            rng = random.Random(1300 + n)
+            for _ in range(FUZZ_TRIALS):
+                x, y = rand_signed(sg, rng), rand_signed(sg, rng)
+                self.assertEqual((x * y).norm_squared(),
+                                 x.norm_squared() * y.norm_squared(),
+                                 msg=f"signs={sg}")
+
+    def test_associative_up_to_rank_two(self):
+        for n, sg in enumerate(s for s in SIGNATURES_UP_TO_RANK_3 if len(s) <= 2):
+            rng = random.Random(1400 + n)
+            for _ in range(FUZZ_TRIALS):
+                x, y, z = (rand_signed(sg, rng) for _ in range(3))
+                self.assertEqual((x * y) * z, x * (y * z))
+
+    def test_alternative_at_rank_three(self):
+        for n, sg in enumerate(s for s in SIGNATURES_UP_TO_RANK_3 if len(s) == 3):
+            rng = random.Random(1500 + n)
+            for _ in range(FUZZ_TRIALS):
+                x, y = rand_signed(sg, rng), rand_signed(sg, rng)
+                self.assertEqual((x * x) * y, x * (x * y))
+                self.assertEqual((y * x) * x, y * (x * x))
+
+    def test_not_associative_at_rank_three(self):
+        for n, sg in enumerate(s for s in SIGNATURES_UP_TO_RANK_3 if len(s) == 3):
+            rng = random.Random(1600 + n)
+            found = False
+            for _ in range(60):
+                x, y, z = (rand_signed(sg, rng) for _ in range(3))
+                if (x * y) * z != x * (y * z):
+                    found = True
+                    break
+            self.assertTrue(found, msg=f"signs={sg}")
+
+    def test_inverse_both_sides_for_invertible_elements(self):
+        for n, sg in enumerate(SIGNATURES_UP_TO_RANK_3 + SIGNATURES_RANK_4):
+            rng = random.Random(1700 + n)
+            done = 0
+            while done < FUZZ_TRIALS:
+                x = rand_signed(sg, rng)
+                if x.norm_squared() == 0:
+                    continue
+                done += 1
+                one = _embed_signs_for_test(1, sg)
+                self.assertEqual(x * x.inverse(), one)
+                self.assertEqual(x.inverse() * x, one)
+
+    def test_division_round_trip_up_to_rank_two(self):
+        # (x / y) * y == x needs associativity, so rank <= 2 only
+        for n, sg in enumerate(s for s in SIGNATURES_UP_TO_RANK_3 if len(s) <= 2):
+            rng = random.Random(1800 + n)
+            done = 0
+            while done < FUZZ_TRIALS:
+                x, y = rand_signed(sg, rng), rand_signed(sg, rng)
+                if y.norm_squared() == 0:
+                    continue
+                done += 1
+                self.assertEqual((x / y) * y, x)
+
+    def test_all_default_signature_agrees_with_the_classical_module_functions(self):
+        # for signs all -1, the signature-aware product equals the
+        # classical (ac - conj(d) b, da + b conj(c)) formula
+        rng = random.Random(1900)
+        for rank in (1, 2, 3, 4):
+            for _ in range(FUZZ_TRIALS):
+                x = Hy.random(rank, rng=rng)
+                y = Hy.random(rank, rng=rng)
+                a, b, c, d = x.real, x.imag, y.real, y.imag
+                expected = Hy(sub(mul(a, c), mul(conj(d), b)),
+                              add(mul(d, a), mul(b, conj(c))))
+                self.assertEqual(x * y, expected)
+
+
+def _embed_signs_for_test(value, signs):
+    """The scalar `value` as an element of the algebra with `signs`."""
+    return Hy.from_array([value] + [0] * (2 ** len(signs) - 1), signs=signs)
+
+
+class TestSignatureEqualityHashRepr(unittest.TestCase):
+
+    def test_different_signatures_are_unequal(self):
+        self.assertNotEqual(Hy(1, 2, mu=1), Hy(1, 2))
+        self.assertFalse(Hy(1, 2, mu=1) == Hy(1, 2))
+        self.assertNotEqual(Hy(1, 2, mu=2), Hy(1, 2, mu=3))
+
+    def test_same_signature_same_value_is_equal_and_hashes_equal(self):
+        a, b = Hy(1, 2, mu=1), Hy(1, 2, mu=1)
+        self.assertEqual(a, b)
+        self.assertEqual(hash(a), hash(b))
+
+    def test_unequal_signatures_usually_hash_differently(self):
+        self.assertNotEqual(hash(Hy(1, 2, mu=1)), hash(Hy(1, 2)))
+
+    def test_real_values_are_equal_across_signatures(self):
+        # a real number lies in every algebra of the tower
+        self.assertEqual(Hy(2, 0, mu=1), Hy(2, 0))
+        self.assertEqual(hash(Hy(2, 0, mu=1)), hash(Hy(2, 0)))
+        self.assertEqual(Hy(2, 0, mu=1), 2)
+        self.assertEqual(Hy(0, 0, mu=1), 0)
+
+    def test_cross_rank_equality_within_one_signature(self):
+        sc = Hy(1, 2, mu=1)
+        embedded = Hy(sc, 0)                       # same value, rank 2
+        self.assertEqual(embedded.rank, 2)
+        self.assertEqual(embedded, sc)
+        self.assertEqual(hash(embedded), hash(sc))
+
+    def test_value_equality_requires_matching_levels_that_are_used(self):
+        # the unused top level's mu does not matter ...
+        a = Hy(Hy(1, 2), 0, mu=1)
+        b = Hy(Hy(1, 2), 0, mu=5)
+        self.assertEqual(a, b)
+        self.assertEqual(hash(a), hash(b))
+        # ... but an inner level's does
+        self.assertNotEqual(Hy(Hy(1, 2, mu=1), 0), Hy(Hy(1, 2), 0))
+
+    def test_usable_in_sets_and_dicts(self):
+        s = {Hy(1, 2, mu=1), Hy(1, 2), Hy(1, 2, mu=1)}
+        self.assertEqual(len(s), 2)
+
+    def test_str_is_unchanged_by_signature(self):
+        self.assertEqual(str(Hy(1, 2, mu=1)), str(Hy(1, 2)))
+        self.assertEqual(str(Hy(1, 2, mu=1)), '(1+2j)')
+
+    def test_repr_omits_default_signature(self):
+        self.assertEqual(repr(Hy(1, 2)), "Hy('1', '2')")
+        self.assertEqual(repr(Hy(Hy(1, 2), Hy(3, 4))),
+                         "Hy(Hy('1', '2'), Hy('3', '4'))")
+        self.assertNotIn('mu', repr(Hy.random(3, seed=1)))
+
+    def test_repr_shows_non_default_signature(self):
+        self.assertEqual(repr(Hy(1, 2, mu=1)), "Hy('1', '2', mu=1)")
+        self.assertEqual(repr(Hy(Hy(1, 2), Hy(3, 4), mu=1)),
+                         "Hy(Hy('1', '2'), Hy('3', '4'), mu=1)")
+        self.assertEqual(repr(Hy(Hy(1, 2, mu=1), Hy(3, 4, mu=1))),
+                         "Hy(Hy('1', '2', mu=1), Hy('3', '4', mu=1))")
+
+    def test_repr_round_trips_for_many_signatures(self):
+        for n, sg in enumerate(SIGNATURES_UP_TO_RANK_3 + SIGNATURES_RANK_4):
+            rng = random.Random(2000 + n)
+            for _ in range(5):
+                x = rand_signed(sg, rng)
+                y = eval(repr(x))
+                self.assertEqual(y, x)
+                self.assertEqual(y.signs, x.signs)
+
+
+class TestSignatureCoercionAndMixing(unittest.TestCase):
+
+    def test_python_numbers_mix_with_any_signature(self):
+        sc = Hy(1, 2, mu=1)
+        for result in (sc + 3, 3 + sc, sc - 3, sc * 3, 3 * sc, sc / 2):
+            self.assertEqual(result.signs, (1,))
+        self.assertEqual(sc + 3, Hy(4, 2, mu=1))
+        self.assertEqual(3 - sc, Hy(2, -2, mu=1))
+        self.assertEqual(3 * sc, Hy(3, 6, mu=1))
+        self.assertEqual(sc + Fraction(1, 2), Hy('3/2', 2, mu=1))
+        self.assertEqual(sc + 0.5, Hy('3/2', 2, mu=1))
+        self.assertEqual(sc + '1/2', Hy('3/2', 2, mu=1))
+
+    def test_rational_division_by_a_scalar_keeps_the_signature(self):
+        x = Hy(Hy(2, 4), Hy(6, 8), mu=1)
+        self.assertEqual((x / 2).signs, (-1, 1))
+        self.assertEqual(x / 2, Hy(Hy(1, 2), Hy(3, 4), mu=1))
+
+    def test_scalar_divided_by_split_value(self):
+        sc = Hy(2, 1, mu=1)
+        self.assertEqual(1 / sc, sc.inverse())
+        self.assertEqual((1 / sc).signs, (1,))
+
+    def test_strings_are_read_in_the_other_operands_algebra(self):
+        sq = Hy.from_array([1, 2, 3, 4], signs="split-quaternion")
+        r = sq + '1+j'
+        self.assertEqual(r.signs, (-1, 1))
+        # the rank-1 text '1+j' embeds as 1 + i, exactly as in the
+        # classical algebra (rank-1 'j' is the level-1 unit, 'i' at rank 2)
+        self.assertEqual(r, Hy.from_array([2, 3, 3, 4], signs="split-quaternion"))
+        self.assertEqual(sq, '1+2i+3j+4k')
+        # a string of lower rank embeds; one of higher rank pads with -1
+        sc = Hy(1, 2, mu=1)
+        self.assertEqual((sc + '1+j').signs, (1,))
+        r2 = sc + '1+i+j+k'       # rank-2 text read as signs (1, -1)
+        self.assertEqual(r2.signs, (1, -1))
+
+    def test_python_complex_literals_are_ordinary_complex(self):
+        self.assertEqual(Hy(1, 2) + 1j, Hy(1, 3))
+        with self.assertRaises(ValueError):
+            Hy(1, 2, mu=1) + 1j
+        self.assertNotEqual(Hy(1, 2, mu=1), 1 + 2j)
+        self.assertEqual(Hy(1, 2), 1 + 2j)
+
+    def test_incompatible_signatures_raise_on_arithmetic(self):
+        a, b = Hy(1, 2, mu=1), Hy(3, 4)
+        for op in (lambda: a + b, lambda: a - b, lambda: a * b, lambda: a / b,
+                   lambda: add(a, b), lambda: mul(a, b)):
+            with self.assertRaises(ValueError):
+                op()
+
+    def test_comparison_across_signatures_never_raises(self):
+        self.assertFalse(Hy(1, 2, mu=1) == Hy(3, 4))
+        self.assertTrue(Hy(1, 2, mu=1) != Hy(1, 2))
+
+    def test_lower_rank_values_embed_into_a_prefix_compatible_algebra(self):
+        sq = Hy.from_array([1, 2, 3, 4], signs="split-quaternion")
+        z = Hy(5, 6)                              # complex, signs (-1,)
+        total = sq + z
+        self.assertEqual(total.signs, (-1, 1))
+        self.assertEqual(total, Hy.from_array([6, 8, 3, 4], signs="split-quaternion"))
+        prod = z * sq
+        self.assertEqual(prod.signs, (-1, 1))
+        # not a prefix: split-complex does not embed into (-1, 1)
+        with self.assertRaises(ValueError):
+            sq + Hy(5, 6, mu=1)
+
+    def test_embedding_helper_accepts_signature_tuples(self):
+        e = _embed(Hy(1, 2, mu=1), (Fraction(1), Fraction(-3)))
+        self.assertEqual(e.signs, (1, -3))
+        with self.assertRaises(ValueError):
+            _embed(Hy(1, 2, mu=1), (Fraction(-1), Fraction(-1)))
+        with self.assertRaises(ValueError):
+            _embed(Hy(Hy(1, 2), Hy(3, 4)), (Fraction(-1),))
+        # an int target gives any *new* levels the default mu = -1
+        self.assertEqual(_embed(Hy(1, 2, mu=1), 2).signs, (1, -1))
+
+    def test_sum_and_neg_keep_the_signature(self):
+        x = Hy.random(signs="split-octonion", seed=5)
+        self.assertEqual((-x).signs, x.signs)
+        self.assertEqual((x + x).signs, x.signs)
+        self.assertEqual((x - x), 0)
+        self.assertEqual(x.conjugate().signs, x.signs)
+
+
+class TestSignatureParsing(unittest.TestCase):
+
+    def test_parse_default_is_classical(self):
+        self.assertEqual(Hy.parse('1+2i+3j+4k').signs, (-1, -1))
+        self.assertEqual(Hy('1+2j').signs, (-1,))
+
+    def test_parse_with_signs(self):
+        x = Hy.parse('1+2i+3j+4k', signs="split-quaternion")
+        self.assertEqual(x.signs, (-1, 1))
+        self.assertEqual(x, Hy.from_array([1, 2, 3, 4], signs="split-quaternion"))
+        y = Hy.parse('(1+2j)', signs=(3,))
+        self.assertEqual(y.signs, (3,))
+        self.assertEqual(Hy.from_string('1+2j', signs=Hy.SPLIT_COMPLEX).signs, (1,))
+
+    def test_parse_signs_length_must_match_rank_of_text(self):
+        with self.assertRaises(ValueError):
+            Hy.parse('1+2j', signs=(-1, 1))
+        with self.assertRaises(ValueError):
+            Hy.parse('1+2i+3j+4k', signs=(1,))
+
+    def test_str_parse_round_trip_with_matching_signs(self):
+        for n, sg in enumerate(SIGNATURES_UP_TO_RANK_3 + SIGNATURES_RANK_4):
+            rng = random.Random(3000 + n)
+            x = rand_signed(sg, rng)
+            self.assertEqual(Hy.parse(str(x), signs=sg), x)
+
+    def test_constructor_string_with_mu_disagreement_is_rejected(self):
+        # Hy('1+2j') is read classically; asking for another mu is an
+        # error rather than being silently ignored
+        with self.assertRaises(ValueError):
+            Hy('1+2j', mu=1)
+        self.assertEqual(Hy('1+2j', mu=-1), Hy(1, 2))
+
+
+class TestSignatureNormAndPredicates(unittest.TestCase):
+
+    def test_norm_and_norm_squared_agree(self):
+        for n, sg in enumerate(SIGNATURES_UP_TO_RANK_3):
+            x = rand_signed(sg, random.Random(4000 + n))
+            self.assertEqual(x.norm(), x.norm_squared())
+            self.assertEqual(x.norm_squared(), abs2(x))
+
+    def test_norm_squared_matches_sum_of_squares_when_classical(self):
+        for rank in (1, 2, 3, 4):
+            x = Hy.random(rank, seed=rank)
+            self.assertEqual(x.norm_squared(),
+                             sum(c * c for c in x.to_array()))
+
+    def test_norm_squared_formula_by_signature(self):
+        # N = sum over coordinates of c_i^2 * (-unit_square(i))
+        for n, sg in enumerate(SIGNATURES_UP_TO_RANK_3 + SIGNATURES_RANK_4):
+            x = rand_signed(sg, random.Random(4100 + n))
+            expected = sum(c * c * -Hy.unit_square(i, sg) if i else c * c
+                           for i, c in enumerate(x.to_array()))
+            self.assertEqual(x.norm_squared(), expected)
+
+    def test_abs_behaviour(self):
+        self.assertAlmostEqual(abs(Hy(3, 4)), 5.0)             # unchanged
+        self.assertAlmostEqual(abs(Hy(5, 3, mu=1)), 4.0)       # positive form
+        self.assertEqual(abs(Hy(1, 1, mu=1)), 0.0)             # null
+        with self.assertRaises(ValueError) as ctx:
+            abs(Hy(1, 2, mu=1))                                # negative form
+        self.assertIn('norm_squared', str(ctx.exception))
+
+    def test_is_null(self):
+        self.assertTrue(Hy(1, 1, mu=1).is_null())
+        self.assertFalse(Hy(0, 0, mu=1).is_null())             # zero is not null
+        self.assertFalse(Hy(2, 1, mu=1).is_null())
+        for rank in (1, 2, 3):                                 # never, classically
+            self.assertFalse(Hy.random(rank, seed=rank).is_null())
+
+    def test_zero_divisors_without_null_norm_exist_from_rank_four(self):
+        # the documented limitation: is_null() only sees the norm cone
+        x = Hy.from_array([0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0])
+        y = Hy.from_array([0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1])
+        self.assertEqual(x * y, 0)
+        self.assertFalse(x.is_null())
+        self.assertFalse(y.is_null())
+
+    def test_negative_powers_use_the_signature_aware_inverse(self):
+        x = Hy.from_array([2, 1, 0, 1], signs="split-quaternion")
+        self.assertEqual(x ** -1, x.inverse())
+        self.assertEqual(x ** -3, (x * x * x).inverse())
+        self.assertEqual(x ** 0, _embed_signs_for_test(1, (-1, 1)))
+        null = Hy.from_array([1, 0, 1, 0], signs="split-quaternion")
+        self.assertTrue(null.is_null())
+        with self.assertRaises(ZeroDivisionError):
+            null ** -2
+
+    def test_pow_zero_keeps_signature(self):
+        self.assertEqual((Hy(2, 3, mu=1) ** 0).signs, (1,))
+
+
+@unittest.skipUnless(HAVE_NUMPY, "numpy not installed")
+class TestSignatureMatrixRepresentation(unittest.TestCase):
+
+    @staticmethod
+    def _det_2x2(m):
+        return m[0, 0] * m[1, 1] - m[0, 1] * m[1, 0]
+
+    def test_split_complex_is_a_homomorphism(self):
+        rng = random.Random(5000)
+        for _ in range(FUZZ_TRIALS):
+            x, y = rand_signed((1,), rng), rand_signed((1,), rng)
+            self.assertTrue(np.array_equal(
+                np.dot(x.to_matrix(), y.to_matrix()), (x * y).to_matrix()))
+
+    def test_split_complex_matrix_is_symmetric_hyperbolic_form(self):
+        m = Hy(2, 3, mu=1).to_matrix()
+        self.assertEqual(m.tolist(), [[2, 3], [3, 2]])
+        self.assertEqual(self._det_2x2(m), Hy(2, 3, mu=1).norm_squared())
+
+    def test_general_mu_matrix_entries(self):
+        m = Hy(2, 3, mu=5).to_matrix()
+        self.assertEqual(m.tolist(), [[2, 15], [3, 2]])
+        self.assertEqual(self._det_2x2(m), Hy(2, 3, mu=5).norm_squared())
+
+    def test_split_quaternion_homomorphism_and_determinant(self):
+        rng = random.Random(5001)
+        for _ in range(FUZZ_TRIALS):
+            x, y = (rand_signed((-1, 1), rng) for _ in range(2))
+            self.assertTrue(np.array_equal(
+                np.dot(x.to_matrix(), y.to_matrix()), (x * y).to_matrix()))
+        if HAVE_SYMPY:
+            x = rand_signed((-1, 1), rng)
+            det = sympy.Matrix(x.to_matrix().tolist()).det()
+            self.assertEqual(det, x.norm_squared() ** 2)
+
+    def test_left_and_right_representations_with_signs(self):
+        rng = random.Random(5002)
+        for kind in ('left', 'right'):
+            x, y = rand_signed((-1, 1), rng), rand_signed((-1, 1), rng)
+            lhs = np.dot(x.to_matrix(kind=kind), y.to_matrix(kind=kind))
+            rhs = ((x * y) if kind == 'left' else (y * x)).to_matrix(kind=kind)
+            self.assertTrue(np.array_equal(lhs, rhs))
+
+    def test_from_matrix_with_signs_round_trips(self):
+        rng = random.Random(5003)
+        for sg in ((1,), (-1, 1), (1, 1), (2,), (-1, 3)):
+            x = rand_signed(sg, rng)
+            back = Hy.from_matrix(x.to_matrix(), signs=sg, validate=True)
+            self.assertEqual(back, x)
+            self.assertEqual(back.signs, x.signs)
+
+    def test_from_matrix_with_the_wrong_signs_reads_a_different_algebra(self):
+        x = Hy(2, 3, mu=1)
+        back = Hy.from_matrix(x.to_matrix())          # default signs
+        self.assertEqual(back.to_array(), x.to_array())
+        self.assertNotEqual(back, x)
+        # validation catches the mismatch: the split-complex matrix is not
+        # the regular representation of the *classical* complex number
+        with self.assertRaises(ValueError):
+            Hy.from_matrix(x.to_matrix(), validate=True)
+
+    def test_rank_three_guard_still_applies_to_split_octonions(self):
+        x = Hy.random(signs="split-octonion", seed=3)
+        with self.assertRaises(ValueError):
+            x.to_matrix()
+        m = x.to_matrix(allow_nonassociative=True)
+        self.assertEqual(m.shape, (8, 8))
+
+
+class TestSignatureInterop(unittest.TestCase):
+
+    def test_conversion_guard_rejects_non_classical_signatures(self):
+        from hyprat.hypercomplex import _quaternion_fractions
+        for sg in ((1,), (-1, 1), (1, 1), (-1, 2), (3,)):
+            with self.assertRaises(ValueError):
+                _quaternion_fractions(Hy.random(signs=sg, seed=1), "target")
+        # ordinary complex / quaternion values still convert
+        self.assertEqual(len(_quaternion_fractions(Hy(1, 2), "target")), 4)
+        self.assertEqual(len(_quaternion_fractions(Hy.random(2, seed=1), "t")), 4)
+
+    @unittest.skipUnless(HAVE_SYMPY, "sympy not installed")
+    def test_to_sympy_rejects_split_quaternions(self):
+        with self.assertRaises(ValueError):
+            Hy.from_array([1, 2, 3, 4], signs="split-quaternion").to_sympy()
+        with self.assertRaises(ValueError):
+            Hy(1, 2, mu=1).to_sympy()
+
+    @unittest.skipUnless(HAVE_SYMPY, "sympy not installed")
+    def test_classical_conversion_is_unaffected(self):
+        x = Hy.from_array(['1/2', 2, 3, 4])
+        self.assertEqual(Hy.from_sympy(x.to_sympy()), x)
+        self.assertEqual(Hy.from_sympy(x.to_sympy()).signs, (-1, -1))
+
+
+class TestSignatureHelpers(unittest.TestCase):
+    """Module-level functions and miscellany under signatures."""
+
+    def test_module_functions_accept_signed_values(self):
+        a, b = Hy(2, 3, mu=1), Hy(5, 7, mu=1)
+        self.assertEqual(mul(a, b), a * b)
+        self.assertEqual(add(a, b), a + b)
+        self.assertEqual(sub(a, b), a - b)
+        self.assertEqual(neg(a), -a)
+        self.assertEqual(conj(a), a.conjugate())
+        self.assertEqual(abs2(a), a.norm_squared())
+        self.assertEqual(div(a, b), a / b)
+        self.assertEqual(inverse(a), a.inverse())
+
+    def test_module_functions_on_raw_fractions_ignore_signatures(self):
+        self.assertEqual(mul(Fraction(2), Fraction(3)), 6)
+        self.assertEqual(abs2(Fraction(-3)), 9)
+
+    def test_raw_fraction_embeds_into_any_signature(self):
+        r = mul(Fraction(3), Hy(1, 2, mu=1))
+        self.assertEqual(r, Hy(3, 6, mu=1))
+        self.assertEqual(r.signs, (1,))
+
+    def test_hash_and_iter_protocols_still_work(self):
+        x = Hy(1, 2, mu=1)
+        self.assertEqual(list(x), [Fraction(1), Fraction(2)])
+        self.assertEqual(len(x), 2)
+        self.assertEqual(x[0], 1)
+
+    def test_immutability_covers_mu(self):
+        x = Hy(1, 2, mu=1)
+        with self.assertRaises(AttributeError):
+            x._mu = -1
+        with self.assertRaises(AttributeError):
+            x.mu = -1
+
+    def test_latex_is_positional_and_unchanged(self):
+        self.assertEqual(Hy(1, 2, mu=1).latex(), '1+2j')
+        x = Hy.from_array([1, 2, 3, 4], signs="split-quaternion")
+        self.assertEqual(x.latex(), '1+2i+3j+4k')
+
+    def test_units_dict_keys_unchanged_by_signs(self):
+        for rank in (1, 2, 3, 4):
+            sg = (-1,) * (rank - 1) + (1,)
+            self.assertEqual(list(Hy.units(signs=sg)), list(Hy.units(rank)))
+        self.assertEqual(Hy.units(0), {'1': Fraction(1), '-1': Fraction(-1)})
+
+    def test_units_have_the_requested_signature(self):
+        for v in Hy.units(signs=(1, -1, 2)).values():
+            self.assertEqual(v.signs, (1, -1, 2))
+
 
 
 def main():

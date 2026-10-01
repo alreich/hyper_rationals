@@ -668,6 +668,349 @@ See the `bibliography <bibliography.rst>`__ for references on faithful,
 non-matrix-multiplication representations of octonions (e.g. Zorn vector
 matrices), which sidestep this associativity obstruction.
 
+Split-hypercomplex numbers and other signatures
+-----------------------------------------------
+
+Each doubling step of the Cayley-Dickson construction has a parameter
+``mu``, a nonzero rational, that enters the product as
+
+::
+
+   (a, b)(c, d) = (a c + mu conj(d) b,  d a + b conj(c))
+
+With ``mu = -1`` (the default, and what every example above uses) the
+tower is the classical one: complex numbers, quaternions, octonions, and
+so on. A step with ``mu = +1`` is the *split* version of that step, and
+any other nonzero rational gives the corresponding generalized algebra.
+
+``Hy(real, imag, mu=...)`` sets ``mu`` for the **top** level of the new
+value; its components already carry the lower levels. The full
+*signature* of a value, one ``mu`` per level from the lowest up, is
+``some_hy.signs``, and the top one is ``some_hy.mu``.
+
+Split-complex numbers
+~~~~~~~~~~~~~~~~~~~~~
+
+A single step with ``mu = +1`` gives the split-complex numbers, where
+``j * j`` is ``+1`` instead of ``-1``.
+
+.. code:: ipython3
+
+    >>> js = Hy(0, 1, mu=1)
+    >>> js * js
+
+
+
+
+.. parsed-literal::
+
+    Hy('1', '0', mu=1)
+
+
+
+``repr`` shows ``mu`` only when it is not the default ``-1``, so the
+output above can be pasted back in to rebuild the value. ``str`` is the
+same in every algebra.
+
+The quadratic form is no longer a sum of squares. It is *indefinite*, so
+a nonzero value can have ``norm_squared()`` equal to zero. Such a value
+is *null*, and is a zero divisor:
+
+.. code:: ipython3
+
+    >>> n_plus, n_minus = Hy(1, 1, mu=1), Hy(1, -1, mu=1)
+    >>> n_plus * n_minus, n_plus.is_null(), n_plus.norm_squared()
+
+
+
+
+.. parsed-literal::
+
+    (Hy('0', '0', mu=1), True, Fraction(0, 1))
+
+
+
+Null elements have no inverse, and asking for one raises
+``ZeroDivisionError``:
+
+.. code:: ipython3
+
+    >>> try:
+    ...     n_plus.inverse()
+    ... except ZeroDivisionError as e:
+    ...     print(e)
+
+
+.. parsed-literal::
+
+    hypercomplex value has zero norm (it is a nonzero null element of a split algebra); not invertible
+
+
+Split-quaternions and split-octonions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Which levels are split is given by the signature, ordered from the
+lowest level to the highest. The common cases have named presets, usable
+as ``signs="split-quaternion"`` or through the class constants:
+
+.. code:: ipython3
+
+    >>> Hy.SPLIT_COMPLEX, Hy.SPLIT_QUATERNION, Hy.SPLIT_OCTONION
+
+
+
+
+.. parsed-literal::
+
+    ((1,), (-1, 1), (-1, -1, 1))
+
+
+
+The split-quaternions are ``signs=(-1, 1)``: ``i`` squares to ``-1``,
+while ``j`` and ``k`` square to ``+1``.
+
+.. code:: ipython3
+
+    >>> su = Hy.units(signs="split-quaternion")
+    >>> {name: str(su[name] * su[name]) for name in ("i", "j", "k")}
+
+
+
+
+.. parsed-literal::
+
+    {'i': '(-1)', 'j': '(1)', 'k': '(1)'}
+
+
+
+.. code:: ipython3
+
+    >>> si, sj, sk = su["i"], su["j"], su["k"]
+    >>> si * sj == sk, sj * si == -sk
+
+
+
+
+.. parsed-literal::
+
+    (True, True)
+
+
+
+The unit **labels** are positional. They name a place in the
+Cayley-Dickson tower (so ``i * j == k`` and ``iL == i * L`` hold in
+every signature) and do not change with ``mu``. What changes is what
+each unit squares to. For the split-octonions, ``signs=(-1, -1, 1)``,
+``i``, ``j``, ``k`` square to ``-1`` and the four units involving the
+top level, ``L``, ``iL``, ``jL``, ``kL``, square to ``+1``:
+
+.. code:: ipython3
+
+    >>> suo = Hy.units(signs="split-octonion")
+    >>> {name: str(suo[name] * suo[name]) for name in ("i", "j", "k", "L", "iL", "jL", "kL")}
+
+
+
+
+.. parsed-literal::
+
+    {'i': '(-1)',
+     'j': '(-1)',
+     'k': '(-1)',
+     'L': '(1)',
+     'iL': '(1)',
+     'jL': '(1)',
+     'kL': '(1)'}
+
+
+
+``Hy.unit_square(index, signs)`` gives the same answer without building
+anything. The index is the position of the unit in ``to_array()`` order,
+so ``0`` is the real unit ``1``:
+
+.. code:: ipython3
+
+    >>> [int(Hy.unit_square(n, "split-octonion")) for n in range(8)]
+
+
+
+
+.. parsed-literal::
+
+    [1, -1, -1, -1, 1, 1, 1, 1]
+
+
+
+Any nonzero rational ``mu``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``mu`` is not limited to ``+1`` and ``-1``. With ``mu = 2``, ``j * j``
+is ``2``, and because ``2`` is not a rational square the form
+``a**2 - 2*b**2`` never vanishes on a nonzero value, so every nonzero
+value is invertible:
+
+.. code:: ipython3
+
+    >>> xg = Hy(2, 1, mu=2)
+    >>> xg.norm_squared(), xg.inverse(), xg * xg.inverse()
+
+
+
+
+.. parsed-literal::
+
+    (Fraction(2, 1), Hy('1', '-1/2', mu=2), Hy('1', '0', mu=2))
+
+
+
+Norms
+~~~~~
+
+``abs()`` is the square root of ``norm_squared()``, so it raises
+``ValueError`` when the form is negative and there is no real square
+root:
+
+.. code:: ipython3
+
+    >>> Hy(5, 3, mu=1).norm_squared(), abs(Hy(5, 3, mu=1))
+
+
+
+
+.. parsed-literal::
+
+    (Fraction(16, 1), 4.0)
+
+
+
+.. code:: ipython3
+
+    >>> try:
+    ...     abs(Hy(3, 5, mu=1))
+    ... except ValueError as e:
+    ...     print(e)
+
+
+.. parsed-literal::
+
+    norm_squared() is negative (-16), so abs() is undefined; use norm_squared() for the indefinite quadratic form
+
+
+Mixing, equality and parsing
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Plain numbers mix freely with any signature, but values from different
+algebras never combine. Arithmetic raises ``ValueError``, while ``==``
+is just ``False``:
+
+.. code:: ipython3
+
+    >>> Hy(1, 2, mu=1) + 3
+
+
+
+
+.. parsed-literal::
+
+    Hy('4', '2', mu=1)
+
+
+
+.. code:: ipython3
+
+    >>> try:
+    ...     Hy(1, 2, mu=1) + Hy(1, 2)
+    ... except ValueError as e:
+    ...     print(e)
+
+
+.. parsed-literal::
+
+    incompatible signatures: cannot combine a value with signs ('1',) and one with signs ('-1',)
+
+
+.. code:: ipython3
+
+    >>> Hy(1, 2, mu=1) == Hy(1, 2)
+
+
+
+
+.. parsed-literal::
+
+    False
+
+
+
+Since text such as ``'1+2i+3j+4k'`` does not say which algebra it lives
+in, ``Hy.parse`` (like ``Hy.from_array``, ``Hy.units``, ``Hy.random``
+and ``Hy.from_matrix``) takes a ``signs=`` argument:
+
+.. code:: ipython3
+
+    >>> Hy.parse('1+2i+3j+4k', signs="split-quaternion")
+
+
+
+
+.. parsed-literal::
+
+    Hy(Hy('1', '2'), Hy('3', '4'), mu=1)
+
+
+
+Matrices and other packages
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The split-quaternions are isomorphic to the 2x2 real matrices, and
+``to_matrix()`` still gives a genuine homomorphism at ranks 1 and 2 for
+any signature. A matrix does not record its signature, so read it back
+with the matching ``signs=``:
+
+.. code:: ipython3
+
+    >>> import numpy as np
+    >>> sa, sb = Hy.random(signs="split-quaternion", seed=10), Hy.random(signs="split-quaternion", seed=11)
+    >>> np.array_equal(np.dot(sa.to_matrix(), sb.to_matrix()), (sa * sb).to_matrix())
+
+
+
+
+.. parsed-literal::
+
+    True
+
+
+
+.. code:: ipython3
+
+    >>> Hy.from_matrix(sa.to_matrix(), signs="split-quaternion") == sa
+
+
+
+
+.. parsed-literal::
+
+    True
+
+
+
+The conversions to the other quaternion packages, and ``complex()``,
+only make sense for the classical algebras, so they reject anything
+else:
+
+.. code:: ipython3
+
+    >>> try:
+    ...     sa.to_sympy()
+    ... except ValueError as e:
+    ...     print(e)
+
+
+.. parsed-literal::
+
+    cannot convert a Hy with signs ('-1', '1') to a sympy Quaternion; only ordinary complex/quaternion values (every mu equal to -1) can be converted
+
 Interoperability with Other Quaternion Packages
 -----------------------------------------------
 

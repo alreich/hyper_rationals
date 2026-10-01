@@ -81,6 +81,71 @@ coefficients (ints, floats, ``Fraction``s and/or fraction strings like
     >>> Hy(Hy(1, 2), Hy(3, 4)).to_array(as_str=True)
     ['1', '2', '3', '4']
 
+Signatures: split-complex numbers, split-quaternions, split-octonions, ...
+---------------------------------------------------------------------------
+
+Every doubling step of the Cayley-Dickson construction carries a nonzero
+rational parameter ``mu``::
+
+    (a, b)(c, d) = (a c + mu conj(d) b,  d a + b conj(c))
+
+``mu = -1`` -- the default, so everything above is unchanged -- gives the
+classical tower.  ``mu = +1`` at a step gives the *split* version of that
+step, and any other nonzero rational gives the corresponding generalized
+algebra (for instance the quaternion algebra ``(-1, 2)``)::
+
+    split-complex         signs (1,)            j*j = +1
+    split-quaternions     signs (-1, 1)         i*i = -1,  j*j = k*k = +1
+    split-octonions       signs (-1, -1, 1)     i, j, k -> -1;  L, iL, jL, kL -> +1
+
+``Hy(real, imag, mu=...)`` sets the ``mu`` of the *top* doubling level
+(default ``-1``); each component already carries its own lower levels, so
+the full signature -- one ``mu`` per level, lowest first -- is
+``some_hy.signs`` and the top one is ``some_hy.mu``.  The factory methods
+(``Hy.units``, ``Hy.random``, ``Hy.from_array``, ``Hy.parse``,
+``Hy.from_matrix``) take a ``signs=`` tuple, or the name of a preset
+(``"split-complex"``, ``"split-quaternion"``, ``"split-octonion"``,
+``"complex"``, ``"quaternion"``, ``"octonion"``, ``"sedenion"``; also
+available as ``Hy.SPLIT_QUATERNION`` and so on)::
+
+    >>> j = Hy(0, 1, mu=1)               # the split-complex j
+    >>> str(j * j)
+    '(1)'
+    >>> p, m = Hy(1, 1, mu=1), Hy(1, -1, mu=1)
+    >>> str(p * m)                       # zero divisors: (1+j)(1-j) == 0
+    '(0)'
+    >>> p.is_null()
+    True
+    >>> Hy.SPLIT_QUATERNION
+    (-1, 1)
+    >>> u = Hy.units(signs="split-quaternion")
+    >>> [str(u[name] * u[name]) for name in ("i", "j", "k")]
+    ['(-1)', '(1)', '(1)']
+    >>> repr(j)                          # repr shows mu only when it isn't -1
+    "Hy('0', '1', mu=1)"
+
+The unit *labels* are positional -- they name a place in the Cayley-Dickson
+tower (``i*j == k`` and ``iL == i*L`` hold in every signature) -- so they
+do not change with ``mu``; what changes is what each unit squares to (see
+``Hy.unit_square``).  ``str()`` is therefore the same in every algebra, and
+text read back with ``Hy.parse`` needs ``signs=`` to say which algebra it
+is in.
+
+With a positive ``mu`` somewhere, the quadratic form ``x * conj(x)``
+(``some_hy.norm_squared()``, also still available as ``norm()``) is
+*indefinite*: ``N(a, b) = N(a) - mu N(b)``.  It can be negative or zero for
+a nonzero value, so ``abs(x)`` raises ``ValueError`` when it is negative,
+and a nonzero *null* element (``some_hy.is_null()``) has no inverse -- it
+raises ``ZeroDivisionError``.  The form stays multiplicative through rank
+3, as in every composition algebra, split or not.
+
+Values of different signatures never mix: ``+ - * /`` raise ``ValueError``
+(a lower-rank value embeds into a higher-rank one only when its signature
+is a prefix of the other's), ``==`` is simply ``False``, and plain
+numbers (and text such as ``'1+j'``, read in the other operand's algebra)
+mix freely.  The conversions to other quaternion packages, and
+``complex()``, accept only the classical algebras.
+
 Interoperability with other quaternion packages
 ------------------------------------------------
 
@@ -179,6 +244,32 @@ _MISSING = _Missing()
 _ScalarLike = (int, float, Fraction, str)
 
 # --------------------------------------------------------------------------
+# Cayley-Dickson parameters ("signs").  Every doubling step of the tower
+# carries a nonzero rational parameter mu:
+#
+#     (a, b)(c, d) = (a c + mu * conj(d) b,  d a + b conj(c))
+#
+# mu = -1 (the default) gives the classical tower R, C, H, O, ...; mu = +1
+# at a step gives the *split* version of that step (split-complex numbers,
+# split-quaternions, split-octonions, ...); any other nonzero rational gives
+# the corresponding generalized algebra (e.g. quaternion algebras (-1, 2)).
+# --------------------------------------------------------------------------
+_DEFAULT_MU = Fraction(-1)
+
+# Named signature presets, as tuples ordered from the lowest doubling level
+# to the highest.  Names are matched case-insensitively, with '-', '_' and
+# ' ' interchangeable.
+_SIGN_PRESETS = {
+    "complex": (-1,),
+    "quaternion": (-1, -1),
+    "octonion": (-1, -1, -1),
+    "sedenion": (-1, -1, -1, -1),
+    "split-complex": (1,),
+    "split-quaternion": (-1, 1),
+    "split-octonion": (-1, -1, 1),
+}
+
+# --------------------------------------------------------------------------
 # A module-wide default RNG used by Hy.random() whenever the caller doesn't
 # supply its own random.Random instance or an explicit one-off seed. Call
 # Hy.seed(value) to make subsequent Hy.random(...) calls reproducible.
@@ -197,37 +288,68 @@ class Hy:
     hashable.
     """
 
-    __slots__ = ("_real", "_imag")
+    __slots__ = ("_real", "_imag", "_mu")
+
+    # Named signature presets (tuples of mu values, lowest level first),
+    # usable anywhere a ``signs=`` argument is accepted, either as these
+    # tuples or by name, e.g. ``signs="split-quaternion"``.
+    COMPLEX = (-1,)
+    QUATERNION = (-1, -1)
+    OCTONION = (-1, -1, -1)
+    SEDENION = (-1, -1, -1, -1)
+    SPLIT_COMPLEX = (1,)
+    SPLIT_QUATERNION = (-1, 1)
+    SPLIT_OCTONION = (-1, -1, 1)
 
     # ---------------------------------------------------------------- #
     # Construction
     # ---------------------------------------------------------------- #
-    def __init__(self, real, imag=_MISSING):
+    def __init__(self, real, imag=_MISSING, *, mu=None):
+        mu_c = None if mu is None else _coerce_mu(mu)
         real_c = _coerce_component(real)
 
         if imag is _MISSING:
             if isinstance(real_c, Hy):
                 # Hy(some_hy) is a copy/identity construction: it takes
                 # on the value of `some_hy` as-is, at whatever rank that
-                # already is (rather than promoting it one rank higher).
+                # already is (rather than promoting it one rank higher),
+                # and with its own signature.
+                if mu_c is not None and mu_c != real_c._mu:
+                    raise ValueError(
+                        f"cannot change the top-level mu of an existing Hy "
+                        f"(it is {real_c._mu}, but mu={mu_c} was requested); "
+                        "build a new value from its components instead, or "
+                        "use Hy.parse(..., signs=...) / Hy.from_array(..., "
+                        "signs=...)"
+                    )
                 object.__setattr__(self, "_real", real_c._real)
                 object.__setattr__(self, "_imag", real_c._imag)
+                object.__setattr__(self, "_mu", real_c._mu)
                 return
             imag_c = Fraction(0)
         else:
             imag_c = _coerce_component(imag)
 
-        rank = max(_rank(real_c), _rank(imag_c))
-        object.__setattr__(self, "_real", _embed(real_c, rank))
-        object.__setattr__(self, "_imag", _embed(imag_c, rank))
+        # The two components must live in the same algebra: the one of
+        # lower rank is embedded into the other, which is only possible if
+        # its signature is a prefix of the other's.
+        sr, si = _signs(real_c), _signs(imag_c)
+        lower = sr if len(sr) >= len(si) else si
+        object.__setattr__(self, "_real", _embed_signs(real_c, lower))
+        object.__setattr__(self, "_imag", _embed_signs(imag_c, lower))
+        object.__setattr__(
+            self, "_mu", _DEFAULT_MU if mu_c is None else mu_c
+        )
 
     @classmethod
-    def _make(cls, real, imag) -> "Hy":
+    def _make(cls, real, imag, mu=_DEFAULT_MU) -> "Hy":
         """Internal fast constructor: assumes `real`/`imag` already have
-        matching rank and skips all normalization. Not for public use."""
+        matching rank and signature and skips all normalization. Not for
+        public use."""
         obj = object.__new__(cls)
         object.__setattr__(obj, "_real", real)
         object.__setattr__(obj, "_imag", imag)
+        object.__setattr__(obj, "_mu", mu)
         return obj
 
     def __setattr__(self, name, value):
@@ -258,6 +380,24 @@ class Hy:
         return 1 + max(_rank(self._real), _rank(self._imag))
 
     @property
+    def mu(self) -> Fraction:
+        """The Cayley-Dickson parameter of this value's *top* doubling
+        level, a nonzero ``Fraction`` (``-1``, the default, for the
+        classical algebras; ``+1`` for a split step). The squares of the
+        two halves' units are related by ``mu`` through the product
+        ``(a, b)(c, d) = (a c + mu * conj(d) b, d a + b conj(c))``."""
+        return self._mu
+
+    @property
+    def signs(self) -> tuple:
+        """The full signature of this value's algebra: a tuple of ``rank``
+        nonzero ``Fraction``s, one per doubling level, ordered from the
+        lowest level to the highest (so ``signs[-1] == mu``). For the
+        classical algebras every entry is ``-1``; for the split-quaternions
+        it is ``(-1, 1)``."""
+        return _signs(self)
+
+    @property
     def dimension(self) -> int:
         """Number of real (Fraction) coordinates: 2**rank."""
         return 2 ** self.rank
@@ -274,8 +414,42 @@ class Hy:
         return inverse(self)
 
     def norm(self) -> Fraction:
-        """The *squared* Euclidean norm, computed exactly as a Fraction."""
+        """The *squared* norm, computed exactly as a Fraction.
+
+        This is the quadratic form ``x * conj(x)`` of the algebra. In the
+        classical algebras (every mu equal to -1) it is the sum of the
+        squares of the real coordinates, and so is never negative; with a
+        positive mu somewhere it is *indefinite* and can be negative or
+        zero for a nonzero value. Identical to :meth:`norm_squared`
+        (which is the clearer name); kept under this name for backward
+        compatibility. For the (float) square root see ``abs(x)``.
+        """
         return abs2(self)
+
+    def norm_squared(self) -> Fraction:
+        """The exact quadratic form ``x * conj(x)``, a ``Fraction``.
+
+        Recursively, ``N(a, b) = N(a) - mu * N(b)`` with ``N(r) = r*r`` for
+        a rational ``r``; when every mu is ``-1`` this is the usual sum of
+        squares. In a split algebra (or any algebra with a positive mu) it
+        is indefinite: its sign tells you whether a value is *timelike*
+        (positive), *spacelike* (negative) or *null* (zero). Multiplicative
+        (``N(x*y) == N(x)*N(y)``) for ranks 0-3, i.e. for the composition
+        algebras, split or not.
+        """
+        return abs2(self)
+
+    def is_null(self) -> bool:
+        """True iff this value is nonzero but has ``norm_squared() == 0``
+        -- a *null* element, which exists only when the norm is
+        indefinite (e.g. ``1 + j`` in the split-complex numbers).
+
+        Null elements are not invertible. For ranks 1-3 (the composition
+        algebras) they are exactly the zero divisors; from rank 4 up there
+        are also zero divisors with nonzero norm, which this does not
+        detect.
+        """
+        return (not _is_zero_val(self)) and abs2(self) == 0
 
     def is_zero(self) -> bool:
         return _is_zero_val(self)
@@ -285,6 +459,11 @@ class Hy:
         i.e. exactly one of its ``2**rank`` real coordinates is ``+-1``
         and every other coordinate is 0. Equivalent to (but cheaper
         than) checking membership in ``Hy.units(self.rank).values()``.
+
+        "Unit" here means *basis unit*, not "invertible element": in a
+        split algebra there are many invertible values that are not
+        units in this sense, and a unit can square to ``+1`` rather than
+        ``-1``.
 
             >>> Hy(0, 1).is_unit()
             True
@@ -303,10 +482,18 @@ class Hy:
         if isinstance(other, Hy):
             return other
         if isinstance(other, complex):
+            # A Python complex is an ordinary (mu = -1) complex number.
             return Hy(Fraction(str(other.real)), Fraction(str(other.imag)))
         if isinstance(other, _ScalarLike):
             try:
-                return Hy(other)
+                if isinstance(other, str):
+                    try:
+                        return Fraction(other)
+                    except ValueError:
+                        # Text such as '1+2j' carries no signature of its
+                        # own, so it is read in *this* value's algebra.
+                        return _parse(other, signs=self.signs, pad=True)
+                return _coerce_component(other)
             except (TypeError, ValueError):
                 return NotImplemented
         return NotImplemented
@@ -362,15 +549,29 @@ class Hy:
         return self
 
     def __abs__(self) -> float:
-        return math.sqrt(float(abs2(self)))
+        """The (float) square root of :meth:`norm_squared`.
+
+        Raises ``ValueError`` when ``norm_squared()`` is negative (only
+        possible when the norm is indefinite, i.e. with a positive mu
+        somewhere in the signature), since there is then no real square
+        root; use :meth:`norm_squared` instead. Returns ``0.0`` for a
+        null element.
+        """
+        n = abs2(self)
+        if n < 0:
+            raise ValueError(
+                f"norm_squared() is negative ({n}), so abs() is undefined; "
+                "use norm_squared() for the indefinite quadratic form"
+            )
+        return math.sqrt(float(n))
 
     def __pow__(self, n):
         if not isinstance(n, int):
             return NotImplemented
         if n == 0:
-            return _embed(Fraction(1), self.rank)
+            return _embed_signs(Fraction(1), _signs(self))
         base = self if n > 0 else self.inverse()
-        result = _embed(Fraction(1), base.rank)
+        result = _embed_signs(Fraction(1), _signs(base))
         for _ in range(abs(n)):
             result = mul(result, base)
         return result
@@ -406,6 +607,11 @@ class Hy:
         return 2
 
     def __complex__(self):
+        if self.signs[0] != _DEFAULT_MU:
+            raise ValueError(
+                f"{self!r} is not an ordinary complex number "
+                f"(its first doubling level has mu={self.signs[0]}, not -1)"
+            )
         flat = _flatten(self)
         if any(c != 0 for c in flat[2:]):
             raise ValueError(f"{self!r} is not complex-valued (rank > 1)")
@@ -426,17 +632,31 @@ class Hy:
                 return repr(str(x))
             return repr(x)
 
-        return f"Hy({comp_repr(self._real)}, {comp_repr(self._imag)})"
+        mu_part = ""
+        if self._mu != _DEFAULT_MU:
+            m = self._mu
+            mu_part = f", mu={m.numerator}" if m.denominator == 1 else f", mu={str(m)!r}"
+        return f"Hy({comp_repr(self._real)}, {comp_repr(self._imag)}{mu_part})"
 
     # ---------------------------------------------------------------- #
     # Parsing
     # ---------------------------------------------------------------- #
     @classmethod
-    def parse(cls, s: str) -> "Hy":
+    def parse(cls, s: str, *, signs=None) -> "Hy":
         """Parse the kind of string produced by ``str(some_hy)`` -- e.g.
         ``'(5/2-16/5j)'``, ``'1+2i+3j+4k'``, ``'1-k+2kL'`` -- into a Hy.
+
+        The text itself says nothing about the algebra, so by default
+        the result is read in the classical one (every mu equal to -1).
+        Pass ``signs=`` (a tuple of nonzero rationals ordered from the
+        lowest doubling level to the highest, or a preset name such as
+        ``"split-quaternion"``) to read it in another algebra; its length
+        must equal the rank implied by the text::
+
+            >>> Hy.parse('1+2j+3k', signs="split-quaternion").signs
+            (Fraction(-1, 1), Fraction(1, 1))
         """
-        return _parse(s)
+        return _parse(s, signs=signs)
 
     from_string = parse  # convenient alias
 
@@ -459,8 +679,9 @@ class Hy:
     @classmethod
     def random(
         cls,
-        rank: int,
+        rank: "int | None" = None,
         *,
+        signs=None,
         lo: int = -9,
         hi: int = 9,
         dmax: int = 6,
@@ -488,11 +709,16 @@ class Hy:
           optionally share across several calls) the random stream
           yourself.
 
-        Raises ``ValueError`` if ``rank`` isn't a positive int, or if both
+        ``signs=`` selects the algebra (a tuple of nonzero rationals,
+        lowest doubling level first, or a preset name such as
+        ``"split-octonion"``); it defaults to the classical one (all
+        ``-1``). If ``rank`` is omitted it is taken from ``len(signs)``.
+
+        Raises ``ValueError`` if ``rank`` isn't a positive int (or can't
+        be determined), if it disagrees with ``signs``, or if both
         ``rng`` and ``seed`` are given.
         """
-        if not isinstance(rank, int) or isinstance(rank, bool) or rank < 1:
-            raise ValueError(f"rank must be a positive int, got {rank!r}")
+        rank, signs = _resolve_rank_and_signs(rank, signs, min_rank=1)
         if rng is not None and seed is not None:
             raise ValueError("pass either `rng` or `seed`, not both")
         if seed is not None:
@@ -506,7 +732,7 @@ class Hy:
         def build(r: int):
             if r == 0:
                 return rand_coeff()
-            return Hy._make(build(r - 1), build(r - 1))
+            return Hy._make(build(r - 1), build(r - 1), signs[r - 1])
 
         return build(rank)
 
@@ -514,7 +740,7 @@ class Hy:
     # Flat-array conversion
     # ---------------------------------------------------------------- #
     @classmethod
-    def from_array(cls, coeffs) -> "Hy":
+    def from_array(cls, coeffs, *, signs=None) -> "Hy":
         """Build a Hy from a flat sequence of its ``2**rank`` real
         coefficients, in the same Cayley-Dickson order used by
         :meth:`components` / :meth:`to_array` (e.g., for a quaternion:
@@ -530,6 +756,11 @@ class Hy:
         ``len(coeffs)`` must be a power of 2 that is >= 2 (2 -> rank 1
         "complex", 4 -> rank 2 "quaternion", 8 -> rank 3 "octonion", etc.)
         since every Hy has rank >= 1.
+
+        ``signs=`` selects the algebra the coefficients live in (a tuple
+        of nonzero rationals, lowest doubling level first, or a preset
+        name such as ``"split-quaternion"``); its length must equal the
+        rank. The default is the classical algebra (all ``-1``).
         """
         values = list(coeffs)
         n = len(values)
@@ -539,8 +770,9 @@ class Hy:
                 f"and at least 2; got {n}"
             )
         rank = n.bit_length() - 1
+        _, signs = _resolve_rank_and_signs(rank, signs, min_rank=1)
         fracs = [_coerce_flat_element(v) for v in values]
-        return _unflatten(fracs, rank)
+        return _unflatten(fracs, rank, signs)
 
     def to_array(self, as_str: bool = False) -> list:
         """This Hy's ``2**rank`` real coefficients, flattened into a plain
@@ -559,7 +791,7 @@ class Hy:
     # Units
     # ---------------------------------------------------------------- #
     @classmethod
-    def units(cls, rank: int) -> dict:
+    def units(cls, rank: "int | None" = None, *, signs=None) -> dict:
         """The unit elements of the rank-``rank`` algebra: the ``2 *
         2**rank`` values with exactly one real coordinate equal to
         ``+-1`` and every other coordinate 0 (e.g. for rank 1: ``+-1``
@@ -577,11 +809,19 @@ class Hy:
         ``Fraction(1)`` and ``Fraction(-1)`` are returned directly
         (every other rank returns ``Hy`` instances).
 
+        ``signs=`` selects the algebra (a tuple of nonzero rationals,
+        lowest doubling level first, or a preset name such as
+        ``"split-quaternion"``); if ``rank`` is omitted it is taken from
+        ``len(signs)``. The *labels* are positional (they name a place in
+        the Cayley-Dickson tower), so they do not change with ``signs``;
+        what changes is what each unit squares to -- see
+        :meth:`unit_square`.
+
         See also :meth:`is_unit`. Raises ``ValueError`` if ``rank``
-        isn't a non-negative int.
+        isn't a non-negative int (or can't be determined), or disagrees
+        with ``signs``.
         """
-        if not isinstance(rank, int) or isinstance(rank, bool) or rank < 0:
-            raise ValueError(f"rank must be a non-negative int, got {rank!r}")
+        rank, signs = _resolve_rank_and_signs(rank, signs, min_rank=0)
         if rank == 0:
             return {"1": Fraction(1), "-1": Fraction(-1)}
         n = 2 ** rank
@@ -592,10 +832,43 @@ class Hy:
             neg_key = f"-{lbl}" if lbl else "-1"
             coeffs = [Fraction(0)] * n
             coeffs[idx] = Fraction(1)
-            result[pos_key] = _unflatten(coeffs, rank)
+            result[pos_key] = _unflatten(coeffs, rank, signs)
             coeffs[idx] = Fraction(-1)
-            result[neg_key] = _unflatten(coeffs, rank)
+            result[neg_key] = _unflatten(coeffs, rank, signs)
         return result
+
+    @staticmethod
+    def unit_square(label_index: int, signs) -> Fraction:
+        """What the basis unit with coordinate index ``label_index``
+        (``0`` is the real unit ``1``, ``1`` is ``j``/``i``, and so on, in
+        the order of :meth:`components`) squares to, in the algebra with
+        the given ``signs`` (a tuple or preset name), as an exact
+        ``Fraction``.
+
+        The index's binary digits say which doubling levels the unit
+        involves; if ``S`` is that set of levels, the unit squares to
+        ``-prod(-mu_l for l in S)`` (and ``1`` squares to ``1``). With all
+        ``mu = -1`` every imaginary unit squares to ``-1``::
+
+            >>> Hy.unit_square(3, "split-quaternion")     # k, with signs (-1, 1)
+            Fraction(1, 1)
+            >>> Hy.unit_square(1, "split-quaternion")     # i
+            Fraction(-1, 1)
+        """
+        _, sg = _resolve_rank_and_signs(None, signs, min_rank=1)
+        if (not isinstance(label_index, int) or isinstance(label_index, bool)
+                or not 0 <= label_index < 2 ** len(sg)):
+            raise ValueError(
+                f"label_index must be an int in [0, {2 ** len(sg) - 1}], "
+                f"got {label_index!r}"
+            )
+        if label_index == 0:
+            return Fraction(1)
+        prod = Fraction(1)
+        for level in range(len(sg)):
+            if label_index >> level & 1:
+                prod *= -sg[level]
+        return -prod
 
     # ---------------------------------------------------------------- #
     # Matrix (regular) representation
@@ -675,7 +948,7 @@ class Hy:
                 "for faithful alternatives (e.g. Zorn vector matrices)."
             )
         np = _import_optional("numpy", "numpy")
-        basis = _positive_units(rank)
+        basis = _positive_units(rank, self.signs)
         if kind == "left":
             columns = [(self * e).to_array() for e in basis]
         else:
@@ -687,7 +960,8 @@ class Hy:
 
     @classmethod
     def from_matrix(cls, matrix, *, kind: str = "left", rank: "int | None" = None,
-                     allow_nonassociative: bool = False, validate: bool = False) -> "Hy":
+                     allow_nonassociative: bool = False, validate: bool = False,
+                     signs=None) -> "Hy":
         """Build a ``Hy`` from its regular-representation matrix, the
         inverse of :meth:`to_matrix`.
 
@@ -703,6 +977,11 @@ class Hy:
         ``ValueError`` unless ``allow_nonassociative=True``, since a
         rank >= 3 matrix isn't the image of a true algebra homomorphism
         in the first place.
+
+        ``signs=`` selects the algebra the matrix represents (default: the
+        classical one); a regular-representation matrix does not record
+        it, so a split-complex or split-quaternion matrix must be read
+        back with the matching ``signs=``.
 
         ``validate=True`` rebuilds every other column from the
         recovered value and checks it against ``matrix`` exactly
@@ -746,7 +1025,7 @@ class Hy:
         if kind not in ("left", "right"):
             raise ValueError(f"kind must be 'left' or 'right', got {kind!r}")
 
-        result = cls.from_array(list(arr[:, 0]))
+        result = cls.from_array(list(arr[:, 0]), signs=signs)
 
         if validate:
             rebuilt = result.to_matrix(kind=kind, allow_nonassociative=True)
@@ -1002,77 +1281,246 @@ def _rank(x) -> int:
     return 0 if isinstance(x, Fraction) else x.rank
 
 
-def _embed(x, target_rank: int):
-    """Promote `x` (Fraction or Hy) up to exactly `target_rank`, by pairing
-    it with zeros at each doubling step. Raises if `x` is already of
-    *higher* rank than `target_rank` (you cannot un-embed)."""
-    r = _rank(x)
-    if r == target_rank:
-        return x
-    if r > target_rank:
-        raise ValueError(
-            f"cannot embed a rank-{r} value into rank {target_rank}"
-        )
-    return Hy._make(_embed(x, target_rank - 1), _embed(Fraction(0), target_rank - 1))
+# --------------------------------------------------------------------------
+# Signatures (the per-level Cayley-Dickson parameters)
+# --------------------------------------------------------------------------
 
+def _coerce_mu(m) -> Fraction:
+    """A single Cayley-Dickson parameter: any nonzero rational."""
+    if isinstance(m, bool):
+        raise TypeError(f"mu must be a nonzero rational, not {m!r}")
+    if isinstance(m, Fraction):
+        mu = m
+    elif isinstance(m, int):
+        mu = Fraction(m)
+    elif isinstance(m, float):
+        mu = Fraction(str(m))
+    elif isinstance(m, str):
+        try:
+            mu = Fraction(m)
+        except ValueError as e:
+            raise ValueError(f"cannot parse {m!r} as a rational mu") from e
+    else:
+        raise TypeError(
+            f"cannot use {m!r} (type {type(m).__name__}) as a mu; "
+            "expected a nonzero int, Fraction, float or fraction string"
+        )
+    if mu == 0:
+        raise ValueError("mu must be nonzero")
+    return mu
+
+
+def _preset_key(name: str) -> str:
+    return name.strip().lower().replace("_", "-").replace(" ", "-")
+
+
+def _coerce_signs(signs) -> tuple:
+    """A signature given as a preset name or an iterable of mus, as a
+    tuple of nonzero Fractions (lowest doubling level first)."""
+    if isinstance(signs, str):
+        key = _preset_key(signs)
+        if key not in _SIGN_PRESETS:
+            raise ValueError(
+                f"unknown signature preset {signs!r}; known presets: "
+                + ", ".join(sorted(_SIGN_PRESETS))
+            )
+        signs = _SIGN_PRESETS[key]
+    try:
+        return tuple(_coerce_mu(m) for m in signs)
+    except TypeError:
+        if isinstance(signs, (int, float, Fraction)):
+            raise TypeError(
+                "signs must be a preset name or a sequence of mu values, "
+                f"not {signs!r}"
+            ) from None
+        raise
+
+
+def _resolve_rank_and_signs(rank, signs, *, min_rank: int):
+    """Validate a (rank, signs) pair: either may be omitted (but not
+    both); ``signs`` defaults to all -1. Returns ``(rank, signs_tuple)``."""
+    sg = None if signs is None else _coerce_signs(signs)
+    if rank is None:
+        if sg is None:
+            kind = "positive" if min_rank >= 1 else "non-negative"
+            raise ValueError(f"rank must be a {kind} int, got {rank!r}")
+        rank = len(sg)
+    if not isinstance(rank, int) or isinstance(rank, bool) or rank < min_rank:
+        kind = "positive" if min_rank >= 1 else "non-negative"
+        raise ValueError(f"rank must be a {kind} int, got {rank!r}")
+    if sg is None:
+        sg = (_DEFAULT_MU,) * rank
+    elif len(sg) != rank:
+        raise ValueError(
+            f"signs has length {len(sg)} but the rank is {rank}; "
+            "one mu per doubling level is required"
+        )
+    return rank, sg
+
+
+def _signs(x) -> tuple:
+    """The signature of a raw value: () for a Fraction, otherwise one mu
+    per doubling level, lowest first (so the last entry is x's own mu)."""
+    if isinstance(x, Fraction):
+        return ()
+    return _signs(x._real) + (x._mu,)
+
+
+def _common_signs(x, y) -> tuple:
+    """The signature of the algebra in which a binary operation on `x`
+    and `y` takes place: the longer of their two signatures, provided the
+    shorter is a prefix of it (so the lower-rank operand embeds)."""
+    sx, sy = _signs(x), _signs(y)
+    big, small = (sx, sy) if len(sx) >= len(sy) else (sy, sx)
+    if big[: len(small)] != small:
+        raise ValueError(
+            "incompatible signatures: cannot combine a value with signs "
+            f"{tuple(map(str, sx))} and one with signs {tuple(map(str, sy))}"
+        )
+    return big
+
+
+def _embed_signs(x, target: tuple):
+    """Promote `x` into the algebra with signature `target`, by pairing it
+    with zeros at each additional doubling step. `x`'s own signature must
+    be a prefix of `target`, and its rank no larger."""
+    r, n = _rank(x), len(target)
+    if r > n:
+        raise ValueError(f"cannot embed a rank-{r} value into rank {n}")
+    if r == n:
+        if _signs(x) != target:
+            raise ValueError(
+                f"signature mismatch: value has signs "
+                f"{tuple(map(str, _signs(x)))}, expected "
+                f"{tuple(map(str, target))}"
+            )
+        return x
+    return Hy._make(
+        _embed_signs(x, target[:-1]),
+        _embed_signs(Fraction(0), target[:-1]),
+        target[-1],
+    )
+
+
+def _embed(x, target):
+    """Promote `x` (Fraction or Hy) up to exactly `target`, by pairing it
+    with zeros at each doubling step. `target` is either a rank (an int;
+    any *new* doubling levels get the default mu = -1) or a full signature
+    tuple. Raises if `x` is already of *higher* rank than `target` (you
+    cannot un-embed)."""
+    if isinstance(target, int):
+        r = _rank(x)
+        if r == target:
+            return x
+        if r > target:
+            raise ValueError(
+                f"cannot embed a rank-{r} value into rank {target}"
+            )
+        target = _signs(x) + (_DEFAULT_MU,) * (target - r)
+    return _embed_signs(x, target)
+
+
+# --------------------------------------------------------------------------
+# The algebra itself.  The public functions (add, mul, ...) accept raw
+# values of any (compatible) ranks and embed them into a common algebra;
+# the underscore versions then recurse on operands already known to have
+# identical rank and signature, so no further checking is needed.
+# --------------------------------------------------------------------------
 
 def add(x, y):
-    rx, ry = _rank(x), _rank(y)
-    r = max(rx, ry)
-    xa, ya = _embed(x, r), _embed(y, r)
-    if r == 0:
-        return xa + ya
-    return Hy._make(add(xa._real, ya._real), add(xa._imag, ya._imag))
+    T = _common_signs(x, y)
+    return _add(_embed_signs(x, T), _embed_signs(y, T))
+
+
+def _add(x, y):
+    if isinstance(x, Fraction):
+        return x + y
+    return Hy._make(_add(x._real, y._real), _add(x._imag, y._imag), x._mu)
 
 
 def neg(x):
     if isinstance(x, Fraction):
         return -x
-    return Hy._make(neg(x._real), neg(x._imag))
+    return Hy._make(neg(x._real), neg(x._imag), x._mu)
 
 
 def sub(x, y):
     return add(x, neg(y))
 
 
+def _sub(x, y):
+    return _add(x, neg(y))
+
+
 def conj(x):
-    """Cayley-Dickson conjugate: conj(a, b) = (conj(a), -b)."""
+    """Cayley-Dickson conjugate: conj(a, b) = (conj(a), -b). It does not
+    depend on mu."""
     if isinstance(x, Fraction):
         return x
-    return Hy._make(conj(x._real), neg(x._imag))
+    return Hy._make(conj(x._real), neg(x._imag), x._mu)
+
+
+def _scale(x, f: Fraction):
+    """x * f for a rational scalar f, componentwise."""
+    if isinstance(x, Fraction):
+        return x * f
+    return Hy._make(_scale(x._real, f), _scale(x._imag, f), x._mu)
 
 
 def mul(x, y):
-    """Cayley-Dickson product: (a,b)(c,d) = (ac - conj(d)b, da + b*conj(c))."""
-    rx, ry = _rank(x), _rank(y)
-    r = max(rx, ry)
-    if r == 0:
+    """Cayley-Dickson product with parameter mu at each doubling level:
+    (a,b)(c,d) = (ac + mu*conj(d)b, da + b*conj(c)). With the default
+    mu = -1 this is the classical (ac - conj(d)b, da + b*conj(c))."""
+    T = _common_signs(x, y)
+    if not T:
         return x * y
-    xa, ya = _embed(x, r), _embed(y, r)
-    a, b = xa._real, xa._imag
-    c, d = ya._real, ya._imag
-    real_part = sub(mul(a, c), mul(conj(d), b))
-    imag_part = add(mul(d, a), mul(b, conj(c)))
-    return Hy._make(real_part, imag_part)
+    return _mul(_embed_signs(x, T), _embed_signs(y, T))
+
+
+def _mul(x, y):
+    if isinstance(x, Fraction):
+        return x * y
+    a, b = x._real, x._imag
+    c, d = y._real, y._imag
+    mu = x._mu
+    cross = _mul(conj(d), b)
+    if mu == -1:
+        real_part = _sub(_mul(a, c), cross)
+    elif mu == 1:
+        real_part = _add(_mul(a, c), cross)
+    else:
+        real_part = _add(_mul(a, c), _scale(cross, mu))
+    imag_part = _add(_mul(d, a), _mul(b, conj(c)))
+    return Hy._make(real_part, imag_part, mu)
 
 
 def abs2(x) -> Fraction:
-    """Squared Euclidean norm: sum of squares of every real coordinate."""
+    """The quadratic form x*conj(x), as an exact Fraction: N(a, b) = N(a)
+    - mu*N(b), N(r) = r*r. For the classical algebras (every mu = -1)
+    this is the squared Euclidean norm, the sum of squares of every real
+    coordinate; otherwise it is indefinite."""
     if isinstance(x, Fraction):
         return x * x
-    return abs2(x._real) + abs2(x._imag)
+    return abs2(x._real) - x._mu * abs2(x._imag)
 
 
 def _scalar_div(x, f: Fraction):
     if isinstance(x, Fraction):
         return x / f
-    return Hy._make(_scalar_div(x._real, f), _scalar_div(x._imag, f))
+    return Hy._make(_scalar_div(x._real, f), _scalar_div(x._imag, f), x._mu)
 
 
 def inverse(x):
     n = abs2(x)
     if n == 0:
-        raise ZeroDivisionError("hypercomplex value has zero norm; not invertible")
+        if _is_zero_val(x):
+            raise ZeroDivisionError(
+                "hypercomplex value has zero norm; not invertible"
+            )
+        raise ZeroDivisionError(
+            "hypercomplex value has zero norm (it is a nonzero null "
+            "element of a split algebra); not invertible"
+        )
     return _scalar_div(conj(x), n)
 
 
@@ -1087,11 +1535,12 @@ def _is_zero_val(x) -> bool:
 
 
 def _values_equal(x, y) -> bool:
-    r = max(_rank(x), _rank(y))
-    xa, ya = _embed(x, r), _embed(y, r)
-    if r == 0:
-        return xa == ya
-    return _values_equal(xa._real, ya._real) and _values_equal(xa._imag, ya._imag)
+    """Equality of two raw values: the same element once zero-padded to a
+    common rank, *and* living in the same algebra (same mu at every level
+    that is actually used)."""
+    return _to_nested_tuple(_canonical_trim(x)) == _to_nested_tuple(
+        _canonical_trim(y)
+    )
 
 
 def _canonical_trim(x):
@@ -1104,7 +1553,7 @@ def _canonical_trim(x):
 def _to_nested_tuple(x):
     if isinstance(x, Fraction):
         return x
-    return (_to_nested_tuple(x._real), _to_nested_tuple(x._imag))
+    return (_to_nested_tuple(x._real), _to_nested_tuple(x._imag), x._mu)
 
 
 def _flatten(x) -> list:
@@ -1113,12 +1562,16 @@ def _flatten(x) -> list:
     return _flatten(x._real) + _flatten(x._imag)
 
 
-def _unflatten(coeffs, rank):
+def _unflatten(coeffs, rank, signs=None):
+    if signs is None:
+        signs = (_DEFAULT_MU,) * rank
     if rank == 0:
         return coeffs[0]
     half = len(coeffs) // 2
     return Hy._make(
-        _unflatten(coeffs[:half], rank - 1), _unflatten(coeffs[half:], rank - 1)
+        _unflatten(coeffs[:half], rank - 1, signs[:-1]),
+        _unflatten(coeffs[half:], rank - 1, signs[:-1]),
+        signs[-1],
     )
 
 
@@ -1182,11 +1635,13 @@ def _coerce_flat_element(v) -> Fraction:
 # Helper for to_matrix()/from_matrix()
 # ============================================================================
 
-def _positive_units(rank: int) -> list:
+def _positive_units(rank: int, signs=None) -> list:
     """The 2**rank positive units of the rank-`rank` algebra (1, then each
     imaginary unit), in the same order as `components()`/`to_array()`.
-    Just Hy.units(rank) filtered down to its non-negated entries."""
-    return [u for name, u in Hy.units(rank).items() if not name.startswith("-")]
+    Just Hy.units(rank, signs=signs) filtered down to its non-negated
+    entries."""
+    return [u for name, u in Hy.units(rank, signs=signs).items()
+            if not name.startswith("-")]
 
 
 # ============================================================================
@@ -1215,6 +1670,12 @@ def _quaternion_fractions(h: "Hy", target: str) -> tuple:
             f"cannot convert a rank-{h.rank} Hy ({h.dimension} coordinates) to "
             f"{target}; only rank 1 (embedded as a + b*i) and rank 2 "
             "(quaternions) can be converted"
+        )
+    if h.signs != (_DEFAULT_MU,) * h.rank:
+        raise ValueError(
+            f"cannot convert a Hy with signs {tuple(map(str, h.signs))} to "
+            f"{target}; only ordinary complex/quaternion values (every "
+            "mu equal to -1) can be converted"
         )
     return tuple(_flatten(_embed(h, 2)))
 
@@ -1355,7 +1816,7 @@ _TERM_RE = re.compile(
 )
 
 
-def _parse(s: str) -> Hy:
+def _parse(s: str, signs=None, pad: bool = False) -> Hy:
     s = s.strip()
     if s.startswith("(") and s.endswith(")"):
         s = s[1:-1]
@@ -1415,8 +1876,23 @@ def _parse(s: str) -> Hy:
             f"unit(s) {sorted(unknown)} inconsistent with the rest of {s!r}"
         )
 
+    if signs is None:
+        sg = (_DEFAULT_MU,) * rank
+    else:
+        sg = _coerce_signs(signs)
+        if pad:
+            # Internal use (operand coercion): read the text in the algebra
+            # of the other operand, truncating or extending with the
+            # default mu as the text's own rank requires.
+            sg = sg[:rank] + (_DEFAULT_MU,) * (rank - len(sg[:rank]))
+        elif len(sg) != rank:
+            raise ValueError(
+                f"signs has length {len(sg)}, but {s!r} has rank {rank}; "
+                "one mu per doubling level is required"
+            )
+
     coeffs = [coeff_map.get(lbl, Fraction(0)) for lbl in labels]
-    return _unflatten(coeffs, rank)
+    return _unflatten(coeffs, rank, sg)
 
 
 if __name__ == "__main__":
@@ -1512,5 +1988,16 @@ if __name__ == "__main__":
               "at rank 2, rank>=3 guard raises as expected)")
     except ImportError:
         print("Hy.to_matrix()/Hy.from_matrix(): skipped (numpy not installed)")
+
+    # signatures: split-complex and split-quaternions
+    sj = Hy(0, 1, mu=1)
+    assert sj * sj == 1 and (Hy(1, 1, mu=1) * Hy(1, -1, mu=1)).is_zero()
+    su = Hy.units(signs="split-quaternion")
+    assert su["i"] * su["i"] == -1 and su["j"] * su["j"] == 1
+    assert su["i"] * su["j"] == su["k"] and su["k"] * su["k"] == 1
+    sx, sy = Hy.random(signs="split-quaternion", seed=1), Hy.random(signs="split-quaternion", seed=2)
+    assert abs2(mul(sx, sy)) == abs2(sx) * abs2(sy)
+    assert eval(repr(sx)) == sx
+    print("split algebras / signatures: OK")
 
     print("\nAll self-tests passed.")

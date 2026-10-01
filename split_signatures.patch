@@ -1,0 +1,3262 @@
+diff --git a/docs/source/usage.rst b/docs/source/usage.rst
+index fbbf1a5..7d19b36 100644
+--- a/docs/source/usage.rst
++++ b/docs/source/usage.rst
+@@ -668,6 +668,349 @@ See the `bibliography <bibliography.rst>`__ for references on faithful,
+ non-matrix-multiplication representations of octonions (e.g. Zorn vector
+ matrices), which sidestep this associativity obstruction.
+ 
++Split-hypercomplex numbers and other signatures
++-----------------------------------------------
++
++Each doubling step of the Cayley-Dickson construction has a parameter
++``mu``, a nonzero rational, that enters the product as
++
++::
++
++   (a, b)(c, d) = (a c + mu conj(d) b,  d a + b conj(c))
++
++With ``mu = -1`` (the default, and what every example above uses) the
++tower is the classical one: complex numbers, quaternions, octonions, and
++so on. A step with ``mu = +1`` is the *split* version of that step, and
++any other nonzero rational gives the corresponding generalized algebra.
++
++``Hy(real, imag, mu=...)`` sets ``mu`` for the **top** level of the new
++value; its components already carry the lower levels. The full
++*signature* of a value, one ``mu`` per level from the lowest up, is
++``some_hy.signs``, and the top one is ``some_hy.mu``.
++
++Split-complex numbers
++~~~~~~~~~~~~~~~~~~~~~
++
++A single step with ``mu = +1`` gives the split-complex numbers, where
++``j * j`` is ``+1`` instead of ``-1``.
++
++.. code:: ipython3
++
++    >>> js = Hy(0, 1, mu=1)
++    >>> js * js
++
++
++
++
++.. parsed-literal::
++
++    Hy('1', '0', mu=1)
++
++
++
++``repr`` shows ``mu`` only when it is not the default ``-1``, so the
++output above can be pasted back in to rebuild the value. ``str`` is the
++same in every algebra.
++
++The quadratic form is no longer a sum of squares. It is *indefinite*, so
++a nonzero value can have ``norm_squared()`` equal to zero. Such a value
++is *null*, and is a zero divisor:
++
++.. code:: ipython3
++
++    >>> n_plus, n_minus = Hy(1, 1, mu=1), Hy(1, -1, mu=1)
++    >>> n_plus * n_minus, n_plus.is_null(), n_plus.norm_squared()
++
++
++
++
++.. parsed-literal::
++
++    (Hy('0', '0', mu=1), True, Fraction(0, 1))
++
++
++
++Null elements have no inverse, and asking for one raises
++``ZeroDivisionError``:
++
++.. code:: ipython3
++
++    >>> try:
++    ...     n_plus.inverse()
++    ... except ZeroDivisionError as e:
++    ...     print(e)
++
++
++.. parsed-literal::
++
++    hypercomplex value has zero norm (it is a nonzero null element of a split algebra); not invertible
++
++
++Split-quaternions and split-octonions
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++
++Which levels are split is given by the signature, ordered from the
++lowest level to the highest. The common cases have named presets, usable
++as ``signs="split-quaternion"`` or through the class constants:
++
++.. code:: ipython3
++
++    >>> Hy.SPLIT_COMPLEX, Hy.SPLIT_QUATERNION, Hy.SPLIT_OCTONION
++
++
++
++
++.. parsed-literal::
++
++    ((1,), (-1, 1), (-1, -1, 1))
++
++
++
++The split-quaternions are ``signs=(-1, 1)``: ``i`` squares to ``-1``,
++while ``j`` and ``k`` square to ``+1``.
++
++.. code:: ipython3
++
++    >>> su = Hy.units(signs="split-quaternion")
++    >>> {name: str(su[name] * su[name]) for name in ("i", "j", "k")}
++
++
++
++
++.. parsed-literal::
++
++    {'i': '(-1)', 'j': '(1)', 'k': '(1)'}
++
++
++
++.. code:: ipython3
++
++    >>> si, sj, sk = su["i"], su["j"], su["k"]
++    >>> si * sj == sk, sj * si == -sk
++
++
++
++
++.. parsed-literal::
++
++    (True, True)
++
++
++
++The unit **labels** are positional. They name a place in the
++Cayley-Dickson tower (so ``i * j == k`` and ``iL == i * L`` hold in
++every signature) and do not change with ``mu``. What changes is what
++each unit squares to. For the split-octonions, ``signs=(-1, -1, 1)``,
++``i``, ``j``, ``k`` square to ``-1`` and the four units involving the
++top level, ``L``, ``iL``, ``jL``, ``kL``, square to ``+1``:
++
++.. code:: ipython3
++
++    >>> suo = Hy.units(signs="split-octonion")
++    >>> {name: str(suo[name] * suo[name]) for name in ("i", "j", "k", "L", "iL", "jL", "kL")}
++
++
++
++
++.. parsed-literal::
++
++    {'i': '(-1)',
++     'j': '(-1)',
++     'k': '(-1)',
++     'L': '(1)',
++     'iL': '(1)',
++     'jL': '(1)',
++     'kL': '(1)'}
++
++
++
++``Hy.unit_square(index, signs)`` gives the same answer without building
++anything. The index is the position of the unit in ``to_array()`` order,
++so ``0`` is the real unit ``1``:
++
++.. code:: ipython3
++
++    >>> [int(Hy.unit_square(n, "split-octonion")) for n in range(8)]
++
++
++
++
++.. parsed-literal::
++
++    [1, -1, -1, -1, 1, 1, 1, 1]
++
++
++
++Any nonzero rational ``mu``
++~~~~~~~~~~~~~~~~~~~~~~~~~~~
++
++``mu`` is not limited to ``+1`` and ``-1``. With ``mu = 2``, ``j * j``
++is ``2``, and because ``2`` is not a rational square the form
++``a**2 - 2*b**2`` never vanishes on a nonzero value, so every nonzero
++value is invertible:
++
++.. code:: ipython3
++
++    >>> xg = Hy(2, 1, mu=2)
++    >>> xg.norm_squared(), xg.inverse(), xg * xg.inverse()
++
++
++
++
++.. parsed-literal::
++
++    (Fraction(2, 1), Hy('1', '-1/2', mu=2), Hy('1', '0', mu=2))
++
++
++
++Norms
++~~~~~
++
++``abs()`` is the square root of ``norm_squared()``, so it raises
++``ValueError`` when the form is negative and there is no real square
++root:
++
++.. code:: ipython3
++
++    >>> Hy(5, 3, mu=1).norm_squared(), abs(Hy(5, 3, mu=1))
++
++
++
++
++.. parsed-literal::
++
++    (Fraction(16, 1), 4.0)
++
++
++
++.. code:: ipython3
++
++    >>> try:
++    ...     abs(Hy(3, 5, mu=1))
++    ... except ValueError as e:
++    ...     print(e)
++
++
++.. parsed-literal::
++
++    norm_squared() is negative (-16), so abs() is undefined; use norm_squared() for the indefinite quadratic form
++
++
++Mixing, equality and parsing
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++
++Plain numbers mix freely with any signature, but values from different
++algebras never combine. Arithmetic raises ``ValueError``, while ``==``
++is just ``False``:
++
++.. code:: ipython3
++
++    >>> Hy(1, 2, mu=1) + 3
++
++
++
++
++.. parsed-literal::
++
++    Hy('4', '2', mu=1)
++
++
++
++.. code:: ipython3
++
++    >>> try:
++    ...     Hy(1, 2, mu=1) + Hy(1, 2)
++    ... except ValueError as e:
++    ...     print(e)
++
++
++.. parsed-literal::
++
++    incompatible signatures: cannot combine a value with signs ('1',) and one with signs ('-1',)
++
++
++.. code:: ipython3
++
++    >>> Hy(1, 2, mu=1) == Hy(1, 2)
++
++
++
++
++.. parsed-literal::
++
++    False
++
++
++
++Since text such as ``'1+2i+3j+4k'`` does not say which algebra it lives
++in, ``Hy.parse`` (like ``Hy.from_array``, ``Hy.units``, ``Hy.random``
++and ``Hy.from_matrix``) takes a ``signs=`` argument:
++
++.. code:: ipython3
++
++    >>> Hy.parse('1+2i+3j+4k', signs="split-quaternion")
++
++
++
++
++.. parsed-literal::
++
++    Hy(Hy('1', '2'), Hy('3', '4'), mu=1)
++
++
++
++Matrices and other packages
++~~~~~~~~~~~~~~~~~~~~~~~~~~~
++
++The split-quaternions are isomorphic to the 2x2 real matrices, and
++``to_matrix()`` still gives a genuine homomorphism at ranks 1 and 2 for
++any signature. A matrix does not record its signature, so read it back
++with the matching ``signs=``:
++
++.. code:: ipython3
++
++    >>> import numpy as np
++    >>> sa, sb = Hy.random(signs="split-quaternion", seed=10), Hy.random(signs="split-quaternion", seed=11)
++    >>> np.array_equal(np.dot(sa.to_matrix(), sb.to_matrix()), (sa * sb).to_matrix())
++
++
++
++
++.. parsed-literal::
++
++    True
++
++
++
++.. code:: ipython3
++
++    >>> Hy.from_matrix(sa.to_matrix(), signs="split-quaternion") == sa
++
++
++
++
++.. parsed-literal::
++
++    True
++
++
++
++The conversions to the other quaternion packages, and ``complex()``,
++only make sense for the classical algebras, so they reject anything
++else:
++
++.. code:: ipython3
++
++    >>> try:
++    ...     sa.to_sympy()
++    ... except ValueError as e:
++    ...     print(e)
++
++
++.. parsed-literal::
++
++    cannot convert a Hy with signs ('-1', '1') to a sympy Quaternion; only ordinary complex/quaternion values (every mu equal to -1) can be converted
++
+ Interoperability with Other Quaternion Packages
+ -----------------------------------------------
+ 
+diff --git a/notebooks/hyprat_examples.ipynb b/notebooks/hyprat_examples.ipynb
+index 2aa8229..8e595f7 100644
+--- a/notebooks/hyprat_examples.ipynb
++++ b/notebooks/hyprat_examples.ipynb
+@@ -1372,6 +1372,209 @@
+     "    print(\"Hy.from_array(['1+2j', '3']) raised ValueError:\", e)\n"
+    ]
+   },
++  {
++   "cell_type": "markdown",
++   "id": "60104a01",
++   "metadata": {},
++   "source": [
++    "### Split-hypercomplex numbers: the `mu` parameter and `signs=`\n",
++    "\n",
++    "Each doubling step of the Cayley-Dickson construction has a nonzero rational parameter `mu`, entering the product as `(a, b)(c, d) = (a c + mu conj(d) b, d a + b conj(c))`. The default, `mu = -1`, is the classical tower used everywhere above. `mu = +1` at a step gives the *split* version of that step (split-complex numbers, split-quaternions, split-octonions, ...), and any other nonzero rational gives a generalized algebra.\n",
++    "\n",
++    "`Hy(real, imag, mu=...)` sets `mu` for the top level; `some_hy.signs` is the full signature, one `mu` per level from the lowest up. The factory methods take `signs=` (a tuple, or a preset name such as `\"split-quaternion\"`)."
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 27,
++   "id": "ed6ffa19",
++   "metadata": {
++    "execution": {
++     "iopub.execute_input": "2026-10-01T02:13:28.323061Z",
++     "iopub.status.busy": "2026-10-01T02:13:28.322363Z",
++     "iopub.status.idle": "2026-10-01T02:13:28.330125Z",
++     "shell.execute_reply": "2026-10-01T02:13:28.329009Z"
++    }
++   },
++   "outputs": [
++    {
++     "name": "stdout",
++     "output_type": "stream",
++     "text": [
++      "sc_j * sc_j = Hy('1', '0', mu=1)    # j*j is +1, not -1\n",
++      "sc_j.signs = (Fraction(1, 1),)\n",
++      "Hy.SPLIT_COMPLEX, Hy.SPLIT_QUATERNION, Hy.SPLIT_OCTONION = ((1,), (-1, 1), (-1, -1, 1))\n",
++      "\n",
++      "i*i = (-1)\n",
++      "j*j = (1)\n",
++      "k*k = (1)\n",
++      "su['i'] * su['j'] == su['k'] = True\n"
++     ]
++    }
++   ],
++   "source": [
++    "sc_j = Hy(0, 1, mu=1)                       # split-complex j\n",
++    "print(f\"{sc_j * sc_j = }    # j*j is +1, not -1\")\n",
++    "print(f\"{sc_j.signs = }\")\n",
++    "print(f\"{Hy.SPLIT_COMPLEX, Hy.SPLIT_QUATERNION, Hy.SPLIT_OCTONION = }\")\n",
++    "\n",
++    "# The quaternion units: i*i = -1, but j*j = k*k = +1 (the split-quaternions)\n",
++    "su = Hy.units(signs=\"split-quaternion\")\n",
++    "print()\n",
++    "for name in (\"i\", \"j\", \"k\"):\n",
++    "    print(f\"{name}*{name} = {su[name] * su[name]}\")\n",
++    "print(f\"{su['i'] * su['j'] == su['k'] = }\")"
++   ]
++  },
++  {
++   "cell_type": "markdown",
++   "id": "9889b5b4",
++   "metadata": {},
++   "source": [
++    "The unit **labels** are positional (they name a place in the Cayley-Dickson tower), so they do not change with `mu`; what changes is what each unit squares to. For the split-octonions, `i`, `j`, `k` square to `-1` and `L`, `iL`, `jL`, `kL` to `+1`. `Hy.unit_square(index, signs)` computes this without building anything."
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 28,
++   "id": "afe7822e",
++   "metadata": {
++    "execution": {
++     "iopub.execute_input": "2026-10-01T02:13:28.332396Z",
++     "iopub.status.busy": "2026-10-01T02:13:28.331666Z",
++     "iopub.status.idle": "2026-10-01T02:13:28.340227Z",
++     "shell.execute_reply": "2026-10-01T02:13:28.339170Z"
++    }
++   },
++   "outputs": [
++    {
++     "name": "stdout",
++     "output_type": "stream",
++     "text": [
++      "i*i = (-1)\n",
++      "j*j = (-1)\n",
++      "k*k = (-1)\n",
++      "L*L = (1)\n",
++      "iL*iL = (1)\n",
++      "jL*jL = (1)\n",
++      "kL*kL = (1)\n",
++      "\n",
++      "Hy.unit_square for indices 0..7: [1, -1, -1, -1, 1, 1, 1, 1]\n"
++     ]
++    }
++   ],
++   "source": [
++    "suo = Hy.units(signs=\"split-octonion\")\n",
++    "for name in (\"i\", \"j\", \"k\", \"L\", \"iL\", \"jL\", \"kL\"):\n",
++    "    print(f\"{name}*{name} = {suo[name] * suo[name]}\")\n",
++    "print()\n",
++    "print(\"Hy.unit_square for indices 0..7:\", [int(Hy.unit_square(n, \"split-octonion\")) for n in range(8)])"
++   ]
++  },
++  {
++   "cell_type": "markdown",
++   "id": "d4baea7b",
++   "metadata": {},
++   "source": [
++    "With a positive `mu` somewhere the quadratic form is *indefinite*: `norm_squared()` (also still available as `norm()`) can be negative or zero for a nonzero value. A nonzero value with `norm_squared() == 0` is *null*: a zero divisor with no inverse. `abs()` is the square root of `norm_squared()`, so it raises `ValueError` when the form is negative."
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 29,
++   "id": "a4b11376",
++   "metadata": {
++    "execution": {
++     "iopub.execute_input": "2026-10-01T02:13:28.341962Z",
++     "iopub.status.busy": "2026-10-01T02:13:28.341774Z",
++     "iopub.status.idle": "2026-10-01T02:13:28.349769Z",
++     "shell.execute_reply": "2026-10-01T02:13:28.348706Z"
++    }
++   },
++   "outputs": [
++    {
++     "name": "stdout",
++     "output_type": "stream",
++     "text": [
++      "sc_p * sc_m = Hy('0', '0', mu=1)    sc_p.is_null() = True    sc_p.norm_squared() = Fraction(0, 1)\n",
++      "inverse of a null element raises ZeroDivisionError: hypercomplex value has zero norm (it is a nonzero null element of a split algebra); not invertible\n",
++      "abs(Hy(5, 3, mu=1)) = 4.0\n",
++      "abs() with a negative form raises ValueError: norm_squared() is negative (-16), so abs() is undefined; use norm_squared() for the indefinite quadratic form\n",
++      "g.norm_squared() = Fraction(2, 1)    g.inverse() = Hy('1', '-1/2', mu=2)\n"
++     ]
++    }
++   ],
++   "source": [
++    "sc_p, sc_m = Hy(1, 1, mu=1), Hy(1, -1, mu=1)\n",
++    "print(f\"{sc_p * sc_m = }    {sc_p.is_null() = }    {sc_p.norm_squared() = }\")\n",
++    "\n",
++    "try:\n",
++    "    sc_p.inverse()\n",
++    "except ZeroDivisionError as e:\n",
++    "    print(\"inverse of a null element raises ZeroDivisionError:\", e)\n",
++    "\n",
++    "print(f\"{abs(Hy(5, 3, mu=1)) = }\")\n",
++    "try:\n",
++    "    abs(Hy(3, 5, mu=1))\n",
++    "except ValueError as e:\n",
++    "    print(\"abs() with a negative form raises ValueError:\", e)\n",
++    "\n",
++    "# Any nonzero rational mu works. With mu = 2 (not a rational square),\n",
++    "# a**2 - 2*b**2 is never 0 for nonzero rationals, so no null elements:\n",
++    "g = Hy(2, 1, mu=2)\n",
++    "print(f\"{g.norm_squared() = }    {g.inverse() = }\")"
++   ]
++  },
++  {
++   "cell_type": "markdown",
++   "id": "672d48a0",
++   "metadata": {},
++   "source": [
++    "Values of different signatures never combine: arithmetic raises `ValueError` and `==` is just `False`, while plain numbers mix freely. `str` is the same in every algebra and `repr` shows `mu` only when it is not `-1`; `Hy.parse` needs `signs=` to say which algebra a string lives in. The regular-representation matrices still work (they are genuine homomorphisms at rank 1-2), and are read back with the matching `signs=`."
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 30,
++   "id": "184999cb",
++   "metadata": {
++    "execution": {
++     "iopub.execute_input": "2026-10-01T02:13:28.351650Z",
++     "iopub.status.busy": "2026-10-01T02:13:28.351025Z",
++     "iopub.status.idle": "2026-10-01T02:13:28.418908Z",
++     "shell.execute_reply": "2026-10-01T02:13:28.417725Z"
++    }
++   },
++   "outputs": [
++    {
++     "name": "stdout",
++     "output_type": "stream",
++     "text": [
++      "Hy(1, 2, mu=1) + 3 = Hy('4', '2', mu=1)\n",
++      "mixing signatures raises ValueError: incompatible signatures: cannot combine a value with signs ('1',) and one with signs ('-1',)\n",
++      "Hy(1, 2, mu=1) == Hy(1, 2) = False\n",
++      "Hy.parse('1+2i+3j+4k', signs='split-quaternion') = Hy(Hy('1', '2'), Hy('3', '4'), mu=1)\n",
++      "matrix homomorphism for split-quaternions: True\n",
++      "from_matrix round trip: True\n"
++     ]
++    }
++   ],
++   "source": [
++    "print(f\"{Hy(1, 2, mu=1) + 3 = }\")\n",
++    "try:\n",
++    "    Hy(1, 2, mu=1) + Hy(1, 2)\n",
++    "except ValueError as e:\n",
++    "    print(\"mixing signatures raises ValueError:\", e)\n",
++    "print(f\"{Hy(1, 2, mu=1) == Hy(1, 2) = }\")\n",
++    "print(f\"{Hy.parse('1+2i+3j+4k', signs='split-quaternion') = }\")\n",
++    "\n",
++    "import numpy as np\n",
++    "sa, sb = Hy.random(signs=\"split-quaternion\", seed=50), Hy.random(signs=\"split-quaternion\", seed=51)\n",
++    "print(\"matrix homomorphism for split-quaternions:\",\n",
++    "      np.array_equal(np.dot(sa.to_matrix(), sb.to_matrix()), (sa * sb).to_matrix()))\n",
++    "print(\"from_matrix round trip:\", Hy.from_matrix(sa.to_matrix(), signs=\"split-quaternion\") == sa)"
++   ]
++  },
+   {
+    "cell_type": "markdown",
+    "id": "f65ec30d",
+diff --git a/notebooks/usage.ipynb b/notebooks/usage.ipynb
+index fc74db7..456a9d6 100644
+--- a/notebooks/usage.ipynb
++++ b/notebooks/usage.ipynb
+@@ -1317,6 +1317,660 @@
+     "vector matrices), which sidestep this associativity obstruction."
+    ]
+   },
++  {
++   "cell_type": "markdown",
++   "id": "815ae93f",
++   "metadata": {},
++   "source": [
++    "## Split-hypercomplex numbers and other signatures\n",
++    "\n",
++    "Each doubling step of the Cayley-Dickson construction has a parameter `mu`, a nonzero rational, that enters the product as\n",
++    "\n",
++    "```\n",
++    "(a, b)(c, d) = (a c + mu conj(d) b,  d a + b conj(c))\n",
++    "```\n",
++    "\n",
++    "With `mu = -1` (the default, and what every example above uses) the tower is the classical one: complex numbers, quaternions, octonions, and so on. A step with `mu = +1` is the *split* version of that step, and any other nonzero rational gives the corresponding generalized algebra.\n",
++    "\n",
++    "`Hy(real, imag, mu=...)` sets `mu` for the **top** level of the new value; its components already carry the lower levels. The full *signature* of a value, one `mu` per level from the lowest up, is `some_hy.signs`, and the top one is `some_hy.mu`."
++   ]
++  },
++  {
++   "cell_type": "markdown",
++   "id": "ec48a06b",
++   "metadata": {},
++   "source": [
++    "### Split-complex numbers\n",
++    "\n",
++    "A single step with `mu = +1` gives the split-complex numbers, where `j * j` is `+1` instead of `-1`."
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 33,
++   "id": "666018be",
++   "metadata": {
++    "execution": {
++     "iopub.execute_input": "2026-10-01T02:13:27.150896Z",
++     "iopub.status.busy": "2026-10-01T02:13:27.150375Z",
++     "iopub.status.idle": "2026-10-01T02:13:27.156733Z",
++     "shell.execute_reply": "2026-10-01T02:13:27.155908Z"
++    }
++   },
++   "outputs": [
++    {
++     "data": {
++      "text/plain": [
++       "Hy('1', '0', mu=1)"
++      ]
++     },
++     "execution_count": 33,
++     "metadata": {},
++     "output_type": "execute_result"
++    }
++   ],
++   "source": [
++    ">>> js = Hy(0, 1, mu=1)\n",
++    ">>> js * js"
++   ]
++  },
++  {
++   "cell_type": "markdown",
++   "id": "5ddcad3b",
++   "metadata": {},
++   "source": [
++    "`repr` shows `mu` only when it is not the default `-1`, so the output above can be pasted back in to rebuild the value. `str` is the same in every algebra.\n",
++    "\n",
++    "The quadratic form is no longer a sum of squares. It is *indefinite*, so a nonzero value can have `norm_squared()` equal to zero. Such a value is *null*, and is a zero divisor:"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 34,
++   "id": "a537e374",
++   "metadata": {
++    "execution": {
++     "iopub.execute_input": "2026-10-01T02:13:27.158471Z",
++     "iopub.status.busy": "2026-10-01T02:13:27.157932Z",
++     "iopub.status.idle": "2026-10-01T02:13:27.162961Z",
++     "shell.execute_reply": "2026-10-01T02:13:27.162168Z"
++    }
++   },
++   "outputs": [
++    {
++     "data": {
++      "text/plain": [
++       "(Hy('0', '0', mu=1), True, Fraction(0, 1))"
++      ]
++     },
++     "execution_count": 34,
++     "metadata": {},
++     "output_type": "execute_result"
++    }
++   ],
++   "source": [
++    ">>> n_plus, n_minus = Hy(1, 1, mu=1), Hy(1, -1, mu=1)\n",
++    ">>> n_plus * n_minus, n_plus.is_null(), n_plus.norm_squared()"
++   ]
++  },
++  {
++   "cell_type": "markdown",
++   "id": "76b99b10",
++   "metadata": {},
++   "source": [
++    "Null elements have no inverse, and asking for one raises `ZeroDivisionError`:"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 35,
++   "id": "8bf8823e",
++   "metadata": {
++    "execution": {
++     "iopub.execute_input": "2026-10-01T02:13:27.164637Z",
++     "iopub.status.busy": "2026-10-01T02:13:27.164098Z",
++     "iopub.status.idle": "2026-10-01T02:13:27.168358Z",
++     "shell.execute_reply": "2026-10-01T02:13:27.167490Z"
++    }
++   },
++   "outputs": [
++    {
++     "name": "stdout",
++     "output_type": "stream",
++     "text": [
++      "hypercomplex value has zero norm (it is a nonzero null element of a split algebra); not invertible\n"
++     ]
++    }
++   ],
++   "source": [
++    ">>> try:\n",
++    "...     n_plus.inverse()\n",
++    "... except ZeroDivisionError as e:\n",
++    "...     print(e)"
++   ]
++  },
++  {
++   "cell_type": "markdown",
++   "id": "03fb8491",
++   "metadata": {},
++   "source": [
++    "### Split-quaternions and split-octonions\n",
++    "\n",
++    "Which levels are split is given by the signature, ordered from the lowest level to the highest. The common cases have named presets, usable as `signs=\"split-quaternion\"` or through the class constants:"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 36,
++   "id": "6451f65a",
++   "metadata": {
++    "execution": {
++     "iopub.execute_input": "2026-10-01T02:13:27.169643Z",
++     "iopub.status.busy": "2026-10-01T02:13:27.169503Z",
++     "iopub.status.idle": "2026-10-01T02:13:27.174157Z",
++     "shell.execute_reply": "2026-10-01T02:13:27.173341Z"
++    }
++   },
++   "outputs": [
++    {
++     "data": {
++      "text/plain": [
++       "((1,), (-1, 1), (-1, -1, 1))"
++      ]
++     },
++     "execution_count": 36,
++     "metadata": {},
++     "output_type": "execute_result"
++    }
++   ],
++   "source": [
++    ">>> Hy.SPLIT_COMPLEX, Hy.SPLIT_QUATERNION, Hy.SPLIT_OCTONION"
++   ]
++  },
++  {
++   "cell_type": "markdown",
++   "id": "0e001e41",
++   "metadata": {},
++   "source": [
++    "The split-quaternions are `signs=(-1, 1)`: `i` squares to `-1`, while `j` and `k` square to `+1`."
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 37,
++   "id": "fcc3cf98",
++   "metadata": {
++    "execution": {
++     "iopub.execute_input": "2026-10-01T02:13:27.175483Z",
++     "iopub.status.busy": "2026-10-01T02:13:27.175337Z",
++     "iopub.status.idle": "2026-10-01T02:13:27.180426Z",
++     "shell.execute_reply": "2026-10-01T02:13:27.179483Z"
++    }
++   },
++   "outputs": [
++    {
++     "data": {
++      "text/plain": [
++       "{'i': '(-1)', 'j': '(1)', 'k': '(1)'}"
++      ]
++     },
++     "execution_count": 37,
++     "metadata": {},
++     "output_type": "execute_result"
++    }
++   ],
++   "source": [
++    ">>> su = Hy.units(signs=\"split-quaternion\")\n",
++    ">>> {name: str(su[name] * su[name]) for name in (\"i\", \"j\", \"k\")}"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 38,
++   "id": "f90770ea",
++   "metadata": {
++    "execution": {
++     "iopub.execute_input": "2026-10-01T02:13:27.181756Z",
++     "iopub.status.busy": "2026-10-01T02:13:27.181614Z",
++     "iopub.status.idle": "2026-10-01T02:13:27.186282Z",
++     "shell.execute_reply": "2026-10-01T02:13:27.185432Z"
++    }
++   },
++   "outputs": [
++    {
++     "data": {
++      "text/plain": [
++       "(True, True)"
++      ]
++     },
++     "execution_count": 38,
++     "metadata": {},
++     "output_type": "execute_result"
++    }
++   ],
++   "source": [
++    ">>> si, sj, sk = su[\"i\"], su[\"j\"], su[\"k\"]\n",
++    ">>> si * sj == sk, sj * si == -sk"
++   ]
++  },
++  {
++   "cell_type": "markdown",
++   "id": "5e2f82da",
++   "metadata": {},
++   "source": [
++    "The unit **labels** are positional. They name a place in the Cayley-Dickson tower (so `i * j == k` and `iL == i * L` hold in every signature) and do not change with `mu`. What changes is what each unit squares to. For the split-octonions, `signs=(-1, -1, 1)`, `i`, `j`, `k` square to `-1` and the four units involving the top level, `L`, `iL`, `jL`, `kL`, square to `+1`:"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 39,
++   "id": "19ddc280",
++   "metadata": {
++    "execution": {
++     "iopub.execute_input": "2026-10-01T02:13:27.187899Z",
++     "iopub.status.busy": "2026-10-01T02:13:27.187396Z",
++     "iopub.status.idle": "2026-10-01T02:13:27.193484Z",
++     "shell.execute_reply": "2026-10-01T02:13:27.192629Z"
++    }
++   },
++   "outputs": [
++    {
++     "data": {
++      "text/plain": [
++       "{'i': '(-1)',\n",
++       " 'j': '(-1)',\n",
++       " 'k': '(-1)',\n",
++       " 'L': '(1)',\n",
++       " 'iL': '(1)',\n",
++       " 'jL': '(1)',\n",
++       " 'kL': '(1)'}"
++      ]
++     },
++     "execution_count": 39,
++     "metadata": {},
++     "output_type": "execute_result"
++    }
++   ],
++   "source": [
++    ">>> suo = Hy.units(signs=\"split-octonion\")\n",
++    ">>> {name: str(suo[name] * suo[name]) for name in (\"i\", \"j\", \"k\", \"L\", \"iL\", \"jL\", \"kL\")}"
++   ]
++  },
++  {
++   "cell_type": "markdown",
++   "id": "c8ee6787",
++   "metadata": {},
++   "source": [
++    "`Hy.unit_square(index, signs)` gives the same answer without building anything. The index is the position of the unit in `to_array()` order, so `0` is the real unit `1`:"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 40,
++   "id": "34767585",
++   "metadata": {
++    "execution": {
++     "iopub.execute_input": "2026-10-01T02:13:27.194748Z",
++     "iopub.status.busy": "2026-10-01T02:13:27.194608Z",
++     "iopub.status.idle": "2026-10-01T02:13:27.198907Z",
++     "shell.execute_reply": "2026-10-01T02:13:27.198103Z"
++    }
++   },
++   "outputs": [
++    {
++     "data": {
++      "text/plain": [
++       "[1, -1, -1, -1, 1, 1, 1, 1]"
++      ]
++     },
++     "execution_count": 40,
++     "metadata": {},
++     "output_type": "execute_result"
++    }
++   ],
++   "source": [
++    ">>> [int(Hy.unit_square(n, \"split-octonion\")) for n in range(8)]"
++   ]
++  },
++  {
++   "cell_type": "markdown",
++   "id": "927c9fb1",
++   "metadata": {},
++   "source": [
++    "### Any nonzero rational `mu`\n",
++    "\n",
++    "`mu` is not limited to `+1` and `-1`. With `mu = 2`, `j * j` is `2`, and because `2` is not a rational square the form `a**2 - 2*b**2` never vanishes on a nonzero value, so every nonzero value is invertible:"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 41,
++   "id": "54d07601",
++   "metadata": {
++    "execution": {
++     "iopub.execute_input": "2026-10-01T02:13:27.200584Z",
++     "iopub.status.busy": "2026-10-01T02:13:27.200022Z",
++     "iopub.status.idle": "2026-10-01T02:13:27.204789Z",
++     "shell.execute_reply": "2026-10-01T02:13:27.203949Z"
++    }
++   },
++   "outputs": [
++    {
++     "data": {
++      "text/plain": [
++       "(Fraction(2, 1), Hy('1', '-1/2', mu=2), Hy('1', '0', mu=2))"
++      ]
++     },
++     "execution_count": 41,
++     "metadata": {},
++     "output_type": "execute_result"
++    }
++   ],
++   "source": [
++    ">>> xg = Hy(2, 1, mu=2)\n",
++    ">>> xg.norm_squared(), xg.inverse(), xg * xg.inverse()"
++   ]
++  },
++  {
++   "cell_type": "markdown",
++   "id": "f73c3187",
++   "metadata": {},
++   "source": [
++    "### Norms\n",
++    "\n",
++    "`abs()` is the square root of `norm_squared()`, so it raises `ValueError` when the form is negative and there is no real square root:"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 42,
++   "id": "1cd8ce30",
++   "metadata": {
++    "execution": {
++     "iopub.execute_input": "2026-10-01T02:13:27.206151Z",
++     "iopub.status.busy": "2026-10-01T02:13:27.205997Z",
++     "iopub.status.idle": "2026-10-01T02:13:27.210373Z",
++     "shell.execute_reply": "2026-10-01T02:13:27.209511Z"
++    }
++   },
++   "outputs": [
++    {
++     "data": {
++      "text/plain": [
++       "(Fraction(16, 1), 4.0)"
++      ]
++     },
++     "execution_count": 42,
++     "metadata": {},
++     "output_type": "execute_result"
++    }
++   ],
++   "source": [
++    ">>> Hy(5, 3, mu=1).norm_squared(), abs(Hy(5, 3, mu=1))"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 43,
++   "id": "fd70290b",
++   "metadata": {
++    "execution": {
++     "iopub.execute_input": "2026-10-01T02:13:27.211642Z",
++     "iopub.status.busy": "2026-10-01T02:13:27.211503Z",
++     "iopub.status.idle": "2026-10-01T02:13:27.215512Z",
++     "shell.execute_reply": "2026-10-01T02:13:27.214668Z"
++    }
++   },
++   "outputs": [
++    {
++     "name": "stdout",
++     "output_type": "stream",
++     "text": [
++      "norm_squared() is negative (-16), so abs() is undefined; use norm_squared() for the indefinite quadratic form\n"
++     ]
++    }
++   ],
++   "source": [
++    ">>> try:\n",
++    "...     abs(Hy(3, 5, mu=1))\n",
++    "... except ValueError as e:\n",
++    "...     print(e)"
++   ]
++  },
++  {
++   "cell_type": "markdown",
++   "id": "10ac7e3a",
++   "metadata": {},
++   "source": [
++    "### Mixing, equality and parsing\n",
++    "\n",
++    "Plain numbers mix freely with any signature, but values from different algebras never combine. Arithmetic raises `ValueError`, while `==` is just `False`:"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 44,
++   "id": "c7110b15",
++   "metadata": {
++    "execution": {
++     "iopub.execute_input": "2026-10-01T02:13:27.216768Z",
++     "iopub.status.busy": "2026-10-01T02:13:27.216629Z",
++     "iopub.status.idle": "2026-10-01T02:13:27.220924Z",
++     "shell.execute_reply": "2026-10-01T02:13:27.220115Z"
++    }
++   },
++   "outputs": [
++    {
++     "data": {
++      "text/plain": [
++       "Hy('4', '2', mu=1)"
++      ]
++     },
++     "execution_count": 44,
++     "metadata": {},
++     "output_type": "execute_result"
++    }
++   ],
++   "source": [
++    ">>> Hy(1, 2, mu=1) + 3"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 45,
++   "id": "a7eb73f7",
++   "metadata": {
++    "execution": {
++     "iopub.execute_input": "2026-10-01T02:13:27.222668Z",
++     "iopub.status.busy": "2026-10-01T02:13:27.222116Z",
++     "iopub.status.idle": "2026-10-01T02:13:27.226315Z",
++     "shell.execute_reply": "2026-10-01T02:13:27.225478Z"
++    }
++   },
++   "outputs": [
++    {
++     "name": "stdout",
++     "output_type": "stream",
++     "text": [
++      "incompatible signatures: cannot combine a value with signs ('1',) and one with signs ('-1',)\n"
++     ]
++    }
++   ],
++   "source": [
++    ">>> try:\n",
++    "...     Hy(1, 2, mu=1) + Hy(1, 2)\n",
++    "... except ValueError as e:\n",
++    "...     print(e)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 46,
++   "id": "f9c0f6dc",
++   "metadata": {
++    "execution": {
++     "iopub.execute_input": "2026-10-01T02:13:27.227957Z",
++     "iopub.status.busy": "2026-10-01T02:13:27.227466Z",
++     "iopub.status.idle": "2026-10-01T02:13:27.231862Z",
++     "shell.execute_reply": "2026-10-01T02:13:27.231080Z"
++    }
++   },
++   "outputs": [
++    {
++     "data": {
++      "text/plain": [
++       "False"
++      ]
++     },
++     "execution_count": 46,
++     "metadata": {},
++     "output_type": "execute_result"
++    }
++   ],
++   "source": [
++    ">>> Hy(1, 2, mu=1) == Hy(1, 2)"
++   ]
++  },
++  {
++   "cell_type": "markdown",
++   "id": "7d05990d",
++   "metadata": {},
++   "source": [
++    "Since text such as `'1+2i+3j+4k'` does not say which algebra it lives in, `Hy.parse` (like `Hy.from_array`, `Hy.units`, `Hy.random` and `Hy.from_matrix`) takes a `signs=` argument:"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 47,
++   "id": "7fdef3f3",
++   "metadata": {
++    "execution": {
++     "iopub.execute_input": "2026-10-01T02:13:27.233150Z",
++     "iopub.status.busy": "2026-10-01T02:13:27.233000Z",
++     "iopub.status.idle": "2026-10-01T02:13:27.237444Z",
++     "shell.execute_reply": "2026-10-01T02:13:27.236589Z"
++    }
++   },
++   "outputs": [
++    {
++     "data": {
++      "text/plain": [
++       "Hy(Hy('1', '2'), Hy('3', '4'), mu=1)"
++      ]
++     },
++     "execution_count": 47,
++     "metadata": {},
++     "output_type": "execute_result"
++    }
++   ],
++   "source": [
++    ">>> Hy.parse('1+2i+3j+4k', signs=\"split-quaternion\")"
++   ]
++  },
++  {
++   "cell_type": "markdown",
++   "id": "e0281d1f",
++   "metadata": {},
++   "source": [
++    "### Matrices and other packages\n",
++    "\n",
++    "The split-quaternions are isomorphic to the 2x2 real matrices, and `to_matrix()` still gives a genuine homomorphism at ranks 1 and 2 for any signature. A matrix does not record its signature, so read it back with the matching `signs=`:"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 48,
++   "id": "38bd727a",
++   "metadata": {
++    "execution": {
++     "iopub.execute_input": "2026-10-01T02:13:27.238710Z",
++     "iopub.status.busy": "2026-10-01T02:13:27.238568Z",
++     "iopub.status.idle": "2026-10-01T02:13:27.304460Z",
++     "shell.execute_reply": "2026-10-01T02:13:27.303461Z"
++    }
++   },
++   "outputs": [
++    {
++     "data": {
++      "text/plain": [
++       "True"
++      ]
++     },
++     "execution_count": 48,
++     "metadata": {},
++     "output_type": "execute_result"
++    }
++   ],
++   "source": [
++    ">>> import numpy as np\n",
++    ">>> sa, sb = Hy.random(signs=\"split-quaternion\", seed=10), Hy.random(signs=\"split-quaternion\", seed=11)\n",
++    ">>> np.array_equal(np.dot(sa.to_matrix(), sb.to_matrix()), (sa * sb).to_matrix())"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 49,
++   "id": "c765f6ec",
++   "metadata": {
++    "execution": {
++     "iopub.execute_input": "2026-10-01T02:13:27.306453Z",
++     "iopub.status.busy": "2026-10-01T02:13:27.305784Z",
++     "iopub.status.idle": "2026-10-01T02:13:27.310854Z",
++     "shell.execute_reply": "2026-10-01T02:13:27.310038Z"
++    }
++   },
++   "outputs": [
++    {
++     "data": {
++      "text/plain": [
++       "True"
++      ]
++     },
++     "execution_count": 49,
++     "metadata": {},
++     "output_type": "execute_result"
++    }
++   ],
++   "source": [
++    ">>> Hy.from_matrix(sa.to_matrix(), signs=\"split-quaternion\") == sa"
++   ]
++  },
++  {
++   "cell_type": "markdown",
++   "id": "6a5e8a56",
++   "metadata": {},
++   "source": [
++    "The conversions to the other quaternion packages, and `complex()`, only make sense for the classical algebras, so they reject anything else:"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 50,
++   "id": "314f21e5",
++   "metadata": {
++    "execution": {
++     "iopub.execute_input": "2026-10-01T02:13:27.312575Z",
++     "iopub.status.busy": "2026-10-01T02:13:27.311993Z",
++     "iopub.status.idle": "2026-10-01T02:13:27.544232Z",
++     "shell.execute_reply": "2026-10-01T02:13:27.543272Z"
++    }
++   },
++   "outputs": [
++    {
++     "name": "stdout",
++     "output_type": "stream",
++     "text": [
++      "cannot convert a Hy with signs ('-1', '1') to a sympy Quaternion; only ordinary complex/quaternion values (every mu equal to -1) can be converted\n"
++     ]
++    }
++   ],
++   "source": [
++    ">>> try:\n",
++    "...     sa.to_sympy()\n",
++    "... except ValueError as e:\n",
++    "...     print(e)"
++   ]
++  },
+   {
+    "cell_type": "markdown",
+    "id": "062f4447",
+diff --git a/src/hyprat/hypercomplex.py b/src/hyprat/hypercomplex.py
+index 5f674f7..a9aaf69 100644
+--- a/src/hyprat/hypercomplex.py
++++ b/src/hyprat/hypercomplex.py
+@@ -81,6 +81,71 @@ coefficients (ints, floats, ``Fraction``s and/or fraction strings like
+     >>> Hy(Hy(1, 2), Hy(3, 4)).to_array(as_str=True)
+     ['1', '2', '3', '4']
+ 
++Signatures: split-complex numbers, split-quaternions, split-octonions, ...
++---------------------------------------------------------------------------
++
++Every doubling step of the Cayley-Dickson construction carries a nonzero
++rational parameter ``mu``::
++
++    (a, b)(c, d) = (a c + mu conj(d) b,  d a + b conj(c))
++
++``mu = -1`` -- the default, so everything above is unchanged -- gives the
++classical tower.  ``mu = +1`` at a step gives the *split* version of that
++step, and any other nonzero rational gives the corresponding generalized
++algebra (for instance the quaternion algebra ``(-1, 2)``)::
++
++    split-complex         signs (1,)            j*j = +1
++    split-quaternions     signs (-1, 1)         i*i = -1,  j*j = k*k = +1
++    split-octonions       signs (-1, -1, 1)     i, j, k -> -1;  L, iL, jL, kL -> +1
++
++``Hy(real, imag, mu=...)`` sets the ``mu`` of the *top* doubling level
++(default ``-1``); each component already carries its own lower levels, so
++the full signature -- one ``mu`` per level, lowest first -- is
++``some_hy.signs`` and the top one is ``some_hy.mu``.  The factory methods
++(``Hy.units``, ``Hy.random``, ``Hy.from_array``, ``Hy.parse``,
++``Hy.from_matrix``) take a ``signs=`` tuple, or the name of a preset
++(``"split-complex"``, ``"split-quaternion"``, ``"split-octonion"``,
++``"complex"``, ``"quaternion"``, ``"octonion"``, ``"sedenion"``; also
++available as ``Hy.SPLIT_QUATERNION`` and so on)::
++
++    >>> j = Hy(0, 1, mu=1)               # the split-complex j
++    >>> str(j * j)
++    '(1)'
++    >>> p, m = Hy(1, 1, mu=1), Hy(1, -1, mu=1)
++    >>> str(p * m)                       # zero divisors: (1+j)(1-j) == 0
++    '(0)'
++    >>> p.is_null()
++    True
++    >>> Hy.SPLIT_QUATERNION
++    (-1, 1)
++    >>> u = Hy.units(signs="split-quaternion")
++    >>> [str(u[name] * u[name]) for name in ("i", "j", "k")]
++    ['(-1)', '(1)', '(1)']
++    >>> repr(j)                          # repr shows mu only when it isn't -1
++    "Hy('0', '1', mu=1)"
++
++The unit *labels* are positional -- they name a place in the Cayley-Dickson
++tower (``i*j == k`` and ``iL == i*L`` hold in every signature) -- so they
++do not change with ``mu``; what changes is what each unit squares to (see
++``Hy.unit_square``).  ``str()`` is therefore the same in every algebra, and
++text read back with ``Hy.parse`` needs ``signs=`` to say which algebra it
++is in.
++
++With a positive ``mu`` somewhere, the quadratic form ``x * conj(x)``
++(``some_hy.norm_squared()``, also still available as ``norm()``) is
++*indefinite*: ``N(a, b) = N(a) - mu N(b)``.  It can be negative or zero for
++a nonzero value, so ``abs(x)`` raises ``ValueError`` when it is negative,
++and a nonzero *null* element (``some_hy.is_null()``) has no inverse -- it
++raises ``ZeroDivisionError``.  The form stays multiplicative through rank
++3, as in every composition algebra, split or not.
++
++Values of different signatures never mix: ``+ - * /`` raise ``ValueError``
++(a lower-rank value embeds into a higher-rank one only when its signature
++is a prefix of the other's), ``==`` is simply ``False``, and plain
++numbers (and text such as ``'1+j'``, read in the other operand's algebra)
++mix freely.  The conversions to other quaternion packages, and
++``complex()``, accept only the classical algebras.
++
+ Interoperability with other quaternion packages
+ ------------------------------------------------
+ 
+@@ -178,6 +243,32 @@ _MISSING = _Missing()
+ 
+ _ScalarLike = (int, float, Fraction, str)
+ 
++# --------------------------------------------------------------------------
++# Cayley-Dickson parameters ("signs").  Every doubling step of the tower
++# carries a nonzero rational parameter mu:
++#
++#     (a, b)(c, d) = (a c + mu * conj(d) b,  d a + b conj(c))
++#
++# mu = -1 (the default) gives the classical tower R, C, H, O, ...; mu = +1
++# at a step gives the *split* version of that step (split-complex numbers,
++# split-quaternions, split-octonions, ...); any other nonzero rational gives
++# the corresponding generalized algebra (e.g. quaternion algebras (-1, 2)).
++# --------------------------------------------------------------------------
++_DEFAULT_MU = Fraction(-1)
++
++# Named signature presets, as tuples ordered from the lowest doubling level
++# to the highest.  Names are matched case-insensitively, with '-', '_' and
++# ' ' interchangeable.
++_SIGN_PRESETS = {
++    "complex": (-1,),
++    "quaternion": (-1, -1),
++    "octonion": (-1, -1, -1),
++    "sedenion": (-1, -1, -1, -1),
++    "split-complex": (1,),
++    "split-quaternion": (-1, 1),
++    "split-octonion": (-1, -1, 1),
++}
++
+ # --------------------------------------------------------------------------
+ # A module-wide default RNG used by Hy.random() whenever the caller doesn't
+ # supply its own random.Random instance or an explicit one-off seed. Call
+@@ -197,37 +288,68 @@ class Hy:
+     hashable.
+     """
+ 
+-    __slots__ = ("_real", "_imag")
++    __slots__ = ("_real", "_imag", "_mu")
++
++    # Named signature presets (tuples of mu values, lowest level first),
++    # usable anywhere a ``signs=`` argument is accepted, either as these
++    # tuples or by name, e.g. ``signs="split-quaternion"``.
++    COMPLEX = (-1,)
++    QUATERNION = (-1, -1)
++    OCTONION = (-1, -1, -1)
++    SEDENION = (-1, -1, -1, -1)
++    SPLIT_COMPLEX = (1,)
++    SPLIT_QUATERNION = (-1, 1)
++    SPLIT_OCTONION = (-1, -1, 1)
+ 
+     # ---------------------------------------------------------------- #
+     # Construction
+     # ---------------------------------------------------------------- #
+-    def __init__(self, real, imag=_MISSING):
++    def __init__(self, real, imag=_MISSING, *, mu=None):
++        mu_c = None if mu is None else _coerce_mu(mu)
+         real_c = _coerce_component(real)
+ 
+         if imag is _MISSING:
+             if isinstance(real_c, Hy):
+                 # Hy(some_hy) is a copy/identity construction: it takes
+                 # on the value of `some_hy` as-is, at whatever rank that
+-                # already is (rather than promoting it one rank higher).
++                # already is (rather than promoting it one rank higher),
++                # and with its own signature.
++                if mu_c is not None and mu_c != real_c._mu:
++                    raise ValueError(
++                        f"cannot change the top-level mu of an existing Hy "
++                        f"(it is {real_c._mu}, but mu={mu_c} was requested); "
++                        "build a new value from its components instead, or "
++                        "use Hy.parse(..., signs=...) / Hy.from_array(..., "
++                        "signs=...)"
++                    )
+                 object.__setattr__(self, "_real", real_c._real)
+                 object.__setattr__(self, "_imag", real_c._imag)
++                object.__setattr__(self, "_mu", real_c._mu)
+                 return
+             imag_c = Fraction(0)
+         else:
+             imag_c = _coerce_component(imag)
+ 
+-        rank = max(_rank(real_c), _rank(imag_c))
+-        object.__setattr__(self, "_real", _embed(real_c, rank))
+-        object.__setattr__(self, "_imag", _embed(imag_c, rank))
++        # The two components must live in the same algebra: the one of
++        # lower rank is embedded into the other, which is only possible if
++        # its signature is a prefix of the other's.
++        sr, si = _signs(real_c), _signs(imag_c)
++        lower = sr if len(sr) >= len(si) else si
++        object.__setattr__(self, "_real", _embed_signs(real_c, lower))
++        object.__setattr__(self, "_imag", _embed_signs(imag_c, lower))
++        object.__setattr__(
++            self, "_mu", _DEFAULT_MU if mu_c is None else mu_c
++        )
+ 
+     @classmethod
+-    def _make(cls, real, imag) -> "Hy":
++    def _make(cls, real, imag, mu=_DEFAULT_MU) -> "Hy":
+         """Internal fast constructor: assumes `real`/`imag` already have
+-        matching rank and skips all normalization. Not for public use."""
++        matching rank and signature and skips all normalization. Not for
++        public use."""
+         obj = object.__new__(cls)
+         object.__setattr__(obj, "_real", real)
+         object.__setattr__(obj, "_imag", imag)
++        object.__setattr__(obj, "_mu", mu)
+         return obj
+ 
+     def __setattr__(self, name, value):
+@@ -257,6 +379,24 @@ class Hy:
+         octonion; etc. (dimension of the algebra is 2**rank)."""
+         return 1 + max(_rank(self._real), _rank(self._imag))
+ 
++    @property
++    def mu(self) -> Fraction:
++        """The Cayley-Dickson parameter of this value's *top* doubling
++        level, a nonzero ``Fraction`` (``-1``, the default, for the
++        classical algebras; ``+1`` for a split step). The squares of the
++        two halves' units are related by ``mu`` through the product
++        ``(a, b)(c, d) = (a c + mu * conj(d) b, d a + b conj(c))``."""
++        return self._mu
++
++    @property
++    def signs(self) -> tuple:
++        """The full signature of this value's algebra: a tuple of ``rank``
++        nonzero ``Fraction``s, one per doubling level, ordered from the
++        lowest level to the highest (so ``signs[-1] == mu``). For the
++        classical algebras every entry is ``-1``; for the split-quaternions
++        it is ``(-1, 1)``."""
++        return _signs(self)
++
+     @property
+     def dimension(self) -> int:
+         """Number of real (Fraction) coordinates: 2**rank."""
+@@ -274,9 +414,43 @@ class Hy:
+         return inverse(self)
+ 
+     def norm(self) -> Fraction:
+-        """The *squared* Euclidean norm, computed exactly as a Fraction."""
++        """The *squared* norm, computed exactly as a Fraction.
++
++        This is the quadratic form ``x * conj(x)`` of the algebra. In the
++        classical algebras (every mu equal to -1) it is the sum of the
++        squares of the real coordinates, and so is never negative; with a
++        positive mu somewhere it is *indefinite* and can be negative or
++        zero for a nonzero value. Identical to :meth:`norm_squared`
++        (which is the clearer name); kept under this name for backward
++        compatibility. For the (float) square root see ``abs(x)``.
++        """
++        return abs2(self)
++
++    def norm_squared(self) -> Fraction:
++        """The exact quadratic form ``x * conj(x)``, a ``Fraction``.
++
++        Recursively, ``N(a, b) = N(a) - mu * N(b)`` with ``N(r) = r*r`` for
++        a rational ``r``; when every mu is ``-1`` this is the usual sum of
++        squares. In a split algebra (or any algebra with a positive mu) it
++        is indefinite: its sign tells you whether a value is *timelike*
++        (positive), *spacelike* (negative) or *null* (zero). Multiplicative
++        (``N(x*y) == N(x)*N(y)``) for ranks 0-3, i.e. for the composition
++        algebras, split or not.
++        """
+         return abs2(self)
+ 
++    def is_null(self) -> bool:
++        """True iff this value is nonzero but has ``norm_squared() == 0``
++        -- a *null* element, which exists only when the norm is
++        indefinite (e.g. ``1 + j`` in the split-complex numbers).
++
++        Null elements are not invertible. For ranks 1-3 (the composition
++        algebras) they are exactly the zero divisors; from rank 4 up there
++        are also zero divisors with nonzero norm, which this does not
++        detect.
++        """
++        return (not _is_zero_val(self)) and abs2(self) == 0
++
+     def is_zero(self) -> bool:
+         return _is_zero_val(self)
+ 
+@@ -286,6 +460,11 @@ class Hy:
+         and every other coordinate is 0. Equivalent to (but cheaper
+         than) checking membership in ``Hy.units(self.rank).values()``.
+ 
++        "Unit" here means *basis unit*, not "invertible element": in a
++        split algebra there are many invertible values that are not
++        units in this sense, and a unit can square to ``+1`` rather than
++        ``-1``.
++
+             >>> Hy(0, 1).is_unit()
+             True
+             >>> Hy(1, 1).is_unit()
+@@ -303,10 +482,18 @@ class Hy:
+         if isinstance(other, Hy):
+             return other
+         if isinstance(other, complex):
++            # A Python complex is an ordinary (mu = -1) complex number.
+             return Hy(Fraction(str(other.real)), Fraction(str(other.imag)))
+         if isinstance(other, _ScalarLike):
+             try:
+-                return Hy(other)
++                if isinstance(other, str):
++                    try:
++                        return Fraction(other)
++                    except ValueError:
++                        # Text such as '1+2j' carries no signature of its
++                        # own, so it is read in *this* value's algebra.
++                        return _parse(other, signs=self.signs, pad=True)
++                return _coerce_component(other)
+             except (TypeError, ValueError):
+                 return NotImplemented
+         return NotImplemented
+@@ -362,15 +549,29 @@ class Hy:
+         return self
+ 
+     def __abs__(self) -> float:
+-        return math.sqrt(float(abs2(self)))
++        """The (float) square root of :meth:`norm_squared`.
++
++        Raises ``ValueError`` when ``norm_squared()`` is negative (only
++        possible when the norm is indefinite, i.e. with a positive mu
++        somewhere in the signature), since there is then no real square
++        root; use :meth:`norm_squared` instead. Returns ``0.0`` for a
++        null element.
++        """
++        n = abs2(self)
++        if n < 0:
++            raise ValueError(
++                f"norm_squared() is negative ({n}), so abs() is undefined; "
++                "use norm_squared() for the indefinite quadratic form"
++            )
++        return math.sqrt(float(n))
+ 
+     def __pow__(self, n):
+         if not isinstance(n, int):
+             return NotImplemented
+         if n == 0:
+-            return _embed(Fraction(1), self.rank)
++            return _embed_signs(Fraction(1), _signs(self))
+         base = self if n > 0 else self.inverse()
+-        result = _embed(Fraction(1), base.rank)
++        result = _embed_signs(Fraction(1), _signs(base))
+         for _ in range(abs(n)):
+             result = mul(result, base)
+         return result
+@@ -406,6 +607,11 @@ class Hy:
+         return 2
+ 
+     def __complex__(self):
++        if self.signs[0] != _DEFAULT_MU:
++            raise ValueError(
++                f"{self!r} is not an ordinary complex number "
++                f"(its first doubling level has mu={self.signs[0]}, not -1)"
++            )
+         flat = _flatten(self)
+         if any(c != 0 for c in flat[2:]):
+             raise ValueError(f"{self!r} is not complex-valued (rank > 1)")
+@@ -426,17 +632,31 @@ class Hy:
+                 return repr(str(x))
+             return repr(x)
+ 
+-        return f"Hy({comp_repr(self._real)}, {comp_repr(self._imag)})"
++        mu_part = ""
++        if self._mu != _DEFAULT_MU:
++            m = self._mu
++            mu_part = f", mu={m.numerator}" if m.denominator == 1 else f", mu={str(m)!r}"
++        return f"Hy({comp_repr(self._real)}, {comp_repr(self._imag)}{mu_part})"
+ 
+     # ---------------------------------------------------------------- #
+     # Parsing
+     # ---------------------------------------------------------------- #
+     @classmethod
+-    def parse(cls, s: str) -> "Hy":
++    def parse(cls, s: str, *, signs=None) -> "Hy":
+         """Parse the kind of string produced by ``str(some_hy)`` -- e.g.
+         ``'(5/2-16/5j)'``, ``'1+2i+3j+4k'``, ``'1-k+2kL'`` -- into a Hy.
++
++        The text itself says nothing about the algebra, so by default
++        the result is read in the classical one (every mu equal to -1).
++        Pass ``signs=`` (a tuple of nonzero rationals ordered from the
++        lowest doubling level to the highest, or a preset name such as
++        ``"split-quaternion"``) to read it in another algebra; its length
++        must equal the rank implied by the text::
++
++            >>> Hy.parse('1+2j+3k', signs="split-quaternion").signs
++            (Fraction(-1, 1), Fraction(1, 1))
+         """
+-        return _parse(s)
++        return _parse(s, signs=signs)
+ 
+     from_string = parse  # convenient alias
+ 
+@@ -459,8 +679,9 @@ class Hy:
+     @classmethod
+     def random(
+         cls,
+-        rank: int,
++        rank: "int | None" = None,
+         *,
++        signs=None,
+         lo: int = -9,
+         hi: int = 9,
+         dmax: int = 6,
+@@ -488,11 +709,16 @@ class Hy:
+           optionally share across several calls) the random stream
+           yourself.
+ 
+-        Raises ``ValueError`` if ``rank`` isn't a positive int, or if both
++        ``signs=`` selects the algebra (a tuple of nonzero rationals,
++        lowest doubling level first, or a preset name such as
++        ``"split-octonion"``); it defaults to the classical one (all
++        ``-1``). If ``rank`` is omitted it is taken from ``len(signs)``.
++
++        Raises ``ValueError`` if ``rank`` isn't a positive int (or can't
++        be determined), if it disagrees with ``signs``, or if both
+         ``rng`` and ``seed`` are given.
+         """
+-        if not isinstance(rank, int) or isinstance(rank, bool) or rank < 1:
+-            raise ValueError(f"rank must be a positive int, got {rank!r}")
++        rank, signs = _resolve_rank_and_signs(rank, signs, min_rank=1)
+         if rng is not None and seed is not None:
+             raise ValueError("pass either `rng` or `seed`, not both")
+         if seed is not None:
+@@ -506,7 +732,7 @@ class Hy:
+         def build(r: int):
+             if r == 0:
+                 return rand_coeff()
+-            return Hy._make(build(r - 1), build(r - 1))
++            return Hy._make(build(r - 1), build(r - 1), signs[r - 1])
+ 
+         return build(rank)
+ 
+@@ -514,7 +740,7 @@ class Hy:
+     # Flat-array conversion
+     # ---------------------------------------------------------------- #
+     @classmethod
+-    def from_array(cls, coeffs) -> "Hy":
++    def from_array(cls, coeffs, *, signs=None) -> "Hy":
+         """Build a Hy from a flat sequence of its ``2**rank`` real
+         coefficients, in the same Cayley-Dickson order used by
+         :meth:`components` / :meth:`to_array` (e.g., for a quaternion:
+@@ -530,6 +756,11 @@ class Hy:
+         ``len(coeffs)`` must be a power of 2 that is >= 2 (2 -> rank 1
+         "complex", 4 -> rank 2 "quaternion", 8 -> rank 3 "octonion", etc.)
+         since every Hy has rank >= 1.
++
++        ``signs=`` selects the algebra the coefficients live in (a tuple
++        of nonzero rationals, lowest doubling level first, or a preset
++        name such as ``"split-quaternion"``); its length must equal the
++        rank. The default is the classical algebra (all ``-1``).
+         """
+         values = list(coeffs)
+         n = len(values)
+@@ -539,8 +770,9 @@ class Hy:
+                 f"and at least 2; got {n}"
+             )
+         rank = n.bit_length() - 1
++        _, signs = _resolve_rank_and_signs(rank, signs, min_rank=1)
+         fracs = [_coerce_flat_element(v) for v in values]
+-        return _unflatten(fracs, rank)
++        return _unflatten(fracs, rank, signs)
+ 
+     def to_array(self, as_str: bool = False) -> list:
+         """This Hy's ``2**rank`` real coefficients, flattened into a plain
+@@ -559,7 +791,7 @@ class Hy:
+     # Units
+     # ---------------------------------------------------------------- #
+     @classmethod
+-    def units(cls, rank: int) -> dict:
++    def units(cls, rank: "int | None" = None, *, signs=None) -> dict:
+         """The unit elements of the rank-``rank`` algebra: the ``2 *
+         2**rank`` values with exactly one real coordinate equal to
+         ``+-1`` and every other coordinate 0 (e.g. for rank 1: ``+-1``
+@@ -577,11 +809,19 @@ class Hy:
+         ``Fraction(1)`` and ``Fraction(-1)`` are returned directly
+         (every other rank returns ``Hy`` instances).
+ 
++        ``signs=`` selects the algebra (a tuple of nonzero rationals,
++        lowest doubling level first, or a preset name such as
++        ``"split-quaternion"``); if ``rank`` is omitted it is taken from
++        ``len(signs)``. The *labels* are positional (they name a place in
++        the Cayley-Dickson tower), so they do not change with ``signs``;
++        what changes is what each unit squares to -- see
++        :meth:`unit_square`.
++
+         See also :meth:`is_unit`. Raises ``ValueError`` if ``rank``
+-        isn't a non-negative int.
++        isn't a non-negative int (or can't be determined), or disagrees
++        with ``signs``.
+         """
+-        if not isinstance(rank, int) or isinstance(rank, bool) or rank < 0:
+-            raise ValueError(f"rank must be a non-negative int, got {rank!r}")
++        rank, signs = _resolve_rank_and_signs(rank, signs, min_rank=0)
+         if rank == 0:
+             return {"1": Fraction(1), "-1": Fraction(-1)}
+         n = 2 ** rank
+@@ -592,11 +832,44 @@ class Hy:
+             neg_key = f"-{lbl}" if lbl else "-1"
+             coeffs = [Fraction(0)] * n
+             coeffs[idx] = Fraction(1)
+-            result[pos_key] = _unflatten(coeffs, rank)
++            result[pos_key] = _unflatten(coeffs, rank, signs)
+             coeffs[idx] = Fraction(-1)
+-            result[neg_key] = _unflatten(coeffs, rank)
++            result[neg_key] = _unflatten(coeffs, rank, signs)
+         return result
+ 
++    @staticmethod
++    def unit_square(label_index: int, signs) -> Fraction:
++        """What the basis unit with coordinate index ``label_index``
++        (``0`` is the real unit ``1``, ``1`` is ``j``/``i``, and so on, in
++        the order of :meth:`components`) squares to, in the algebra with
++        the given ``signs`` (a tuple or preset name), as an exact
++        ``Fraction``.
++
++        The index's binary digits say which doubling levels the unit
++        involves; if ``S`` is that set of levels, the unit squares to
++        ``-prod(-mu_l for l in S)`` (and ``1`` squares to ``1``). With all
++        ``mu = -1`` every imaginary unit squares to ``-1``::
++
++            >>> Hy.unit_square(3, "split-quaternion")     # k, with signs (-1, 1)
++            Fraction(1, 1)
++            >>> Hy.unit_square(1, "split-quaternion")     # i
++            Fraction(-1, 1)
++        """
++        _, sg = _resolve_rank_and_signs(None, signs, min_rank=1)
++        if (not isinstance(label_index, int) or isinstance(label_index, bool)
++                or not 0 <= label_index < 2 ** len(sg)):
++            raise ValueError(
++                f"label_index must be an int in [0, {2 ** len(sg) - 1}], "
++                f"got {label_index!r}"
++            )
++        if label_index == 0:
++            return Fraction(1)
++        prod = Fraction(1)
++        for level in range(len(sg)):
++            if label_index >> level & 1:
++                prod *= -sg[level]
++        return -prod
++
+     # ---------------------------------------------------------------- #
+     # Matrix (regular) representation
+     # ---------------------------------------------------------------- #
+@@ -675,7 +948,7 @@ class Hy:
+                 "for faithful alternatives (e.g. Zorn vector matrices)."
+             )
+         np = _import_optional("numpy", "numpy")
+-        basis = _positive_units(rank)
++        basis = _positive_units(rank, self.signs)
+         if kind == "left":
+             columns = [(self * e).to_array() for e in basis]
+         else:
+@@ -687,7 +960,8 @@ class Hy:
+ 
+     @classmethod
+     def from_matrix(cls, matrix, *, kind: str = "left", rank: "int | None" = None,
+-                     allow_nonassociative: bool = False, validate: bool = False) -> "Hy":
++                     allow_nonassociative: bool = False, validate: bool = False,
++                     signs=None) -> "Hy":
+         """Build a ``Hy`` from its regular-representation matrix, the
+         inverse of :meth:`to_matrix`.
+ 
+@@ -704,6 +978,11 @@ class Hy:
+         rank >= 3 matrix isn't the image of a true algebra homomorphism
+         in the first place.
+ 
++        ``signs=`` selects the algebra the matrix represents (default: the
++        classical one); a regular-representation matrix does not record
++        it, so a split-complex or split-quaternion matrix must be read
++        back with the matching ``signs=``.
++
+         ``validate=True`` rebuilds every other column from the
+         recovered value and checks it against ``matrix`` exactly
+         (``Fraction`` equality) -- a cheap way to catch a matrix that
+@@ -746,7 +1025,7 @@ class Hy:
+         if kind not in ("left", "right"):
+             raise ValueError(f"kind must be 'left' or 'right', got {kind!r}")
+ 
+-        result = cls.from_array(list(arr[:, 0]))
++        result = cls.from_array(list(arr[:, 0]), signs=signs)
+ 
+         if validate:
+             rebuilt = result.to_matrix(kind=kind, allow_nonassociative=True)
+@@ -1002,77 +1281,246 @@ def _rank(x) -> int:
+     return 0 if isinstance(x, Fraction) else x.rank
+ 
+ 
+-def _embed(x, target_rank: int):
+-    """Promote `x` (Fraction or Hy) up to exactly `target_rank`, by pairing
+-    it with zeros at each doubling step. Raises if `x` is already of
+-    *higher* rank than `target_rank` (you cannot un-embed)."""
+-    r = _rank(x)
+-    if r == target_rank:
+-        return x
+-    if r > target_rank:
++# --------------------------------------------------------------------------
++# Signatures (the per-level Cayley-Dickson parameters)
++# --------------------------------------------------------------------------
++
++def _coerce_mu(m) -> Fraction:
++    """A single Cayley-Dickson parameter: any nonzero rational."""
++    if isinstance(m, bool):
++        raise TypeError(f"mu must be a nonzero rational, not {m!r}")
++    if isinstance(m, Fraction):
++        mu = m
++    elif isinstance(m, int):
++        mu = Fraction(m)
++    elif isinstance(m, float):
++        mu = Fraction(str(m))
++    elif isinstance(m, str):
++        try:
++            mu = Fraction(m)
++        except ValueError as e:
++            raise ValueError(f"cannot parse {m!r} as a rational mu") from e
++    else:
++        raise TypeError(
++            f"cannot use {m!r} (type {type(m).__name__}) as a mu; "
++            "expected a nonzero int, Fraction, float or fraction string"
++        )
++    if mu == 0:
++        raise ValueError("mu must be nonzero")
++    return mu
++
++
++def _preset_key(name: str) -> str:
++    return name.strip().lower().replace("_", "-").replace(" ", "-")
++
++
++def _coerce_signs(signs) -> tuple:
++    """A signature given as a preset name or an iterable of mus, as a
++    tuple of nonzero Fractions (lowest doubling level first)."""
++    if isinstance(signs, str):
++        key = _preset_key(signs)
++        if key not in _SIGN_PRESETS:
++            raise ValueError(
++                f"unknown signature preset {signs!r}; known presets: "
++                + ", ".join(sorted(_SIGN_PRESETS))
++            )
++        signs = _SIGN_PRESETS[key]
++    try:
++        return tuple(_coerce_mu(m) for m in signs)
++    except TypeError:
++        if isinstance(signs, (int, float, Fraction)):
++            raise TypeError(
++                "signs must be a preset name or a sequence of mu values, "
++                f"not {signs!r}"
++            ) from None
++        raise
++
++
++def _resolve_rank_and_signs(rank, signs, *, min_rank: int):
++    """Validate a (rank, signs) pair: either may be omitted (but not
++    both); ``signs`` defaults to all -1. Returns ``(rank, signs_tuple)``."""
++    sg = None if signs is None else _coerce_signs(signs)
++    if rank is None:
++        if sg is None:
++            kind = "positive" if min_rank >= 1 else "non-negative"
++            raise ValueError(f"rank must be a {kind} int, got {rank!r}")
++        rank = len(sg)
++    if not isinstance(rank, int) or isinstance(rank, bool) or rank < min_rank:
++        kind = "positive" if min_rank >= 1 else "non-negative"
++        raise ValueError(f"rank must be a {kind} int, got {rank!r}")
++    if sg is None:
++        sg = (_DEFAULT_MU,) * rank
++    elif len(sg) != rank:
+         raise ValueError(
+-            f"cannot embed a rank-{r} value into rank {target_rank}"
++            f"signs has length {len(sg)} but the rank is {rank}; "
++            "one mu per doubling level is required"
+         )
+-    return Hy._make(_embed(x, target_rank - 1), _embed(Fraction(0), target_rank - 1))
++    return rank, sg
+ 
+ 
++def _signs(x) -> tuple:
++    """The signature of a raw value: () for a Fraction, otherwise one mu
++    per doubling level, lowest first (so the last entry is x's own mu)."""
++    if isinstance(x, Fraction):
++        return ()
++    return _signs(x._real) + (x._mu,)
++
++
++def _common_signs(x, y) -> tuple:
++    """The signature of the algebra in which a binary operation on `x`
++    and `y` takes place: the longer of their two signatures, provided the
++    shorter is a prefix of it (so the lower-rank operand embeds)."""
++    sx, sy = _signs(x), _signs(y)
++    big, small = (sx, sy) if len(sx) >= len(sy) else (sy, sx)
++    if big[: len(small)] != small:
++        raise ValueError(
++            "incompatible signatures: cannot combine a value with signs "
++            f"{tuple(map(str, sx))} and one with signs {tuple(map(str, sy))}"
++        )
++    return big
++
++
++def _embed_signs(x, target: tuple):
++    """Promote `x` into the algebra with signature `target`, by pairing it
++    with zeros at each additional doubling step. `x`'s own signature must
++    be a prefix of `target`, and its rank no larger."""
++    r, n = _rank(x), len(target)
++    if r > n:
++        raise ValueError(f"cannot embed a rank-{r} value into rank {n}")
++    if r == n:
++        if _signs(x) != target:
++            raise ValueError(
++                f"signature mismatch: value has signs "
++                f"{tuple(map(str, _signs(x)))}, expected "
++                f"{tuple(map(str, target))}"
++            )
++        return x
++    return Hy._make(
++        _embed_signs(x, target[:-1]),
++        _embed_signs(Fraction(0), target[:-1]),
++        target[-1],
++    )
++
++
++def _embed(x, target):
++    """Promote `x` (Fraction or Hy) up to exactly `target`, by pairing it
++    with zeros at each doubling step. `target` is either a rank (an int;
++    any *new* doubling levels get the default mu = -1) or a full signature
++    tuple. Raises if `x` is already of *higher* rank than `target` (you
++    cannot un-embed)."""
++    if isinstance(target, int):
++        r = _rank(x)
++        if r == target:
++            return x
++        if r > target:
++            raise ValueError(
++                f"cannot embed a rank-{r} value into rank {target}"
++            )
++        target = _signs(x) + (_DEFAULT_MU,) * (target - r)
++    return _embed_signs(x, target)
++
++
++# --------------------------------------------------------------------------
++# The algebra itself.  The public functions (add, mul, ...) accept raw
++# values of any (compatible) ranks and embed them into a common algebra;
++# the underscore versions then recurse on operands already known to have
++# identical rank and signature, so no further checking is needed.
++# --------------------------------------------------------------------------
++
+ def add(x, y):
+-    rx, ry = _rank(x), _rank(y)
+-    r = max(rx, ry)
+-    xa, ya = _embed(x, r), _embed(y, r)
+-    if r == 0:
+-        return xa + ya
+-    return Hy._make(add(xa._real, ya._real), add(xa._imag, ya._imag))
++    T = _common_signs(x, y)
++    return _add(_embed_signs(x, T), _embed_signs(y, T))
++
++
++def _add(x, y):
++    if isinstance(x, Fraction):
++        return x + y
++    return Hy._make(_add(x._real, y._real), _add(x._imag, y._imag), x._mu)
+ 
+ 
+ def neg(x):
+     if isinstance(x, Fraction):
+         return -x
+-    return Hy._make(neg(x._real), neg(x._imag))
++    return Hy._make(neg(x._real), neg(x._imag), x._mu)
+ 
+ 
+ def sub(x, y):
+     return add(x, neg(y))
+ 
+ 
++def _sub(x, y):
++    return _add(x, neg(y))
++
++
+ def conj(x):
+-    """Cayley-Dickson conjugate: conj(a, b) = (conj(a), -b)."""
++    """Cayley-Dickson conjugate: conj(a, b) = (conj(a), -b). It does not
++    depend on mu."""
+     if isinstance(x, Fraction):
+         return x
+-    return Hy._make(conj(x._real), neg(x._imag))
++    return Hy._make(conj(x._real), neg(x._imag), x._mu)
++
++
++def _scale(x, f: Fraction):
++    """x * f for a rational scalar f, componentwise."""
++    if isinstance(x, Fraction):
++        return x * f
++    return Hy._make(_scale(x._real, f), _scale(x._imag, f), x._mu)
+ 
+ 
+ def mul(x, y):
+-    """Cayley-Dickson product: (a,b)(c,d) = (ac - conj(d)b, da + b*conj(c))."""
+-    rx, ry = _rank(x), _rank(y)
+-    r = max(rx, ry)
+-    if r == 0:
++    """Cayley-Dickson product with parameter mu at each doubling level:
++    (a,b)(c,d) = (ac + mu*conj(d)b, da + b*conj(c)). With the default
++    mu = -1 this is the classical (ac - conj(d)b, da + b*conj(c))."""
++    T = _common_signs(x, y)
++    if not T:
++        return x * y
++    return _mul(_embed_signs(x, T), _embed_signs(y, T))
++
++
++def _mul(x, y):
++    if isinstance(x, Fraction):
+         return x * y
+-    xa, ya = _embed(x, r), _embed(y, r)
+-    a, b = xa._real, xa._imag
+-    c, d = ya._real, ya._imag
+-    real_part = sub(mul(a, c), mul(conj(d), b))
+-    imag_part = add(mul(d, a), mul(b, conj(c)))
+-    return Hy._make(real_part, imag_part)
++    a, b = x._real, x._imag
++    c, d = y._real, y._imag
++    mu = x._mu
++    cross = _mul(conj(d), b)
++    if mu == -1:
++        real_part = _sub(_mul(a, c), cross)
++    elif mu == 1:
++        real_part = _add(_mul(a, c), cross)
++    else:
++        real_part = _add(_mul(a, c), _scale(cross, mu))
++    imag_part = _add(_mul(d, a), _mul(b, conj(c)))
++    return Hy._make(real_part, imag_part, mu)
+ 
+ 
+ def abs2(x) -> Fraction:
+-    """Squared Euclidean norm: sum of squares of every real coordinate."""
++    """The quadratic form x*conj(x), as an exact Fraction: N(a, b) = N(a)
++    - mu*N(b), N(r) = r*r. For the classical algebras (every mu = -1)
++    this is the squared Euclidean norm, the sum of squares of every real
++    coordinate; otherwise it is indefinite."""
+     if isinstance(x, Fraction):
+         return x * x
+-    return abs2(x._real) + abs2(x._imag)
++    return abs2(x._real) - x._mu * abs2(x._imag)
+ 
+ 
+ def _scalar_div(x, f: Fraction):
+     if isinstance(x, Fraction):
+         return x / f
+-    return Hy._make(_scalar_div(x._real, f), _scalar_div(x._imag, f))
++    return Hy._make(_scalar_div(x._real, f), _scalar_div(x._imag, f), x._mu)
+ 
+ 
+ def inverse(x):
+     n = abs2(x)
+     if n == 0:
+-        raise ZeroDivisionError("hypercomplex value has zero norm; not invertible")
++        if _is_zero_val(x):
++            raise ZeroDivisionError(
++                "hypercomplex value has zero norm; not invertible"
++            )
++        raise ZeroDivisionError(
++            "hypercomplex value has zero norm (it is a nonzero null "
++            "element of a split algebra); not invertible"
++        )
+     return _scalar_div(conj(x), n)
+ 
+ 
+@@ -1087,11 +1535,12 @@ def _is_zero_val(x) -> bool:
+ 
+ 
+ def _values_equal(x, y) -> bool:
+-    r = max(_rank(x), _rank(y))
+-    xa, ya = _embed(x, r), _embed(y, r)
+-    if r == 0:
+-        return xa == ya
+-    return _values_equal(xa._real, ya._real) and _values_equal(xa._imag, ya._imag)
++    """Equality of two raw values: the same element once zero-padded to a
++    common rank, *and* living in the same algebra (same mu at every level
++    that is actually used)."""
++    return _to_nested_tuple(_canonical_trim(x)) == _to_nested_tuple(
++        _canonical_trim(y)
++    )
+ 
+ 
+ def _canonical_trim(x):
+@@ -1104,7 +1553,7 @@ def _canonical_trim(x):
+ def _to_nested_tuple(x):
+     if isinstance(x, Fraction):
+         return x
+-    return (_to_nested_tuple(x._real), _to_nested_tuple(x._imag))
++    return (_to_nested_tuple(x._real), _to_nested_tuple(x._imag), x._mu)
+ 
+ 
+ def _flatten(x) -> list:
+@@ -1113,12 +1562,16 @@ def _flatten(x) -> list:
+     return _flatten(x._real) + _flatten(x._imag)
+ 
+ 
+-def _unflatten(coeffs, rank):
++def _unflatten(coeffs, rank, signs=None):
++    if signs is None:
++        signs = (_DEFAULT_MU,) * rank
+     if rank == 0:
+         return coeffs[0]
+     half = len(coeffs) // 2
+     return Hy._make(
+-        _unflatten(coeffs[:half], rank - 1), _unflatten(coeffs[half:], rank - 1)
++        _unflatten(coeffs[:half], rank - 1, signs[:-1]),
++        _unflatten(coeffs[half:], rank - 1, signs[:-1]),
++        signs[-1],
+     )
+ 
+ 
+@@ -1182,11 +1635,13 @@ def _coerce_flat_element(v) -> Fraction:
+ # Helper for to_matrix()/from_matrix()
+ # ============================================================================
+ 
+-def _positive_units(rank: int) -> list:
++def _positive_units(rank: int, signs=None) -> list:
+     """The 2**rank positive units of the rank-`rank` algebra (1, then each
+     imaginary unit), in the same order as `components()`/`to_array()`.
+-    Just Hy.units(rank) filtered down to its non-negated entries."""
+-    return [u for name, u in Hy.units(rank).items() if not name.startswith("-")]
++    Just Hy.units(rank, signs=signs) filtered down to its non-negated
++    entries."""
++    return [u for name, u in Hy.units(rank, signs=signs).items()
++            if not name.startswith("-")]
+ 
+ 
+ # ============================================================================
+@@ -1216,6 +1671,12 @@ def _quaternion_fractions(h: "Hy", target: str) -> tuple:
+             f"{target}; only rank 1 (embedded as a + b*i) and rank 2 "
+             "(quaternions) can be converted"
+         )
++    if h.signs != (_DEFAULT_MU,) * h.rank:
++        raise ValueError(
++            f"cannot convert a Hy with signs {tuple(map(str, h.signs))} to "
++            f"{target}; only ordinary complex/quaternion values (every "
++            "mu equal to -1) can be converted"
++        )
+     return tuple(_flatten(_embed(h, 2)))
+ 
+ 
+@@ -1355,7 +1816,7 @@ _TERM_RE = re.compile(
+ )
+ 
+ 
+-def _parse(s: str) -> Hy:
++def _parse(s: str, signs=None, pad: bool = False) -> Hy:
+     s = s.strip()
+     if s.startswith("(") and s.endswith(")"):
+         s = s[1:-1]
+@@ -1415,8 +1876,23 @@ def _parse(s: str) -> Hy:
+             f"unit(s) {sorted(unknown)} inconsistent with the rest of {s!r}"
+         )
+ 
++    if signs is None:
++        sg = (_DEFAULT_MU,) * rank
++    else:
++        sg = _coerce_signs(signs)
++        if pad:
++            # Internal use (operand coercion): read the text in the algebra
++            # of the other operand, truncating or extending with the
++            # default mu as the text's own rank requires.
++            sg = sg[:rank] + (_DEFAULT_MU,) * (rank - len(sg[:rank]))
++        elif len(sg) != rank:
++            raise ValueError(
++                f"signs has length {len(sg)}, but {s!r} has rank {rank}; "
++                "one mu per doubling level is required"
++            )
++
+     coeffs = [coeff_map.get(lbl, Fraction(0)) for lbl in labels]
+-    return _unflatten(coeffs, rank)
++    return _unflatten(coeffs, rank, sg)
+ 
+ 
+ if __name__ == "__main__":
+@@ -1513,4 +1989,15 @@ if __name__ == "__main__":
+     except ImportError:
+         print("Hy.to_matrix()/Hy.from_matrix(): skipped (numpy not installed)")
+ 
++    # signatures: split-complex and split-quaternions
++    sj = Hy(0, 1, mu=1)
++    assert sj * sj == 1 and (Hy(1, 1, mu=1) * Hy(1, -1, mu=1)).is_zero()
++    su = Hy.units(signs="split-quaternion")
++    assert su["i"] * su["i"] == -1 and su["j"] * su["j"] == 1
++    assert su["i"] * su["j"] == su["k"] and su["k"] * su["k"] == 1
++    sx, sy = Hy.random(signs="split-quaternion", seed=1), Hy.random(signs="split-quaternion", seed=2)
++    assert abs2(mul(sx, sy)) == abs2(sx) * abs2(sy)
++    assert eval(repr(sx)) == sx
++    print("split algebras / signatures: OK")
++
+     print("\nAll self-tests passed.")
+diff --git a/tests/test_hypercomplex.py b/tests/test_hypercomplex.py
+index 0bef011..b822170 100644
+--- a/tests/test_hypercomplex.py
++++ b/tests/test_hypercomplex.py
+@@ -57,6 +57,31 @@ Organization:
+     TestInteropAcrossPackages
+                             - all three packages agree with each other
+                               (and with Hy) on the same value
++    TestSignatureBasics     - Hy(..., mu=...), .mu / .signs, validation,
++                              mixed-rank embedding, copy semantics, the
++                              named presets and ``signs=`` arguments
++    TestSplitComplex        - split-complex numbers (mu = +1)
++    TestSplitQuaternions    - split-quaternions (signs (-1, +1))
++    TestSplitOctonions      - split-octonions (signs (-1, -1, +1))
++    TestGeneralRationalMu   - arbitrary nonzero rational mu
++    TestSignatureAlgebraFuzz
++                            - algebraic laws across many signatures,
++                              ranks 1-4 (unit squares, norm
++                              multiplicativity, (non)associativity, ...)
++    TestSignatureEqualityHashRepr
++                            - equality/hash across signatures; repr only
++                              shows a non-default signature
++    TestSignatureCoercionAndMixing
++                            - scalars, strings, complex literals and
++                              mixed signatures/ranks in arithmetic
++    TestSignatureParsing    - Hy.parse(..., signs=...)
++    TestSignatureNormAndPredicates
++                            - norm()/norm_squared(), abs(), is_null(),
++                              pow with null elements
++    TestSignatureMatrixRepresentation
++                            - to_matrix()/from_matrix() with signs (needs numpy)
++    TestSignatureInterop    - interop converters reject non-classical algebras
++    TestSignatureHelpers    - module-level functions, immutability, latex, units
+ 
+ The tests that need a third-party package are skipped (not failed) when
+ that package is not installed.
+@@ -1743,6 +1768,1027 @@ class TestInteropAcrossPackages(unittest.TestCase):
+         self.assertEqual(Hy.from_sympy(exact.to_sympy()), exact)
+ 
+ 
++# ---------------------------------------------------------------------------
++# Signatures: split-hypercomplex numbers and general rational mu
++# ---------------------------------------------------------------------------
++
++# A battery of signatures (lowest doubling level first) used by the fuzz
++# tests: classical, each split pattern through rank 3, and general rational
++# mu, plus a few rank-4 ones.
++SIGNATURES_UP_TO_RANK_3 = (
++    (-1,), (1,), (2,), (Fraction(-3, 2),),
++    (-1, -1), (-1, 1), (1, -1), (1, 1), (-1, 2), (3, -5),
++    (-1, -1, -1), (-1, -1, 1), (1, 1, 1), (-1, -1, 2), (Fraction(1, 2), -1, 3),
++)
++SIGNATURES_RANK_4 = ((-1, -1, -1, -1), (-1, -1, 1, -1), (1, -1, 1, 1))
++
++
++def rand_signed(signs, rng):
++    """A random Hy living in the algebra with the given signature."""
++    return Hy.random(signs=signs, rng=rng)
++
++
++class TestSignatureBasics(unittest.TestCase):
++    """The mu / signs properties, construction, validation, presets."""
++
++    def test_default_signature_is_all_minus_one(self):
++        for rank in (1, 2, 3, 4):
++            h = Hy.random(rank, seed=rank)
++            self.assertEqual(h.signs, (-1,) * rank)
++            self.assertEqual(h.mu, -1)
++
++    def test_mu_is_stored_as_a_fraction(self):
++        for given in (1, Fraction(1), '1', 1.0):
++            h = Hy(1, 2, mu=given)
++            self.assertIsInstance(h.mu, Fraction)
++            self.assertEqual(h.mu, 1)
++        self.assertEqual(Hy(1, 2, mu='3/2').mu, Fraction(3, 2))
++        self.assertEqual(Hy(1, 2, mu=0.25).mu, Fraction(1, 4))
++
++    def test_mu_must_be_nonzero_rational(self):
++        for bad in (0, 0.0, '0', Fraction(0)):
++            with self.assertRaises(ValueError):
++                Hy(1, 2, mu=bad)
++        with self.assertRaises(ValueError):
++            Hy(1, 2, mu='not a number')
++        for bad in (True, False, [1], None.__class__):
++            with self.assertRaises(TypeError):
++                Hy(1, 2, mu=bad)
++
++    def test_top_mu_is_independent_of_component_mus(self):
++        inner = Hy(1, 2, mu=1), Hy(3, 4, mu=1)
++        h = Hy(*inner)                       # top level defaults to -1
++        self.assertEqual(h.signs, (1, -1))
++        h2 = Hy(*inner, mu=3)
++        self.assertEqual(h2.signs, (1, 3))
++        self.assertEqual(h2.mu, 3)
++        self.assertEqual(h2.real.mu, 1)
++
++    def test_components_must_share_a_signature(self):
++        with self.assertRaises(ValueError):
++            Hy(Hy(1, 2, mu=1), Hy(3, 4))      # (1,) vs (-1,)
++
++    def test_mixed_rank_components_embed_when_signature_is_a_prefix(self):
++        # a bare rational pairs with a split-complex value: the rational
++        # is embedded using the *other* component's signature
++        h = Hy(3, Hy(1, 2, mu=1))
++        self.assertEqual(h.signs, (1, -1))
++        self.assertEqual(h.real, Hy(3, 0, mu=1))
++        # rank-1 (-1) value pairs with a rank-2 (-1, 1) value
++        q = Hy(Hy(1, 2), Hy(3, 4), mu=1)
++        h3 = Hy(Hy(5, 6), Hy(q, 0))              # Hy(q, 0) is rank 3
++        self.assertEqual(h3.signs, (-1, 1, -1, -1))
++        self.assertEqual(h3.real.signs, (-1, 1, -1))
++        with self.assertRaises(ValueError):
++            Hy(Hy(5, 6, mu=1), q)            # (1,) is not a prefix of (-1, 1)
++
++    def test_copy_construction_keeps_signature(self):
++        q = Hy(Hy(1, 2), Hy(3, 4), mu=1)
++        c = Hy(q)
++        self.assertEqual(c, q)
++        self.assertEqual(c.signs, q.signs)
++        self.assertEqual(Hy(q, mu=1).signs, q.signs)   # same mu: fine
++
++    def test_copy_construction_cannot_change_mu(self):
++        q = Hy(Hy(1, 2), Hy(3, 4), mu=1)
++        with self.assertRaises(ValueError):
++            Hy(q, mu=-1)
++
++    def test_plain_scalar_construction_with_mu(self):
++        h = Hy(3, mu=1)
++        self.assertEqual(h.rank, 1)
++        self.assertEqual(h.signs, (1,))
++        self.assertEqual(h, 3)
++
++    def test_preset_constants(self):
++        self.assertEqual(Hy.COMPLEX, (-1,))
++        self.assertEqual(Hy.QUATERNION, (-1, -1))
++        self.assertEqual(Hy.OCTONION, (-1, -1, -1))
++        self.assertEqual(Hy.SEDENION, (-1, -1, -1, -1))
++        self.assertEqual(Hy.SPLIT_COMPLEX, (1,))
++        self.assertEqual(Hy.SPLIT_QUATERNION, (-1, 1))
++        self.assertEqual(Hy.SPLIT_OCTONION, (-1, -1, 1))
++
++    def test_presets_accepted_as_tuples_or_names(self):
++        a = Hy.random(signs=Hy.SPLIT_QUATERNION, seed=1)
++        b = Hy.random(signs="split-quaternion", seed=1)
++        c = Hy.random(signs="Split_Quaternion", seed=1)
++        d = Hy.random(signs="split quaternion", seed=1)
++        self.assertEqual(a, b)
++        self.assertEqual(a, c)
++        self.assertEqual(a, d)
++        self.assertEqual(a.signs, (-1, 1))
++
++    def test_every_named_preset_matches_its_constant(self):
++        pairs = {
++            "complex": Hy.COMPLEX, "quaternion": Hy.QUATERNION,
++            "octonion": Hy.OCTONION, "sedenion": Hy.SEDENION,
++            "split-complex": Hy.SPLIT_COMPLEX,
++            "split-quaternion": Hy.SPLIT_QUATERNION,
++            "split-octonion": Hy.SPLIT_OCTONION,
++        }
++        for name, tup in pairs.items():
++            self.assertEqual(Hy.random(signs=name, seed=0).signs, tup)
++
++    def test_unknown_preset_raises(self):
++        with self.assertRaises(ValueError):
++            Hy.random(signs="split-sedenion-ish")
++        with self.assertRaises(ValueError):
++            Hy.units(signs="nope")
++
++    def test_signs_must_be_a_name_or_sequence(self):
++        with self.assertRaises(TypeError):
++            Hy.random(2, signs=5)
++
++    def test_rank_is_inferred_from_signs(self):
++        self.assertEqual(Hy.random(signs="split-octonion", seed=1).rank, 3)
++        self.assertEqual(len(Hy.units(signs=(1, -1))), 8)
++
++    def test_rank_and_signs_must_agree(self):
++        with self.assertRaises(ValueError):
++            Hy.random(3, signs="split-quaternion")
++        with self.assertRaises(ValueError):
++            Hy.units(2, signs=(1,))
++        with self.assertRaises(ValueError):
++            Hy.from_array([1, 2, 3, 4], signs=(1,))
++
++    def test_rank_or_signs_required(self):
++        with self.assertRaises(ValueError):
++            Hy.random()
++        with self.assertRaises(ValueError):
++            Hy.units()
++
++    def test_from_array_and_to_array_with_signs(self):
++        x = Hy.from_array([1, 2, 3, 4], signs="split-quaternion")
++        self.assertEqual(x.signs, (-1, 1))
++        self.assertEqual(x.to_array(as_str=True), ['1', '2', '3', '4'])
++        self.assertEqual(Hy.from_array(x.to_array(), signs=x.signs), x)
++
++    def test_random_with_signs_is_reproducible(self):
++        a = Hy.random(signs="split-octonion", seed=42)
++        b = Hy.random(signs="split-octonion", seed=42)
++        self.assertEqual(a, b)
++        self.assertEqual(a.signs, (-1, -1, 1))
++
++
++class TestSplitComplex(unittest.TestCase):
++    """The split-complex numbers: Cayley-Dickson with mu = +1."""
++
++    def setUp(self):
++        self.j = Hy(0, 1, mu=1)
++
++    def test_j_squares_to_plus_one(self):
++        self.assertEqual(self.j * self.j, 1)
++        self.assertEqual(str(self.j * self.j), '(1)')
++
++    def test_fixed_product(self):
++        # (a + bj)(c + dj) = (ac + bd) + (ad + bc) j
++        x, y = Hy(2, 3, mu=1), Hy(5, 7, mu=1)
++        self.assertEqual(x * y, Hy(2 * 5 + 3 * 7, 2 * 7 + 3 * 5, mu=1))
++
++    def test_commutative_and_associative(self):
++        rng = random.Random(1)
++        for _ in range(FUZZ_TRIALS):
++            x, y, z = (rand_signed((1,), rng) for _ in range(3))
++            self.assertEqual(x * y, y * x)
++            self.assertEqual((x * y) * z, x * (y * z))
++
++    def test_null_elements_and_zero_divisors(self):
++        p, m = Hy(1, 1, mu=1), Hy(1, -1, mu=1)
++        self.assertEqual(p * m, 0)
++        self.assertTrue(p.is_null())
++        self.assertTrue(m.is_null())
++        self.assertFalse(bool(p * m))
++        self.assertTrue(bool(p))
++
++    def test_null_elements_are_not_invertible(self):
++        for null in (Hy(1, 1, mu=1), Hy(-3, 3, mu=1)):
++            with self.assertRaises(ZeroDivisionError) as ctx:
++                null.inverse()
++            self.assertIn('null', str(ctx.exception))
++            with self.assertRaises(ZeroDivisionError):
++                Hy(1, 0, mu=1) / null
++            with self.assertRaises(ZeroDivisionError):
++                null ** -1
++
++    def test_zero_is_not_invertible_either(self):
++        with self.assertRaises(ZeroDivisionError):
++            Hy(0, 0, mu=1).inverse()
++
++    def test_inverse_of_non_null(self):
++        x = Hy(2, 1, mu=1)                       # N = 4 - 1 = 3
++        self.assertEqual(x.norm_squared(), 3)
++        self.assertEqual(x.inverse(), Hy(Fraction(2, 3), Fraction(-1, 3), mu=1))
++        self.assertEqual(x * x.inverse(), 1)
++        self.assertEqual(x.inverse() * x, 1)
++
++    def test_norm_squared_is_the_hyperbolic_quadratic_form(self):
++        self.assertEqual(Hy(5, 3, mu=1).norm_squared(), 16)      # a^2 - b^2
++        self.assertEqual(Hy(3, 5, mu=1).norm_squared(), -16)
++        self.assertEqual(Hy(4, 4, mu=1).norm_squared(), 0)
++
++    def test_norm_is_multiplicative(self):
++        rng = random.Random(2)
++        for _ in range(FUZZ_TRIALS):
++            x, y = rand_signed((1,), rng), rand_signed((1,), rng)
++            self.assertEqual((x * y).norm_squared(),
++                             x.norm_squared() * y.norm_squared())
++
++    def test_conjugate_flips_the_sign_of_j_only(self):
++        x = Hy(2, 3, mu=1)
++        self.assertEqual(x.conjugate(), Hy(2, -3, mu=1))
++        self.assertEqual(x * x.conjugate(), x.norm_squared())
++
++    def test_idempotents(self):
++        # e = (1 + j)/2 and 1 - e are orthogonal idempotents
++        e = Hy(Fraction(1, 2), Fraction(1, 2), mu=1)
++        f = 1 - e
++        self.assertEqual(e * e, e)
++        self.assertEqual(f * f, f)
++        self.assertEqual(e * f, 0)
++
++    def test_units_and_is_unit(self):
++        u = Hy.units(signs=Hy.SPLIT_COMPLEX)
++        self.assertEqual(list(u), ['1', '-1', 'j', '-j'])
++        self.assertEqual(u['j'], self.j)
++        self.assertEqual(u['j'].signs, (1,))
++        self.assertTrue(all(v.is_unit() for v in u.values()))
++        # an invertible value that is not a basis unit
++        self.assertFalse(Hy(2, 1, mu=1).is_unit())
++
++    def test_pow(self):
++        self.assertEqual(self.j ** 2, 1)
++        self.assertEqual(self.j ** 3, self.j)
++        self.assertEqual(self.j ** 0, Hy(1, 0, mu=1))
++        x = Hy(2, 1, mu=1)
++        self.assertEqual(x ** -2, (x * x).inverse())
++
++    def test_hyperbolic_rotation_preserves_the_form(self):
++        # (cosh, sinh) with rational stand-ins: (5/4, 3/4) has N = 1
++        b = Hy(Fraction(5, 4), Fraction(3, 4), mu=1)
++        self.assertEqual(b.norm_squared(), 1)
++        v = Hy(7, 2, mu=1)
++        self.assertEqual((b * v).norm_squared(), v.norm_squared())
++
++    def test_abs_raises_when_the_form_is_negative(self):
++        with self.assertRaises(ValueError):
++            abs(Hy(3, 5, mu=1))
++        self.assertAlmostEqual(abs(Hy(5, 3, mu=1)), 4.0)
++        self.assertEqual(abs(Hy(4, 4, mu=1)), 0.0)
++
++    def test_not_an_ordinary_complex_number(self):
++        with self.assertRaises(ValueError):
++            complex(Hy(1, 2, mu=1))
++        self.assertEqual(complex(Hy(1, 2)), 1 + 2j)
++
++
++class TestSplitQuaternions(unittest.TestCase):
++    """Split-quaternions (coquaternions): signs (-1, +1)."""
++
++    def setUp(self):
++        u = Hy.units(signs="split-quaternion")
++        self.one, self.i, self.j, self.k = (u[n] for n in ('1', 'i', 'j', 'k'))
++
++    def test_squares_match_the_standard_convention(self):
++        # i^2 = -1, j^2 = k^2 = +1 (Cockle)
++        self.assertEqual(self.i * self.i, -1)
++        self.assertEqual(self.j * self.j, 1)
++        self.assertEqual(self.k * self.k, 1)
++
++    def test_ij_equals_k_and_anticommutes(self):
++        self.assertEqual(self.i * self.j, self.k)
++        self.assertEqual(self.j * self.i, -self.k)
++        self.assertEqual(self.j * self.k, -self.i)
++        self.assertEqual(self.k * self.j, self.i)
++        self.assertEqual(self.k * self.i, self.j)
++        self.assertEqual(self.i * self.k, -self.j)
++
++    def test_ijk_product(self):
++        self.assertEqual(self.i * self.j * self.k, 1)
++
++    def test_str_labels_are_positional(self):
++        x = Hy.from_array([1, 2, 3, 4], signs="split-quaternion")
++        self.assertEqual(str(x), '(1+2i+3j+4k)')
++
++    def test_associative_fuzz(self):
++        rng = random.Random(3)
++        for _ in range(FUZZ_TRIALS):
++            x, y, z = (rand_signed((-1, 1), rng) for _ in range(3))
++            self.assertEqual((x * y) * z, x * (y * z))
++
++    def test_not_commutative(self):
++        self.assertNotEqual(self.i * self.j, self.j * self.i)
++
++    def test_norm_squared_is_indefinite_with_signature_two_two(self):
++        x = Hy.from_array([1, 2, 3, 4], signs="split-quaternion")
++        # N = a^2 + b^2 - c^2 - d^2
++        self.assertEqual(x.norm_squared(), 1 + 4 - 9 - 16)
++        self.assertEqual(self.i.norm_squared(), 1)
++        self.assertEqual(self.j.norm_squared(), -1)
++        self.assertEqual(self.k.norm_squared(), -1)
++
++    def test_norm_is_multiplicative(self):
++        rng = random.Random(4)
++        for _ in range(FUZZ_TRIALS):
++            x, y = (rand_signed((-1, 1), rng) for _ in range(2))
++            self.assertEqual((x * y).norm_squared(),
++                             x.norm_squared() * y.norm_squared())
++
++    def test_zero_divisors(self):
++        a, b = self.one + self.j, self.one - self.j
++        self.assertEqual(a * b, 0)
++        self.assertTrue(a.is_null())
++        with self.assertRaises(ZeroDivisionError):
++            a.inverse()
++
++    def test_nonzero_null_elements_are_exactly_the_zero_divisors(self):
++        # at rank 2 the form's null cone is exactly the zero-divisor set
++        rng = random.Random(5)
++        found_null = 0
++        for _ in range(400):
++            x = Hy.random(signs="split-quaternion", rng=rng, lo=-2, hi=2, dmax=1)
++            y = Hy.random(signs="split-quaternion", rng=rng, lo=-2, hi=2, dmax=1)
++            if x and y and not (x * y):
++                self.assertTrue(x.is_null() and y.is_null())
++            if x.is_null():
++                found_null += 1
++        self.assertGreater(found_null, 0)
++
++    def test_inverse_both_sides(self):
++        rng = random.Random(6)
++        done = 0
++        while done < FUZZ_TRIALS:
++            x = rand_signed((-1, 1), rng)
++            if x.is_zero() or x.is_null():
++                continue
++            done += 1
++            self.assertEqual(x * x.inverse(), 1)
++            self.assertEqual(x.inverse() * x, 1)
++
++    def test_alternative_split_forms_all_give_split_quaternions(self):
++        # (-1,+1), (+1,-1) and (+1,+1) all produce algebras with
++        # indefinite norm, zero divisors, and the same dimension
++        for sg in ((-1, 1), (1, -1), (1, 1)):
++            a = Hy.units(signs=sg)
++            lone = a['j'] * a['j']
++            self.assertIn(lone.norm_squared(), (1,))
++            x = (a['1'] + a['i']) * (a['1'] - a['i'])
++            self.assertEqual(x.rank, 2)
++
++    def test_isomorphic_to_2x2_matrices_homomorphism(self):
++        if not HAVE_NUMPY:
++            self.skipTest("numpy not installed")
++        rng = random.Random(7)
++        for _ in range(FUZZ_TRIALS):
++            x, y = (rand_signed((-1, 1), rng) for _ in range(2))
++            self.assertTrue(np.array_equal(
++                np.dot(x.to_matrix(), y.to_matrix()), (x * y).to_matrix()))
++
++
++class TestSplitOctonions(unittest.TestCase):
++    """Split-octonions (Zorn): signs (-1, -1, +1)."""
++
++    def setUp(self):
++        self.u = Hy.units(signs="split-octonion")
++        self.pos = {n: v for n, v in self.u.items() if not n.startswith('-')}
++
++    def test_unit_squares(self):
++        # i, j, k square to -1; L, iL, jL, kL to +1
++        for name in ('i', 'j', 'k'):
++            self.assertEqual(self.pos[name] * self.pos[name], -1)
++        for name in ('L', 'iL', 'jL', 'kL'):
++            self.assertEqual(self.pos[name] * self.pos[name], 1)
++
++    def test_quaternion_subalgebra_is_the_usual_one(self):
++        i, j, k = (self.pos[n] for n in 'ijk')
++        self.assertEqual(i * j, k)
++        self.assertEqual(j * k, i)
++        self.assertEqual(k * i, j)
++
++    def test_norm_has_four_plus_four_signature(self):
++        norms = [v.norm_squared() for v in self.pos.values()]
++        self.assertEqual(sorted(norms), [-1] * 4 + [1] * 4)
++
++    def test_norm_is_multiplicative(self):
++        rng = random.Random(8)
++        for _ in range(FUZZ_TRIALS):
++            x, y = (rand_signed((-1, -1, 1), rng) for _ in range(2))
++            self.assertEqual((x * y).norm_squared(),
++                             x.norm_squared() * y.norm_squared())
++
++    def test_alternative_but_not_associative(self):
++        rng = random.Random(9)
++        nonassoc = 0
++        for _ in range(FUZZ_TRIALS):
++            x, y, z = (rand_signed((-1, -1, 1), rng) for _ in range(3))
++            self.assertEqual((x * x) * y, x * (x * y))        # left alternative
++            self.assertEqual((y * x) * x, y * (x * x))        # right alternative
++            if (x * y) * z != x * (y * z):
++                nonassoc += 1
++        self.assertGreater(nonassoc, 0)
++
++    def test_has_zero_divisors(self):
++        L = self.pos['L']
++        a, b = 1 + L, 1 - L
++        self.assertEqual(a * b, 0)
++        self.assertTrue(a.is_null())
++        with self.assertRaises(ZeroDivisionError):
++            a.inverse()
++
++    def test_inverse_of_non_null(self):
++        rng = random.Random(10)
++        done = 0
++        while done < FUZZ_TRIALS:
++            x = rand_signed((-1, -1, 1), rng)
++            if x.is_zero() or x.is_null():
++                continue
++            done += 1
++            self.assertEqual(x * x.inverse(), 1)
++            self.assertEqual(x.inverse() * x, 1)
++
++    def test_str_uses_the_octonion_labels(self):
++        x = Hy.from_array([1, 2, 3, 4, 5, 6, 7, 8], signs="split-octonion")
++        self.assertEqual(str(x), '(1+2i+3j+4k+5L+6iL+7jL+8kL)')
++
++
++class TestGeneralRationalMu(unittest.TestCase):
++    """mu may be any nonzero rational: quaternion algebras (a, b) etc."""
++
++    def test_j_squares_to_mu(self):
++        for mu in (2, Fraction(-3, 2), 5, Fraction(1, 4)):
++            j = Hy(0, 1, mu=mu)
++            self.assertEqual(j * j, mu)
++
++    def test_quaternion_algebra_with_mu_two(self):
++        # (-1, 2): i^2 = -1, j^2 = 2, k^2 = -(i^2 j^2) = 2 ... via the formula
++        u = Hy.units(signs=(-1, 2))
++        i, j, k = u['i'], u['j'], u['k']
++        self.assertEqual(i * i, -1)
++        self.assertEqual(j * j, 2)
++        self.assertEqual(i * j, k)
++        self.assertEqual(k * k, Hy.unit_square(3, (-1, 2)))
++        self.assertEqual(k * k, 2)
++
++    def test_definite_forms_are_division_algebras_up_to_rank_two(self):
++        # mu = -2: N(a, b) = a^2 + 2 b^2 > 0 for nonzero values
++        rng = random.Random(11)
++        for _ in range(FUZZ_TRIALS):
++            x = rand_signed((-2,), rng)
++            self.assertGreaterEqual(x.norm_squared(), 0)
++            if x:
++                self.assertGreater(x.norm_squared(), 0)
++                self.assertEqual(x * x.inverse(), 1)
++
++    def test_abs_for_a_positive_definite_general_mu(self):
++        self.assertAlmostEqual(abs(Hy(1, 1, mu=-2)), math.sqrt(3))
++
++    def test_non_square_mu_can_still_make_a_field(self):
++        # mu = 2: N = a^2 - 2 b^2, which never vanishes for nonzero
++        # rationals (sqrt 2 is irrational), so every nonzero value is
++        # invertible even though the form is indefinite over the reals
++        rng = random.Random(12)
++        for _ in range(FUZZ_TRIALS):
++            x = rand_signed((2,), rng)
++            if x:
++                self.assertNotEqual(x.norm_squared(), 0)
++                self.assertFalse(x.is_null())
++                self.assertEqual(x * x.inverse(), 1)
++
++    def test_square_mu_is_split(self):
++        # mu = 4 = 2^2: (2 + j)(2 - j) = 4 - 4 = 0, a null element
++        x, y = Hy(2, 1, mu=4), Hy(2, -1, mu=4)
++        self.assertEqual(x * y, 0)
++        self.assertTrue(x.is_null())
++
++    def test_repr_with_rational_mu(self):
++        h = Hy(1, 2, mu='3/2')
++        self.assertEqual(repr(h), "Hy('1', '2', mu='3/2')")
++        self.assertEqual(eval(repr(h)), h)
++
++
++class TestSignatureAlgebraFuzz(unittest.TestCase):
++    """Algebraic laws across many signatures, ranks 1-4."""
++
++    def test_unit_square_formula_matches_actual_squares(self):
++        for sg in SIGNATURES_UP_TO_RANK_3 + SIGNATURES_RANK_4:
++            pos = [v for n, v in Hy.units(signs=sg).items()
++                   if not n.startswith('-')]
++            for idx, u in enumerate(pos):
++                self.assertEqual(u * u, Hy.unit_square(idx, sg),
++                                 msg=f"signs={sg}, index={idx}")
++
++    def test_unit_square_validation(self):
++        with self.assertRaises(ValueError):
++            Hy.unit_square(4, (-1, -1))
++        with self.assertRaises(ValueError):
++            Hy.unit_square(-1, (-1, -1))
++        with self.assertRaises(ValueError):
++            Hy.unit_square(True, (-1, -1))
++        self.assertEqual(Hy.unit_square(0, "split-quaternion"), 1)
++
++    def test_classical_signature_makes_every_imaginary_unit_square_to_minus_one(self):
++        for rank in (1, 2, 3, 4):
++            sg = (-1,) * rank
++            for idx in range(1, 2 ** rank):
++                self.assertEqual(Hy.unit_square(idx, sg), -1)
++
++    def test_x_times_conjugate_is_norm_squared(self):
++        for n, sg in enumerate(SIGNATURES_UP_TO_RANK_3 + SIGNATURES_RANK_4):
++            rng = random.Random(1000 + n)
++            for _ in range(FUZZ_TRIALS):
++                x = rand_signed(sg, rng)
++                self.assertEqual(x * x.conjugate(), x.norm_squared())
++                self.assertEqual(x.conjugate() * x, x.norm_squared())
++
++    def test_conjugate_of_product_reverses_order(self):
++        for n, sg in enumerate(SIGNATURES_UP_TO_RANK_3 + SIGNATURES_RANK_4):
++            rng = random.Random(1100 + n)
++            for _ in range(FUZZ_TRIALS):
++                x, y = rand_signed(sg, rng), rand_signed(sg, rng)
++                self.assertEqual((x * y).conjugate(),
++                                 y.conjugate() * x.conjugate())
++
++    def test_distributivity(self):
++        for n, sg in enumerate(SIGNATURES_UP_TO_RANK_3 + SIGNATURES_RANK_4):
++            rng = random.Random(1200 + n)
++            for _ in range(FUZZ_TRIALS):
++                a, b, c = (rand_signed(sg, rng) for _ in range(3))
++                self.assertEqual(a * (b + c), a * b + a * c)
++                self.assertEqual((a + b) * c, a * c + b * c)
++
++    def test_norm_is_multiplicative_up_to_rank_three(self):
++        for n, sg in enumerate(SIGNATURES_UP_TO_RANK_3):
++            rng = random.Random(1300 + n)
++            for _ in range(FUZZ_TRIALS):
++                x, y = rand_signed(sg, rng), rand_signed(sg, rng)
++                self.assertEqual((x * y).norm_squared(),
++                                 x.norm_squared() * y.norm_squared(),
++                                 msg=f"signs={sg}")
++
++    def test_associative_up_to_rank_two(self):
++        for n, sg in enumerate(s for s in SIGNATURES_UP_TO_RANK_3 if len(s) <= 2):
++            rng = random.Random(1400 + n)
++            for _ in range(FUZZ_TRIALS):
++                x, y, z = (rand_signed(sg, rng) for _ in range(3))
++                self.assertEqual((x * y) * z, x * (y * z))
++
++    def test_alternative_at_rank_three(self):
++        for n, sg in enumerate(s for s in SIGNATURES_UP_TO_RANK_3 if len(s) == 3):
++            rng = random.Random(1500 + n)
++            for _ in range(FUZZ_TRIALS):
++                x, y = rand_signed(sg, rng), rand_signed(sg, rng)
++                self.assertEqual((x * x) * y, x * (x * y))
++                self.assertEqual((y * x) * x, y * (x * x))
++
++    def test_not_associative_at_rank_three(self):
++        for n, sg in enumerate(s for s in SIGNATURES_UP_TO_RANK_3 if len(s) == 3):
++            rng = random.Random(1600 + n)
++            found = False
++            for _ in range(60):
++                x, y, z = (rand_signed(sg, rng) for _ in range(3))
++                if (x * y) * z != x * (y * z):
++                    found = True
++                    break
++            self.assertTrue(found, msg=f"signs={sg}")
++
++    def test_inverse_both_sides_for_invertible_elements(self):
++        for n, sg in enumerate(SIGNATURES_UP_TO_RANK_3 + SIGNATURES_RANK_4):
++            rng = random.Random(1700 + n)
++            done = 0
++            while done < FUZZ_TRIALS:
++                x = rand_signed(sg, rng)
++                if x.norm_squared() == 0:
++                    continue
++                done += 1
++                one = _embed_signs_for_test(1, sg)
++                self.assertEqual(x * x.inverse(), one)
++                self.assertEqual(x.inverse() * x, one)
++
++    def test_division_round_trip_up_to_rank_two(self):
++        # (x / y) * y == x needs associativity, so rank <= 2 only
++        for n, sg in enumerate(s for s in SIGNATURES_UP_TO_RANK_3 if len(s) <= 2):
++            rng = random.Random(1800 + n)
++            done = 0
++            while done < FUZZ_TRIALS:
++                x, y = rand_signed(sg, rng), rand_signed(sg, rng)
++                if y.norm_squared() == 0:
++                    continue
++                done += 1
++                self.assertEqual((x / y) * y, x)
++
++    def test_all_default_signature_agrees_with_the_classical_module_functions(self):
++        # for signs all -1, the signature-aware product equals the
++        # classical (ac - conj(d) b, da + b conj(c)) formula
++        rng = random.Random(1900)
++        for rank in (1, 2, 3, 4):
++            for _ in range(FUZZ_TRIALS):
++                x = Hy.random(rank, rng=rng)
++                y = Hy.random(rank, rng=rng)
++                a, b, c, d = x.real, x.imag, y.real, y.imag
++                expected = Hy(sub(mul(a, c), mul(conj(d), b)),
++                              add(mul(d, a), mul(b, conj(c))))
++                self.assertEqual(x * y, expected)
++
++
++def _embed_signs_for_test(value, signs):
++    """The scalar `value` as an element of the algebra with `signs`."""
++    return Hy.from_array([value] + [0] * (2 ** len(signs) - 1), signs=signs)
++
++
++class TestSignatureEqualityHashRepr(unittest.TestCase):
++
++    def test_different_signatures_are_unequal(self):
++        self.assertNotEqual(Hy(1, 2, mu=1), Hy(1, 2))
++        self.assertFalse(Hy(1, 2, mu=1) == Hy(1, 2))
++        self.assertNotEqual(Hy(1, 2, mu=2), Hy(1, 2, mu=3))
++
++    def test_same_signature_same_value_is_equal_and_hashes_equal(self):
++        a, b = Hy(1, 2, mu=1), Hy(1, 2, mu=1)
++        self.assertEqual(a, b)
++        self.assertEqual(hash(a), hash(b))
++
++    def test_unequal_signatures_usually_hash_differently(self):
++        self.assertNotEqual(hash(Hy(1, 2, mu=1)), hash(Hy(1, 2)))
++
++    def test_real_values_are_equal_across_signatures(self):
++        # a real number lies in every algebra of the tower
++        self.assertEqual(Hy(2, 0, mu=1), Hy(2, 0))
++        self.assertEqual(hash(Hy(2, 0, mu=1)), hash(Hy(2, 0)))
++        self.assertEqual(Hy(2, 0, mu=1), 2)
++        self.assertEqual(Hy(0, 0, mu=1), 0)
++
++    def test_cross_rank_equality_within_one_signature(self):
++        sc = Hy(1, 2, mu=1)
++        embedded = Hy(sc, 0)                       # same value, rank 2
++        self.assertEqual(embedded.rank, 2)
++        self.assertEqual(embedded, sc)
++        self.assertEqual(hash(embedded), hash(sc))
++
++    def test_value_equality_requires_matching_levels_that_are_used(self):
++        # the unused top level's mu does not matter ...
++        a = Hy(Hy(1, 2), 0, mu=1)
++        b = Hy(Hy(1, 2), 0, mu=5)
++        self.assertEqual(a, b)
++        self.assertEqual(hash(a), hash(b))
++        # ... but an inner level's does
++        self.assertNotEqual(Hy(Hy(1, 2, mu=1), 0), Hy(Hy(1, 2), 0))
++
++    def test_usable_in_sets_and_dicts(self):
++        s = {Hy(1, 2, mu=1), Hy(1, 2), Hy(1, 2, mu=1)}
++        self.assertEqual(len(s), 2)
++
++    def test_str_is_unchanged_by_signature(self):
++        self.assertEqual(str(Hy(1, 2, mu=1)), str(Hy(1, 2)))
++        self.assertEqual(str(Hy(1, 2, mu=1)), '(1+2j)')
++
++    def test_repr_omits_default_signature(self):
++        self.assertEqual(repr(Hy(1, 2)), "Hy('1', '2')")
++        self.assertEqual(repr(Hy(Hy(1, 2), Hy(3, 4))),
++                         "Hy(Hy('1', '2'), Hy('3', '4'))")
++        self.assertNotIn('mu', repr(Hy.random(3, seed=1)))
++
++    def test_repr_shows_non_default_signature(self):
++        self.assertEqual(repr(Hy(1, 2, mu=1)), "Hy('1', '2', mu=1)")
++        self.assertEqual(repr(Hy(Hy(1, 2), Hy(3, 4), mu=1)),
++                         "Hy(Hy('1', '2'), Hy('3', '4'), mu=1)")
++        self.assertEqual(repr(Hy(Hy(1, 2, mu=1), Hy(3, 4, mu=1))),
++                         "Hy(Hy('1', '2', mu=1), Hy('3', '4', mu=1))")
++
++    def test_repr_round_trips_for_many_signatures(self):
++        for n, sg in enumerate(SIGNATURES_UP_TO_RANK_3 + SIGNATURES_RANK_4):
++            rng = random.Random(2000 + n)
++            for _ in range(5):
++                x = rand_signed(sg, rng)
++                y = eval(repr(x))
++                self.assertEqual(y, x)
++                self.assertEqual(y.signs, x.signs)
++
++
++class TestSignatureCoercionAndMixing(unittest.TestCase):
++
++    def test_python_numbers_mix_with_any_signature(self):
++        sc = Hy(1, 2, mu=1)
++        for result in (sc + 3, 3 + sc, sc - 3, sc * 3, 3 * sc, sc / 2):
++            self.assertEqual(result.signs, (1,))
++        self.assertEqual(sc + 3, Hy(4, 2, mu=1))
++        self.assertEqual(3 - sc, Hy(2, -2, mu=1))
++        self.assertEqual(3 * sc, Hy(3, 6, mu=1))
++        self.assertEqual(sc + Fraction(1, 2), Hy('3/2', 2, mu=1))
++        self.assertEqual(sc + 0.5, Hy('3/2', 2, mu=1))
++        self.assertEqual(sc + '1/2', Hy('3/2', 2, mu=1))
++
++    def test_rational_division_by_a_scalar_keeps_the_signature(self):
++        x = Hy(Hy(2, 4), Hy(6, 8), mu=1)
++        self.assertEqual((x / 2).signs, (-1, 1))
++        self.assertEqual(x / 2, Hy(Hy(1, 2), Hy(3, 4), mu=1))
++
++    def test_scalar_divided_by_split_value(self):
++        sc = Hy(2, 1, mu=1)
++        self.assertEqual(1 / sc, sc.inverse())
++        self.assertEqual((1 / sc).signs, (1,))
++
++    def test_strings_are_read_in_the_other_operands_algebra(self):
++        sq = Hy.from_array([1, 2, 3, 4], signs="split-quaternion")
++        r = sq + '1+j'
++        self.assertEqual(r.signs, (-1, 1))
++        # the rank-1 text '1+j' embeds as 1 + i, exactly as in the
++        # classical algebra (rank-1 'j' is the level-1 unit, 'i' at rank 2)
++        self.assertEqual(r, Hy.from_array([2, 3, 3, 4], signs="split-quaternion"))
++        self.assertEqual(sq, '1+2i+3j+4k')
++        # a string of lower rank embeds; one of higher rank pads with -1
++        sc = Hy(1, 2, mu=1)
++        self.assertEqual((sc + '1+j').signs, (1,))
++        r2 = sc + '1+i+j+k'       # rank-2 text read as signs (1, -1)
++        self.assertEqual(r2.signs, (1, -1))
++
++    def test_python_complex_literals_are_ordinary_complex(self):
++        self.assertEqual(Hy(1, 2) + 1j, Hy(1, 3))
++        with self.assertRaises(ValueError):
++            Hy(1, 2, mu=1) + 1j
++        self.assertNotEqual(Hy(1, 2, mu=1), 1 + 2j)
++        self.assertEqual(Hy(1, 2), 1 + 2j)
++
++    def test_incompatible_signatures_raise_on_arithmetic(self):
++        a, b = Hy(1, 2, mu=1), Hy(3, 4)
++        for op in (lambda: a + b, lambda: a - b, lambda: a * b, lambda: a / b,
++                   lambda: add(a, b), lambda: mul(a, b)):
++            with self.assertRaises(ValueError):
++                op()
++
++    def test_comparison_across_signatures_never_raises(self):
++        self.assertFalse(Hy(1, 2, mu=1) == Hy(3, 4))
++        self.assertTrue(Hy(1, 2, mu=1) != Hy(1, 2))
++
++    def test_lower_rank_values_embed_into_a_prefix_compatible_algebra(self):
++        sq = Hy.from_array([1, 2, 3, 4], signs="split-quaternion")
++        z = Hy(5, 6)                              # complex, signs (-1,)
++        total = sq + z
++        self.assertEqual(total.signs, (-1, 1))
++        self.assertEqual(total, Hy.from_array([6, 8, 3, 4], signs="split-quaternion"))
++        prod = z * sq
++        self.assertEqual(prod.signs, (-1, 1))
++        # not a prefix: split-complex does not embed into (-1, 1)
++        with self.assertRaises(ValueError):
++            sq + Hy(5, 6, mu=1)
++
++    def test_embedding_helper_accepts_signature_tuples(self):
++        e = _embed(Hy(1, 2, mu=1), (Fraction(1), Fraction(-3)))
++        self.assertEqual(e.signs, (1, -3))
++        with self.assertRaises(ValueError):
++            _embed(Hy(1, 2, mu=1), (Fraction(-1), Fraction(-1)))
++        with self.assertRaises(ValueError):
++            _embed(Hy(Hy(1, 2), Hy(3, 4)), (Fraction(-1),))
++        # an int target gives any *new* levels the default mu = -1
++        self.assertEqual(_embed(Hy(1, 2, mu=1), 2).signs, (1, -1))
++
++    def test_sum_and_neg_keep_the_signature(self):
++        x = Hy.random(signs="split-octonion", seed=5)
++        self.assertEqual((-x).signs, x.signs)
++        self.assertEqual((x + x).signs, x.signs)
++        self.assertEqual((x - x), 0)
++        self.assertEqual(x.conjugate().signs, x.signs)
++
++
++class TestSignatureParsing(unittest.TestCase):
++
++    def test_parse_default_is_classical(self):
++        self.assertEqual(Hy.parse('1+2i+3j+4k').signs, (-1, -1))
++        self.assertEqual(Hy('1+2j').signs, (-1,))
++
++    def test_parse_with_signs(self):
++        x = Hy.parse('1+2i+3j+4k', signs="split-quaternion")
++        self.assertEqual(x.signs, (-1, 1))
++        self.assertEqual(x, Hy.from_array([1, 2, 3, 4], signs="split-quaternion"))
++        y = Hy.parse('(1+2j)', signs=(3,))
++        self.assertEqual(y.signs, (3,))
++        self.assertEqual(Hy.from_string('1+2j', signs=Hy.SPLIT_COMPLEX).signs, (1,))
++
++    def test_parse_signs_length_must_match_rank_of_text(self):
++        with self.assertRaises(ValueError):
++            Hy.parse('1+2j', signs=(-1, 1))
++        with self.assertRaises(ValueError):
++            Hy.parse('1+2i+3j+4k', signs=(1,))
++
++    def test_str_parse_round_trip_with_matching_signs(self):
++        for n, sg in enumerate(SIGNATURES_UP_TO_RANK_3 + SIGNATURES_RANK_4):
++            rng = random.Random(3000 + n)
++            x = rand_signed(sg, rng)
++            self.assertEqual(Hy.parse(str(x), signs=sg), x)
++
++    def test_constructor_string_with_mu_disagreement_is_rejected(self):
++        # Hy('1+2j') is read classically; asking for another mu is an
++        # error rather than being silently ignored
++        with self.assertRaises(ValueError):
++            Hy('1+2j', mu=1)
++        self.assertEqual(Hy('1+2j', mu=-1), Hy(1, 2))
++
++
++class TestSignatureNormAndPredicates(unittest.TestCase):
++
++    def test_norm_and_norm_squared_agree(self):
++        for n, sg in enumerate(SIGNATURES_UP_TO_RANK_3):
++            x = rand_signed(sg, random.Random(4000 + n))
++            self.assertEqual(x.norm(), x.norm_squared())
++            self.assertEqual(x.norm_squared(), abs2(x))
++
++    def test_norm_squared_matches_sum_of_squares_when_classical(self):
++        for rank in (1, 2, 3, 4):
++            x = Hy.random(rank, seed=rank)
++            self.assertEqual(x.norm_squared(),
++                             sum(c * c for c in x.to_array()))
++
++    def test_norm_squared_formula_by_signature(self):
++        # N = sum over coordinates of c_i^2 * (-unit_square(i))
++        for n, sg in enumerate(SIGNATURES_UP_TO_RANK_3 + SIGNATURES_RANK_4):
++            x = rand_signed(sg, random.Random(4100 + n))
++            expected = sum(c * c * -Hy.unit_square(i, sg) if i else c * c
++                           for i, c in enumerate(x.to_array()))
++            self.assertEqual(x.norm_squared(), expected)
++
++    def test_abs_behaviour(self):
++        self.assertAlmostEqual(abs(Hy(3, 4)), 5.0)             # unchanged
++        self.assertAlmostEqual(abs(Hy(5, 3, mu=1)), 4.0)       # positive form
++        self.assertEqual(abs(Hy(1, 1, mu=1)), 0.0)             # null
++        with self.assertRaises(ValueError) as ctx:
++            abs(Hy(1, 2, mu=1))                                # negative form
++        self.assertIn('norm_squared', str(ctx.exception))
++
++    def test_is_null(self):
++        self.assertTrue(Hy(1, 1, mu=1).is_null())
++        self.assertFalse(Hy(0, 0, mu=1).is_null())             # zero is not null
++        self.assertFalse(Hy(2, 1, mu=1).is_null())
++        for rank in (1, 2, 3):                                 # never, classically
++            self.assertFalse(Hy.random(rank, seed=rank).is_null())
++
++    def test_zero_divisors_without_null_norm_exist_from_rank_four(self):
++        # the documented limitation: is_null() only sees the norm cone
++        x = Hy.from_array([0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0])
++        y = Hy.from_array([0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1])
++        self.assertEqual(x * y, 0)
++        self.assertFalse(x.is_null())
++        self.assertFalse(y.is_null())
++
++    def test_negative_powers_use_the_signature_aware_inverse(self):
++        x = Hy.from_array([2, 1, 0, 1], signs="split-quaternion")
++        self.assertEqual(x ** -1, x.inverse())
++        self.assertEqual(x ** -3, (x * x * x).inverse())
++        self.assertEqual(x ** 0, _embed_signs_for_test(1, (-1, 1)))
++        null = Hy.from_array([1, 0, 1, 0], signs="split-quaternion")
++        self.assertTrue(null.is_null())
++        with self.assertRaises(ZeroDivisionError):
++            null ** -2
++
++    def test_pow_zero_keeps_signature(self):
++        self.assertEqual((Hy(2, 3, mu=1) ** 0).signs, (1,))
++
++
++@unittest.skipUnless(HAVE_NUMPY, "numpy not installed")
++class TestSignatureMatrixRepresentation(unittest.TestCase):
++
++    @staticmethod
++    def _det_2x2(m):
++        return m[0, 0] * m[1, 1] - m[0, 1] * m[1, 0]
++
++    def test_split_complex_is_a_homomorphism(self):
++        rng = random.Random(5000)
++        for _ in range(FUZZ_TRIALS):
++            x, y = rand_signed((1,), rng), rand_signed((1,), rng)
++            self.assertTrue(np.array_equal(
++                np.dot(x.to_matrix(), y.to_matrix()), (x * y).to_matrix()))
++
++    def test_split_complex_matrix_is_symmetric_hyperbolic_form(self):
++        m = Hy(2, 3, mu=1).to_matrix()
++        self.assertEqual(m.tolist(), [[2, 3], [3, 2]])
++        self.assertEqual(self._det_2x2(m), Hy(2, 3, mu=1).norm_squared())
++
++    def test_general_mu_matrix_entries(self):
++        m = Hy(2, 3, mu=5).to_matrix()
++        self.assertEqual(m.tolist(), [[2, 15], [3, 2]])
++        self.assertEqual(self._det_2x2(m), Hy(2, 3, mu=5).norm_squared())
++
++    def test_split_quaternion_homomorphism_and_determinant(self):
++        rng = random.Random(5001)
++        for _ in range(FUZZ_TRIALS):
++            x, y = (rand_signed((-1, 1), rng) for _ in range(2))
++            self.assertTrue(np.array_equal(
++                np.dot(x.to_matrix(), y.to_matrix()), (x * y).to_matrix()))
++        if HAVE_SYMPY:
++            x = rand_signed((-1, 1), rng)
++            det = sympy.Matrix(x.to_matrix().tolist()).det()
++            self.assertEqual(det, x.norm_squared() ** 2)
++
++    def test_left_and_right_representations_with_signs(self):
++        rng = random.Random(5002)
++        for kind in ('left', 'right'):
++            x, y = rand_signed((-1, 1), rng), rand_signed((-1, 1), rng)
++            lhs = np.dot(x.to_matrix(kind=kind), y.to_matrix(kind=kind))
++            rhs = ((x * y) if kind == 'left' else (y * x)).to_matrix(kind=kind)
++            self.assertTrue(np.array_equal(lhs, rhs))
++
++    def test_from_matrix_with_signs_round_trips(self):
++        rng = random.Random(5003)
++        for sg in ((1,), (-1, 1), (1, 1), (2,), (-1, 3)):
++            x = rand_signed(sg, rng)
++            back = Hy.from_matrix(x.to_matrix(), signs=sg, validate=True)
++            self.assertEqual(back, x)
++            self.assertEqual(back.signs, x.signs)
++
++    def test_from_matrix_with_the_wrong_signs_reads_a_different_algebra(self):
++        x = Hy(2, 3, mu=1)
++        back = Hy.from_matrix(x.to_matrix())          # default signs
++        self.assertEqual(back.to_array(), x.to_array())
++        self.assertNotEqual(back, x)
++        # validation catches the mismatch: the split-complex matrix is not
++        # the regular representation of the *classical* complex number
++        with self.assertRaises(ValueError):
++            Hy.from_matrix(x.to_matrix(), validate=True)
++
++    def test_rank_three_guard_still_applies_to_split_octonions(self):
++        x = Hy.random(signs="split-octonion", seed=3)
++        with self.assertRaises(ValueError):
++            x.to_matrix()
++        m = x.to_matrix(allow_nonassociative=True)
++        self.assertEqual(m.shape, (8, 8))
++
++
++class TestSignatureInterop(unittest.TestCase):
++
++    def test_conversion_guard_rejects_non_classical_signatures(self):
++        from hyprat.hypercomplex import _quaternion_fractions
++        for sg in ((1,), (-1, 1), (1, 1), (-1, 2), (3,)):
++            with self.assertRaises(ValueError):
++                _quaternion_fractions(Hy.random(signs=sg, seed=1), "target")
++        # ordinary complex / quaternion values still convert
++        self.assertEqual(len(_quaternion_fractions(Hy(1, 2), "target")), 4)
++        self.assertEqual(len(_quaternion_fractions(Hy.random(2, seed=1), "t")), 4)
++
++    @unittest.skipUnless(HAVE_SYMPY, "sympy not installed")
++    def test_to_sympy_rejects_split_quaternions(self):
++        with self.assertRaises(ValueError):
++            Hy.from_array([1, 2, 3, 4], signs="split-quaternion").to_sympy()
++        with self.assertRaises(ValueError):
++            Hy(1, 2, mu=1).to_sympy()
++
++    @unittest.skipUnless(HAVE_SYMPY, "sympy not installed")
++    def test_classical_conversion_is_unaffected(self):
++        x = Hy.from_array(['1/2', 2, 3, 4])
++        self.assertEqual(Hy.from_sympy(x.to_sympy()), x)
++        self.assertEqual(Hy.from_sympy(x.to_sympy()).signs, (-1, -1))
++
++
++class TestSignatureHelpers(unittest.TestCase):
++    """Module-level functions and miscellany under signatures."""
++
++    def test_module_functions_accept_signed_values(self):
++        a, b = Hy(2, 3, mu=1), Hy(5, 7, mu=1)
++        self.assertEqual(mul(a, b), a * b)
++        self.assertEqual(add(a, b), a + b)
++        self.assertEqual(sub(a, b), a - b)
++        self.assertEqual(neg(a), -a)
++        self.assertEqual(conj(a), a.conjugate())
++        self.assertEqual(abs2(a), a.norm_squared())
++        self.assertEqual(div(a, b), a / b)
++        self.assertEqual(inverse(a), a.inverse())
++
++    def test_module_functions_on_raw_fractions_ignore_signatures(self):
++        self.assertEqual(mul(Fraction(2), Fraction(3)), 6)
++        self.assertEqual(abs2(Fraction(-3)), 9)
++
++    def test_raw_fraction_embeds_into_any_signature(self):
++        r = mul(Fraction(3), Hy(1, 2, mu=1))
++        self.assertEqual(r, Hy(3, 6, mu=1))
++        self.assertEqual(r.signs, (1,))
++
++    def test_hash_and_iter_protocols_still_work(self):
++        x = Hy(1, 2, mu=1)
++        self.assertEqual(list(x), [Fraction(1), Fraction(2)])
++        self.assertEqual(len(x), 2)
++        self.assertEqual(x[0], 1)
++
++    def test_immutability_covers_mu(self):
++        x = Hy(1, 2, mu=1)
++        with self.assertRaises(AttributeError):
++            x._mu = -1
++        with self.assertRaises(AttributeError):
++            x.mu = -1
++
++    def test_latex_is_positional_and_unchanged(self):
++        self.assertEqual(Hy(1, 2, mu=1).latex(), '1+2j')
++        x = Hy.from_array([1, 2, 3, 4], signs="split-quaternion")
++        self.assertEqual(x.latex(), '1+2i+3j+4k')
++
++    def test_units_dict_keys_unchanged_by_signs(self):
++        for rank in (1, 2, 3, 4):
++            sg = (-1,) * (rank - 1) + (1,)
++            self.assertEqual(list(Hy.units(signs=sg)), list(Hy.units(rank)))
++        self.assertEqual(Hy.units(0), {'1': Fraction(1), '-1': Fraction(-1)})
++
++    def test_units_have_the_requested_signature(self):
++        for v in Hy.units(signs=(1, -1, 2)).values():
++            self.assertEqual(v.signs, (1, -1, 2))
++
++
++
+ def main():
+     unittest.main()
+ 
