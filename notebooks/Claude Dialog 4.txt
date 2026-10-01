@@ -1,0 +1,310 @@
+Claude Dialog
+
+ME
+
+With respect to my repo, https://github.com/alreich/hyper_rationals, I'd like to discuss what it would take to make the "Hy" class also support split-hypercompex numbers, such as split-complex, split-quaternions, spit-octonions, etc. And, do it via the Cayley-Dickson construction. Would it be possible to do that? How significan would the changes be to do that? I don't want to write any code just yet, but rather I'd just like to consider how easy or difficult this would be. For example, would it be better to simply create a new class, say "Hys", and whether or not a new class is required, how should the units be named? For example, right now we have "1" and "j" for complex values, "1", "i", "j", and "k" for quaternions, and so on. Is there a naming scheme for split-hypercomplex numbers that makes sense, or should the existing names be reused?
+
+CLAUDE
+
+Yes, this is quite feasible, and I'd lean against a separate `Hys` class. The reason is that the Cayley-Dickson construction already has the right hook for it.
+
+## The math
+
+The usual doubling formula has a hidden parameter. With μ = −1 you get the standard tower; μ = +1 at a given doubling step gives the split version:
+
+(a, b)(c, d) = (ac + μ·d̄b, da + bc̄)
+
+The conjugate, (a, b)‾ = (ā, −b), doesn't change. Only the product, and therefore the norm, picks up μ:
+
+N(a, b) = N(a) − μ·N(b)
+
+So each doubling level has its own sign, and an algebra is described by a sign sequence (μ₁, …, μₙ), not a single "split" flag.
+
+- (−) is ℂ, and (+) is split-complex, where j² = +1.
+- (−,−) is ℍ.
+- (−,+) is the split-quaternions, with i² = −1 and j² = k² = +1. This matches the standard (Cockle) convention.
+- (−,−,+) is the split-octonions, i.e. ℍ doubled with L² = +1.
+
+Over ℝ, any sequence that isn't all −1 gives the same split-quaternions at rank 2, and the same split-octonions at rank 3. From rank 4 up there are several non-isomorphic "split sedenions," so the sign sequence is a real design choice there.
+
+## Why not a `Hys` class
+
+A subclass would effectively fix μ for the whole tower, e.g. (+,+,+). That gives algebras that are only partly "split" by the usual definitions, and it can't express (−,−,+). Mixed sequences are the natural case, so the sign belongs on the instance.
+
+A per-instance approach looks like this:
+
+- Each `Hy` of rank ≥ 1 stores its own top-level μ, defaulting to −1 so all existing code and tests behave identically.
+- The constructor checks that `real` and `imag` have the same rank and the same sign sequence. This is cheap, since it only recurses down one branch.
+- Mixing signatures (a split-quaternion times a Hamilton quaternion) should raise an error. Scalars (rank 0 `Fraction`s) mix freely, as now.
+- `__eq__` and `__hash__` include the signature.
+
+## How big are the changes?
+
+Core arithmetic is small. Multiplication gets one factor of μ, and the inverse, norm and powers follow from it. That's a few dozen lines.
+
+The surrounding surface is where the work is:
+
+- **Zero divisors and null elements.** Split algebras have them even at rank 1: (1+j)(1−j) = 0. Inversion and division must fail for nonzero elements whose norm is 0, with a clear error. If `norm()` currently takes a square root, I'd want to check it, since an indefinite norm can be negative. A separate `norm_squared`-style quantity may be cleaner.
+- **Constructors and helpers.** `Hy.units(rank)`, `Hy.random(rank)`, `from_array` and `parse` all need a way to specify the signature, e.g. a `signs=` argument or named presets.
+- **`repr`/`str`.** `str` is compact, so `(2+3j)` would be ambiguous between complex and split-complex. I'd keep `str` unchanged for the default and make `repr` show the signature for non-default cases so it round-trips.
+- **Interop.** The SymPy, numpy-quaternion and quaternionic converters are only valid for (−,−), so they should raise for anything else.
+- **Matrix representation.** Split-quaternions are isomorphic to 2×2 real matrices, so the regular representation should remain a genuine homomorphism at rank 2. The determinant/norm identity needs re-verifying with an indefinite norm.
+- **Tests.** Norm multiplicativity still holds through rank 3 (split-composition algebras), so those fuzz tests carry over. Anything assuming "nonzero implies invertible" needs a guard. With small random rationals you will hit null elements often.
+- **Docs and notebooks.** New sections plus a short explanation of sign sequences.
+
+I'd call the core change small, the full feature moderate, and almost all of the effort is in the edges listed above.
+
+## Naming the units
+
+I'd reuse the existing labels. The labels encode position in the tower: which doubling generator an element involves, and the products like `iL = i·L`. The signature only changes what each unit squares to, and that's cleanly computable. For a basis element involving the set S of levels, its square is −∏_{l∈S}(−μ_l) (and −1 when all μ = −1).
+
+Reusing the names also gives sensible results for the standard cases. Split-complex keeps `j`, now with j² = +1. Split-quaternions with signs (−,+) keep `i, j, k` with the standard Cockle squares. Split-octonions (−,−,+) have i, j, k squaring to −1 and L, iL, jL, kL squaring to +1.
+
+The alternative is renaming units by their square, so that +1 units get different letters. But the squares then depend on the whole signature, which makes labels context-dependent and complicates parsing. The one real cost of reusing names is that `i` no longer implies i² = −1 in some algebras. A helper such as `unit.square()` or a printed signature summary would cover that.
+
+## One bonus generalization
+
+Over ℚ, not just ℝ, the sign classes aren't limited to ±1, because rationals modulo squares carry more variety (e.g. μ = 2, −3). Allowing μ to be any nonzero `Fraction` costs almost nothing extra and would give you every rational quaternion algebra (a, b). It's worth deciding early whether μ is restricted to ±1 or allowed to be arbitrary, since it affects validation and the docs wording.
+
+## Questions to settle before coding
+
+1. Do you want μ restricted to ±1, or any nonzero rational?
+2. Should `repr` always show the signature, or only when it's non-default?
+3. What should `norm()` do for indefinite norms?
+
+
+
+ME
+
+I'd like to proceed with the modifications as described, where \mu can be any nonzero rational, with -1 as the default; repr should only show the signature when it's non-default; and there should be a separate norm_squared-style quantity. Before proceeding with the coding are there any other questions?
+
+CLAUDE
+
+A few things are still open. For most of them I'll just state the default I'd use, so you only need to answer the ones you disagree with.
+
+**Questions where I'd like your call**
+
+1. **What should `norm()` do when the form is indefinite?** `norm_squared()` will return the exact rational x·x̄, possibly negative or zero. `norm()` could stay as the square root for the default (positive-definite) case and raise `ValueError` whenever `norm_squared` is negative. Or it could return the root only when `norm_squared` is a non-negative rational square, since an irrational root can't be exact. Which do you prefer?
+
+2. **How is the signature specified at construction?** I'd accept `mu=` for the top level only, e.g. `Hy(a, b, mu=1)`, since the components already carry their lower levels. For factory-style methods (`units`, `random`, `from_array`, `parse`) I'd accept a full `signs=` tuple ordered from the lowest level to the highest. So `signs=(-1, 1)` means split-quaternions. Is that ordering what you'd expect?
+
+3. **Should there be named presets?** For example, `Hy.SPLIT_COMPLEX`, `Hy.SPLIT_QUATERNION` and `Hy.SPLIT_OCTONION`, or string aliases like `signs="split-quaternion"`. They're cosmetic but make the common cases much easier to write. I'd include them unless you'd rather keep the API minimal.
+
+**Defaults I'll assume unless you say otherwise**
+
+- **Mixed signatures** in `+`, `-`, `*`, `/` raise `ValueError`. Scalars (`int`, `Fraction`) still mix freely.
+- **Equality** between elements of different signatures returns `False` rather than raising, and the hash includes the signature.
+- **Null elements** (nonzero, `norm_squared == 0`) raise `ZeroDivisionError` on inversion or division, with a message that says why. I'd also add an `is_null()`-style predicate, which is also true for zero divisors at rank 1–3. At rank ≥ 4 there are zero divisors with nonzero norm, which I'll document rather than detect.
+- **`is_unit()`** keeps its current meaning (basis unit, not algebraic invertibility). I'll note that in the docstring, since it's less obvious in split algebras.
+- **`parse` / `from_string`** take `signs=` (default all −1). The string format itself is unchanged, so `str` output for non-default signatures isn't self-describing. That's the same compromise as `repr` only showing the signature when non-default.
+- **Interop converters** (SymPy, numpy-quaternion, quaternionic) raise `ValueError` unless the signature is exactly (−1, −1).
+- **Matrix representation** keeps working, and the homomorphism guard stays at rank ≤ 2. The determinant-vs-norm test gets re-verified for split cases.
+- **Delivery** follows the same workflow as before: issues flagged first, then a zipfile with all changed files, tests, notebooks and the regenerated docs. The full suite and a Sphinx build get verified before delivery.
+
+If you're fine with all of those defaults, answers to 1–3 are all I need to start.
+
+
+
+ME
+
+With respect to question 2, I'd like to do as you suggest. That is "mu=" at the top level, and "sign=" with ordering from lowest level to the highest level. Wrt to question 3, I would like to have named presets. With respect to question 1, I'm not sure which option to chose. Can you help me decide?
+
+CLAUDE
+
+Happy to help. My recommendation is to keep `norm()` as close to its current behavior as possible and let `norm_squared()` carry the new information:
+
+- **`norm_squared() > 0`:** `norm()` behaves exactly as it does today.
+- **`norm_squared() == 0`:** `norm()` returns 0. That is the square root of 0, and it's what the quadratic form gives for a null element. Callers who need to detect null elements can use `is_null()` or `norm_squared()`.
+- **`norm_squared() < 0`:** `norm()` raises `ValueError`, with a message pointing to `norm_squared()`. This only happens in split algebras, or with a positive μ somewhere in the sign sequence.
+
+Here is why I'd choose that over the stricter option (return the root only when `norm_squared` is a non-negative rational square):
+
+1. **It keeps existing behavior.** With μ = −1 throughout, nothing changes for current users or tests. The stricter option would break `norm()` for ordinary elements like 1 + j, whose norm is √2, unless the code already restricts it that way.
+2. **The problem is specific to the indefinite case.** A negative `norm_squared` has no real square root. The right response is a clear error, not an arbitrary substitute such as a complex number, `NaN`, or the absolute value.
+3. **It works for general μ.** With a rational μ like −2 or 3, the form is often definite but rarely a perfect square. A perfect-square rule would make `norm()` fail on most elements of those algebras, even though they're valid and definite.
+4. **The split-algebra information is in the sign of `norm_squared()`.** It tells you whether an element is timelike, spacelike or null, so that quantity is the one split users will actually reach for.
+
+One caveat is that I haven't seen how `norm()` currently computes its result, such as a float `sqrt` versus an exact `Fraction`. I'll check that when I start and preserve whatever it does today for the positive case.
+
+Does that sound right to you? If so, I have all three answers and can begin.
+
+
+
+ME
+
+Yes, that sounds right to me. Please begin.
+
+CLAUDE
+
+I'm reading through the cloned `hyprat` source, the arithmetic core first, to plan where the μ parameter has to go. Next I'll look at the module-level functions and the remaining methods.I've finished reading the source and the baseline suite is green (189 passed). I'm now implementing the signature (μ) support in `hypercomplex.py`, starting with the core data model and arithmetic.Existing suite still passes unchanged (189 passed), so default behavior is intact. Next I'll probe the new split-algebra behavior by hand before writing the formal tests.All green: 318 passed (up from 189) plus 7 doctests; the 24 skips are the same optional-package tests as before. Next is documentation: I'll check the docs and notebook tooling available here.Docs next. I'll add a "Signatures" section to the module docstring (with doctests), then notebook and rst sections.With all optional packages installed, the full suite passes with nothing skipped: 342 passed. Now I'll build the `hyprat_examples.ipynb` section and splice both notebook sections in.
+
+
+
+ME
+
+Please continue.
+
+CLAUDE
+
+Split-hypercomplex support is implemented in `Hy` by adding a Cayley-Dickson parameter `mu` to each doubling level, with default behavior unchanged. I worked from a fresh clone of your repo. Your original 189 tests pass untouched, and the full suite is now 342 passing with sympy, numpy-quaternion and quaternionic installed. Doctests, the module self-test, a re-execution of both edited notebooks and a Sphinx build also pass.
+
+## What was added
+
+- **Signatures.**
+  - `Hy(a, b, mu=...)` sets the top level, and `.mu` and `.signs` expose the signature.
+  - `mu` can be any nonzero rational, with −1 as the default.
+  - `Hy.units`, `random`, `from_array`, `parse` and `from_matrix` take `signs=` (a tuple, or a preset name).
+  - Presets are available as constants, e.g. `Hy.SPLIT_QUATERNION`.
+- **Norms and null elements.**
+  - `norm_squared()` is the new exact form, and `norm()` is kept as an alias.
+  - `abs()` returns the square root, returns 0 for a null element, and raises `ValueError` when the form is negative.
+  - `is_null()` is new, and inverting a null element raises `ZeroDivisionError` with a specific message.
+- **Units.** Labels stay positional. The new `Hy.unit_square(index, signs)` gives what each unit squares to.
+- **`repr`.** It shows `mu` only when it isn't −1, and it round-trips through `eval`.
+
+## Checked
+
+- **Standard squares.** Split-quaternions (−1, +1) give i² = −1 and j² = k² = +1, and split-octonions (−1, −1, +1) put −1 on i, j, k and +1 on L, iL, jL, kL.
+- **Laws across 15 signatures.** The norm is multiplicative through rank 3 and associative through rank 2. At rank 3 the product is alternative but not associative. Distributivity and the conjugate-of-product law hold at every rank tested (1–4), and the rank-4 signatures also lose multiplicativity of the norm, as expected for sedenion-type algebras.
+- **Matrices.** The split-quaternion matrix representation is a true homomorphism, and the determinant equals `norm_squared()` to the right power.
+
+## Behavior to review
+
+1. **Equality and hashing.** Different signatures compare unequal, but a pure real is equal across them: `Hy(2, 0, mu=1) == Hy(2, 0)` is `True`, so reals still behave like reals.
+2. **Mixing algebras.** Mixed signatures raise `ValueError`. A lower-rank value embeds into a higher-rank one only when its signature is a prefix of the other's. Strings like `'1+j'` are read in the other operand's algebra, and a Python `complex` literal is treated as an ordinary complex number, so adding one to a split value raises.
+3. **Copy construction.** `Hy(some_hy, mu=...)` raises if the `mu` differs from the existing one.
+4. **Unchanged limitation.** `is_null()` only sees the norm cone. From rank 4 up there are zero divisors with nonzero norm, which it doesn't detect. I documented this and tested it.
+5. **Guarded conversions.** `to_sympy`, `to_numpy_quaternion`, `to_quaternionic` and `complex()` reject anything but the classical algebras.
+
+Docs are updated in the module docstring (with doctests), `usage.rst`, `usage.ipynb` and `hyprat_examples.ipynb`. I did not touch the README or bump the version, which is still 0.1.0. A minor-version bump seems right given the new public API, but that's your call.
+
+Files are in `/mnt/user-data/outputs`:
+- `hyprat_split_signatures.zip`
+- `split_signatures.patch`
+
+
+
+ME
+
+Thank you! Will applying the patch update all relevant files?
+
+CLAUDE
+
+Yes. The patch is a `git diff` of all five files I changed, so applying it updates every one of them. I confirmed this by applying it to a fresh clone of your repo. All five files came out identical to my working copies, and the full suite passed (342 tests).
+
+The five files:
+- `src/hyprat/hypercomplex.py`
+- `tests/test_hypercomplex.py`
+- `docs/source/usage.rst`
+- `notebooks/usage.ipynb`
+- `notebooks/hyprat_examples.ipynb`
+
+To apply it from the repo root:
+
+```
+git apply --check split_signatures.patch   # dry run
+git apply split_signatures.patch
+```
+
+- **Your newer commit.** Your latest commit, "split-hypercomplex numbers", only touches `notebooks/dialog_with_Claude_part_2.ipynb`. None of the five files above, so the patch applies cleanly on top of it.
+- **Local changes.** If you've edited any of the five files locally since then, `git apply --check` will say so before changing anything. In that case the zip is the safer route, since you can diff or merge file by file.
+- **Not in the patch.** I didn't touch the README, the README notebook or `__version__`. The patch also doesn't include a rebuilt HTML docs site. `usage.rst` is updated, so a normal Sphinx build will pick it up.
+
+
+
+
+ME
+
+Good. Thank you.
+
+CLAUDE
+
+You're welcome, Al. If you run into anything odd when you apply it, or want to take on the next steps (README, a version bump, or looking at rank-4 split algebras), just let me know.
+
+
+
+
+ME
+
+Please remember where we are with this. Thank you.
+
+CLAUDE
+
+I've saved where things stand, Al. The split-hypercomplex implementation is delivered as a patch and a zip, covering the source, tests, rst docs and both notebooks. All 342 tests pass. The patch applies cleanly on top of your latest commit. The README and the version number (0.1.0) are still untouched.
+
+
+
+ME
+
+Actually, just one more thing. You mentioned looking at rank-4 algebras. What did you have in mind with that?
+
+CLAUDE
+
+It was a loose offer rather than a planned deliverable, but here are the concrete ideas behind it.
+
+**1. An exact zero-divisor test (`is_zero_divisor()`).** I think this is the most useful of the three. `is_null()` only sees the norm cone, which is exactly the zero-divisor set through rank 3. From rank 4 up there are zero divisors with nonzero norm, which `is_null()` misses (I tested that case, and it's documented). Since x is a left zero divisor exactly when the linear map y → x·y is singular, the exact test is a rank computation on the existing left-multiplication matrix. It would work over `Fraction`s with plain Gaussian elimination, so no new dependency. It would work for any signature and any rank, and it would also settle the unresolved case above.
+
+**2. A survey of the rank-4 sign sequences.** With μ = ±1 there are 16 sequences at rank 4, and I don't think they are all isomorphic. A norm-form signature can't tell them apart: if any level is split, the form is always (8, 8), and the multiset of unit squares is the same too. Telling them apart takes finer invariants, such as counting basis-pair zero divisors like (e_a ± e_b)(e_c ± e_d) = 0, or checking flexibility and power-associativity. Everything here is exact arithmetic, so the survey would be an easy script and would show how many genuinely different "split sedenions" the construction produces.
+
+**3. Presets only if the literature has one.** I don't know of a standard choice of "the" split-sedenions, and I'd rather not invent a canonical one by naming a sequence. I could search the literature first, and add a preset only if a convention exists.
+
+My tests currently check only that rank-4 signatures obey distributivity, the conjugate-of-product law, x·x̄ = N and unit squares, plus inversion for non-null elements. They make no claims about the finer structure, and items 1 and 2 would fill that in.
+
+An adjacent idea is a Zorn vector-matrix conversion for the split-octonions. Your docs already mention Zorn matrices as the faithful alternative to the failing matrix representation at rank 3, and split-octonions are exactly the algebra Zorn's construction represents. A `to_zorn()`/`from_zorn()` pair would give a genuine homomorphism there, though I'd have to construct and test the explicit isomorphism with the (−1, −1, +1) tower.
+
+If you want to pick one, I'd start with the zero-divisor test, since it's small and clearly useful.
+
+
+
+
+ME
+
+Oh, that's interesting. Yes, can we look at the exact zero-divisor tests right now?
+
+CLAUDE
+
+Everything passes now (358 tests, doctests, notebooks, docs build). I'm rebuilding the patch and zip, and checking that the new patch applies cleanly to a fresh clone.The exact zero-divisor test is in, and I rebuilt the patch against your repo's current HEAD, `05aa795 added support for split hy's`. The old patch no longer applies there, so I removed it from the outputs.
+
+`zero_divisors.patch` applies cleanly on top of that commit. I applied it to a fresh clone, confirmed all five files match my working copies, and the full suite passed (358 tests). `hyprat_split_signatures.zip` has the complete current versions of the same five files, if you'd rather copy files than apply a patch.
+
+## What was added
+
+- **`is_zero_divisor()`** checks whether `y → x·y` is singular, using exact rational elimination, so it works at any rank and signature. It does not count 0.
+  - Through rank 3 it agrees exactly with `is_null()`.
+  - From rank 4 up it also finds zero divisors that are not null. Your known sedenion example, e1 + e10, is not null but is flagged.
+  - It has no left/right argument. A value is a zero divisor on the left exactly when it is on the right, and exactly when its conjugate is.
+  - The reason is an adjoint identity for the bilinear form, B(xy, z) = B(y, x̄z), which I checked in all 12 signatures I tried, up to rank 5. I did not write out a proof. The test suite includes that check.
+- **`annihilator(kind="left"|"right")`** returns an exact basis of the values `y` with `x·y = 0` (or `y·x = 0`). It also serves as a witness: every returned vector is checked to be annihilated, and independent code checks the dimension against a rank computation (and SymPy's, when installed).
+
+## What I found while building it
+
+- **Sedenion annihilator size.** The annihilator of e1 + e10 has dimension 4, not 2 as I first wrote in a draft docstring. I caught it when running the example and fixed it.
+- **Left and right annihilators.** They always have the same dimension, but they can be different subspaces. In the classical sedenion cases I sampled they coincided. In a split algebra such as signs (−1, −1, +1, −1) they often differ, e.g. for e0 + e4. The docs say only that.
+- **Sample size.** The classical sedenion observation comes from about 360 sparse elements, not an exhaustive search, so it isn't a theorem.
+
+The docstrings, `usage.rst` and both notebooks are updated, and the notebooks re-execute without errors. The Sphinx build shows only the same sandbox warning as before. That warning is the Python intersphinx inventory returning a 403.
+
+Your repo now contains `split_signatures.patch` at the root, because it was committed along with the earlier changes. You may want to remove it from the repo.
+
+The other rank-4 ideas (the survey of the 16 sign sequences, and presets only if the literature has one) are still open if you want to look at either.
+
+
+
+
+ME
+
+This is good. Thank you. Please remember where we are. I'll come back to discuss the remaining open items.
+
+CLAUDE
+
+Saved, Al. Split-hypercomplex support and the exact zero-divisor test are both done and delivered, and the new patch is applied cleanly on top of your latest commit.
+
+Three open items remain for when you come back:
+- **Rank-4 survey:** working out how many genuinely different split algebras the 16 sign sequences produce.
+- **Presets:** adding named presets for rank-4 split algebras only if the literature has a standard one.
+- **Zorn conversion:** a Zorn vector-matrix conversion for the split-octonions.
+
+I also noted that the repo root contains `split_signatures.patch`, which you may want to delete.
+
+
+

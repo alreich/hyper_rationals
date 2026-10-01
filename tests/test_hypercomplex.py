@@ -82,6 +82,8 @@ Organization:
                             - to_matrix()/from_matrix() with signs (needs numpy)
     TestSignatureInterop    - interop converters reject non-classical algebras
     TestSignatureHelpers    - module-level functions, immutability, latex, units
+    TestZeroDivisors        - is_zero_divisor() / annihilator(): the exact
+                              zero-divisor test, every rank and signature
 
 The tests that need a third-party package are skipped (not failed) when
 that package is not installed.
@@ -2627,6 +2629,8 @@ class TestSignatureNormAndPredicates(unittest.TestCase):
         self.assertEqual(x * y, 0)
         self.assertFalse(x.is_null())
         self.assertFalse(y.is_null())
+        self.assertTrue(x.is_zero_divisor())      # the exact test does see them
+        self.assertTrue(y.is_zero_divisor())
 
     def test_negative_powers_use_the_signature_aware_inverse(self):
         x = Hy.from_array([2, 1, 0, 1], signs="split-quaternion")
@@ -2786,6 +2790,200 @@ class TestSignatureHelpers(unittest.TestCase):
     def test_units_have_the_requested_signature(self):
         for v in Hy.units(signs=(1, -1, 2)).values():
             self.assertEqual(v.signs, (1, -1, 2))
+
+
+
+def sparse_values(signs, rng, count, max_terms=4):
+    """Random Hy values with a few nonzero coordinates, each +-1: the shape
+    that zero divisors of Cayley-Dickson algebras take most often."""
+    n = 2 ** len(signs)
+    out = []
+    for _ in range(count):
+        k = rng.randint(1, min(max_terms, n))
+        arr = [0] * n
+        for i in rng.sample(range(n), k):
+            arr[i] = rng.choice((1, -1))
+        out.append(Hy.from_array(arr, signs=signs))
+    return out
+
+
+# the classical sedenion zero divisor used in the matrix tests: e1 + e10
+SEDENION_ZD = [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0]
+
+
+class TestZeroDivisors(unittest.TestCase):
+    """is_zero_divisor() / annihilator(): the exact zero-divisor test."""
+
+    def test_zero_is_not_a_zero_divisor(self):
+        for sg in ((-1,), (1,), (-1, 1), (-1, -1, 1), (-1, -1, -1, -1)):
+            z = Hy.from_array([0] * 2 ** len(sg), signs=sg)
+            self.assertFalse(z.is_zero_divisor())
+            # every y is annihilated by 0, so the annihilator is everything
+            self.assertEqual(len(z.annihilator()), 2 ** len(sg))
+            self.assertEqual(len(z.annihilator("right")), 2 ** len(sg))
+
+    def test_basis_units_are_never_zero_divisors(self):
+        for sg in SIGNATURES_UP_TO_RANK_3 + SIGNATURES_RANK_4:
+            for name, u in Hy.units(signs=sg).items():
+                self.assertFalse(u.is_zero_divisor(), msg=f"{sg} {name}")
+                self.assertEqual(u.annihilator(), ())
+
+    def test_classical_algebras_have_no_zero_divisors_through_rank_three(self):
+        rng = random.Random(7000)
+        for rank in (1, 2, 3):
+            sg = (-1,) * rank
+            for x in sparse_values(sg, rng, 60, max_terms=2 ** rank):
+                self.assertFalse(x.is_zero_divisor())
+
+    def test_agrees_with_is_null_through_rank_three(self):
+        # the zero divisors of a composition algebra are exactly its
+        # nonzero null elements
+        for n, sg in enumerate(SIGNATURES_UP_TO_RANK_3):
+            rng = random.Random(7100 + n)
+            vals = sparse_values(sg, rng, 40, max_terms=2 ** len(sg))
+            vals += [Hy.random(signs=sg, rng=rng, lo=-2, hi=2, dmax=1)
+                     for _ in range(40)]
+            for x in vals:
+                self.assertEqual(x.is_zero_divisor(), x.is_null(),
+                                 msg=f"signs={sg}, x={x!r}")
+
+    def test_null_elements_are_zero_divisors_in_every_split_algebra(self):
+        self.assertTrue(Hy(1, 1, mu=1).is_zero_divisor())
+        self.assertTrue(Hy(2, 1, mu=4).is_zero_divisor())
+        self.assertFalse(Hy(2, 1, mu=2).is_zero_divisor())    # field: sqrt 2 irrational
+        sq = Hy.units(signs="split-quaternion")
+        self.assertTrue((sq['1'] + sq['j']).is_zero_divisor())
+
+    def test_classical_sedenion_zero_divisor_is_not_null(self):
+        x = Hy.from_array(SEDENION_ZD)
+        y = Hy.from_array([0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1])
+        self.assertEqual(x * y, 0)
+        self.assertFalse(x.is_null())
+        self.assertNotEqual(x.norm_squared(), 0)
+        self.assertTrue(x.is_zero_divisor())
+        self.assertTrue(y.is_zero_divisor())
+        # y lies in the span of the annihilator basis: adding it to the
+        # basis does not raise the rank
+        basis = [v.to_array() for v in x.annihilator()]
+        self.assertEqual(len(basis), 4)
+        self.assertEqual(_rank_of(basis + [y.to_array()]), 4)
+
+    def test_annihilator_vectors_are_annihilated(self):
+        for n, sg in enumerate(SIGNATURES_RANK_4 + ((-1, 1), (-1, -1, 1), (1, 1, 1))):
+            rng = random.Random(7200 + n)
+            for x in sparse_values(sg, rng, 12 if len(sg) == 4 else 25):
+                for y in x.annihilator("left"):
+                    self.assertTrue(y)
+                    self.assertEqual(x * y, 0)
+                for y in x.annihilator("right"):
+                    self.assertTrue(y)
+                    self.assertEqual(y * x, 0)
+
+    def test_annihilator_basis_is_independent_and_spans_the_kernel(self):
+        # dimension of the annihilator == 2**rank - rank of the matrix
+        for n, sg in enumerate(((-1, 1), (-1, -1, 1), (-1, -1, -1, -1), (-1, -1, 1, -1))):
+            rng = random.Random(7300 + n)
+            for x in sparse_values(sg, rng, 10):
+                ann = x.annihilator()
+                dim = 2 ** len(sg)
+                if ann:
+                    coords = [y.to_array() for y in ann]
+                    self.assertEqual(_rank_of(coords), len(ann))   # independent
+                self.assertEqual(len(ann), dim - _rank_of(
+                    [(x * e).to_array() for e in
+                     (v for k, v in Hy.units(signs=sg).items() if not k.startswith('-'))]))
+
+    def test_left_and_right_have_equal_dimension_and_conjugate_agrees(self):
+        for n, sg in enumerate(((-1, -1, -1, -1), (-1, -1, 1, -1), (1, 1, 1, 1))):
+            rng = random.Random(7400 + n)
+            for x in sparse_values(sg, rng, 14):
+                dl = len(x.annihilator("left"))
+                self.assertEqual(dl, len(x.annihilator("right")))
+                self.assertEqual(dl, len(x.conjugate().annihilator("left")))
+                self.assertEqual(x.is_zero_divisor(),
+                                 x.conjugate().is_zero_divisor())
+
+    def test_left_and_right_annihilators_can_be_different_subspaces(self):
+        # in a split algebra the two sides' annihilators need not coincide
+        sg = (-1, -1, 1, -1)
+        x = Hy.from_array([1, 0, 0, 0, 1] + [0] * 11, signs=sg)
+        left, right = x.annihilator("left"), x.annihilator("right")
+        self.assertEqual(len(left), len(right))
+        self.assertEqual(len(left), 8)
+        self.assertNotEqual([y.to_array() for y in left],
+                            [y.to_array() for y in right])
+        self.assertTrue(x.is_null())          # e0 + e4 is null here too
+
+    def test_bilinear_form_adjointness_underlies_the_symmetry(self):
+        # B(x*y, z) == B(y, conj(x)*z) and B(y*x, z) == B(y, z*conj(x)),
+        # where B is the polarization of norm_squared()
+        def B(a, b, sg):
+            return sum((1 if i == 0 else -Hy.unit_square(i, sg)) * p * q
+                       for i, (p, q) in enumerate(zip(a.to_array(), b.to_array())))
+        for n, sg in enumerate(SIGNATURES_UP_TO_RANK_3 + SIGNATURES_RANK_4):
+            rng = random.Random(7500 + n)
+            for _ in range(8):
+                x, y, z = (rand_signed(sg, rng) for _ in range(3))
+                self.assertEqual(B(x * y, z, sg), B(y, x.conjugate() * z, sg))
+                self.assertEqual(B(y * x, z, sg), B(y, z * x.conjugate(), sg))
+
+    def test_zero_divisors_persist_when_embedded_in_higher_rank(self):
+        x = Hy.from_array(SEDENION_ZD)
+        up = Hy(x, 0)                              # rank 5
+        self.assertEqual(up.rank, 5)
+        self.assertTrue(up.is_zero_divisor())
+        y = up.annihilator()[0]
+        self.assertEqual(up * y, 0)
+
+    def test_generic_rank_four_values_are_not_zero_divisors(self):
+        for sg in ((-1, -1, -1, -1), (-1, -1, 1, -1)):
+            rng = random.Random(7600)
+            for _ in range(3):
+                x = rand_signed(sg, rng)
+                self.assertFalse(x.is_zero_divisor())
+                self.assertEqual(x.annihilator(), ())
+
+    def test_annihilator_kind_is_validated(self):
+        with self.assertRaises(ValueError):
+            Hy(1, 2).annihilator("middle")
+        with self.assertRaises(ValueError):
+            Hy(1, 2).annihilator(kind=None)
+
+    def test_annihilator_elements_keep_the_signature(self):
+        x = Hy.from_array([1, 0, 1, 0], signs="split-quaternion")
+        self.assertTrue(x.is_zero_divisor())
+        for y in x.annihilator():
+            self.assertEqual(y.signs, (-1, 1))
+            self.assertEqual(y.rank, 2)
+
+    @unittest.skipUnless(HAVE_SYMPY, "sympy not installed")
+    def test_agrees_with_sympy_rank(self):
+        for n, sg in enumerate(((-1, 1), (-1, -1, 1), (-1, -1, -1, -1), (1, -1, 1, 1))):
+            rng = random.Random(7700 + n)
+            for x in sparse_values(sg, rng, 10):
+                basis = [v for k, v in Hy.units(signs=sg).items() if not k.startswith('-')]
+                m = sympy.Matrix([(x * e).to_array() for e in basis]).T
+                singular = m.rank() < 2 ** len(sg)
+                self.assertEqual(x.is_zero_divisor(), singular and bool(x))
+
+
+def _rank_of(rows):
+    """Exact rank of a list of Fraction rows (independent re-implementation,
+    used to cross-check the library's elimination)."""
+    m = [list(map(Fraction, r)) for r in rows]
+    rank = 0
+    ncols = len(m[0]) if m else 0
+    for c in range(ncols):
+        piv = next((i for i in range(rank, len(m)) if m[i][c] != 0), None)
+        if piv is None:
+            continue
+        m[rank], m[piv] = m[piv], m[rank]
+        for i in range(len(m)):
+            if i != rank and m[i][c] != 0:
+                f = m[i][c] / m[rank][c]
+                m[i] = [a - f * b for a, b in zip(m[i], m[rank])]
+        rank += 1
+    return rank
 
 
 

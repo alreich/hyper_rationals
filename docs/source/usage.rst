@@ -959,6 +959,69 @@ and ``Hy.from_matrix``) takes a ``signs=`` argument:
 
 
 
+Zero divisors
+~~~~~~~~~~~~~
+
+For ranks 1 to 3 the zero divisors are exactly the null elements, which
+is what ``is_null()`` detects. From rank 4 up (the sedenions and beyond)
+there are also zero divisors with *nonzero* norm. In the classical
+sedenions every zero divisor is like this, so ``is_null()`` never sees
+them.
+
+``is_zero_divisor()`` is the exact test, for any rank and signature. It
+checks whether the map ``y -> x * y`` is singular, using exact rational
+elimination on that map’s matrix. ``0`` itself is not counted.
+
+.. code:: ipython3
+
+    >>> zd = Hy.from_array([0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0])   # e1 + e10, a sedenion
+    >>> zd.is_null(), zd.is_zero_divisor()
+
+
+
+
+.. parsed-literal::
+
+    (False, True)
+
+
+
+``annihilator()`` returns an exact basis of the values it kills. With
+the default ``kind="left"`` these are the ``y`` with ``x * y == 0``, and
+with ``kind="right"`` the ``y`` with ``y * x == 0``:
+
+.. code:: ipython3
+
+    >>> zd_ann = zd.annihilator()
+    >>> len(zd_ann), all(zd * y == 0 for y in zd_ann)
+
+
+
+
+.. parsed-literal::
+
+    (4, True)
+
+
+
+There is no left/right argument for ``is_zero_divisor()`` itself: a
+value is a zero divisor on one side exactly when it is on the other, and
+exactly when its conjugate is. The two annihilators always have the same
+dimension, but they can be different sets of values. In the classical sedenion cases checked they coincided, while in a split algebra they often do not:
+
+.. code:: ipython3
+
+    >>> zd_split = Hy.from_array([1, 0, 0, 0, 1] + [0] * 11, signs=(-1, -1, 1, -1))
+    >>> left, right = zd_split.annihilator("left"), zd_split.annihilator("right")
+    >>> len(left), len(right), left == right
+
+
+
+
+.. parsed-literal::
+
+    (8, 8, False)
+
 Matrices and other packages
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

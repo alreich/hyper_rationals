@@ -139,6 +139,18 @@ and a nonzero *null* element (``some_hy.is_null()``) has no inverse -- it
 raises ``ZeroDivisionError``.  The form stays multiplicative through rank
 3, as in every composition algebra, split or not.
 
+For ranks 1-3 the null elements are exactly the zero divisors.  From rank 4
+up there are zero divisors that are *not* null (in the classical sedenions
+every zero divisor has nonzero norm), so ``is_null()`` is not the whole
+story there; ``some_hy.is_zero_divisor()`` is the exact test at any rank
+and signature, and ``some_hy.annihilator()`` returns an exact basis of the
+values ``y`` with ``some_hy * y == 0`` (``kind="right"`` for ``y * some_hy
+== 0``)::
+
+    >>> x = Hy.from_array([0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0])
+    >>> x.is_null(), x.is_zero_divisor()
+    (False, True)
+
 Values of different signatures never mix: ``+ - * /`` raise ``ValueError``
 (a lower-rank value embeds into a higher-rank one only when its signature
 is a prefix of the other's), ``==`` is simply ``False``, and plain
@@ -447,9 +459,69 @@ class Hy:
         Null elements are not invertible. For ranks 1-3 (the composition
         algebras) they are exactly the zero divisors; from rank 4 up there
         are also zero divisors with nonzero norm, which this does not
-        detect.
+        detect -- use :meth:`is_zero_divisor` for the exact test.
         """
         return (not _is_zero_val(self)) and abs2(self) == 0
+
+    def is_zero_divisor(self) -> bool:
+        """True iff this value is a nonzero zero divisor: there is a
+        nonzero ``y`` of the same rank and signature with ``self * y == 0``.
+
+        This is an exact test, valid for every rank and signature
+        (including values that are *not* null, which is the only kind of
+        zero divisor :meth:`is_null` can see). It checks whether the
+        left-multiplication map ``y -> self * y`` is singular, by exact
+        rational Gaussian elimination on its ``2**rank`` x ``2**rank``
+        matrix.
+
+        There is deliberately no left/right argument: ``self`` is a zero
+        divisor on the left exactly when it is one on the right, and also
+        exactly when its conjugate is. (This follows from the identity
+        ``B(x*y, z) == B(y, conj(x)*z)`` for the algebra's bilinear form
+        ``B``, which makes the matrices of ``x`` and ``conj(x)`` adjoint to
+        each other; it is also checked by the test suite.) The *sets* of
+        annihilating ``y`` do differ from side to side; see
+        :meth:`annihilator`.
+
+        ``0`` itself is not counted as a zero divisor. For ranks 1-3 the
+        zero divisors are exactly the null elements, so this agrees with
+        :meth:`is_null` there; in the classical (all ``mu = -1``)
+        algebras there are none until rank 4 (the sedenions), where they
+        all have nonzero norm::
+
+            >>> x = Hy.from_array([0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0])
+            >>> x.is_null(), x.is_zero_divisor()
+            (False, True)
+        """
+        if _is_zero_val(self):
+            return False
+        return len(_annihilator_vectors(self, "left")) > 0
+
+    def annihilator(self, kind: str = "left") -> tuple:
+        """A basis, as a tuple of ``Hy`` values, of the set of ``y`` that
+        ``self`` annihilates: ``kind="left"`` (the default, matching
+        :meth:`to_matrix`) gives the ``y`` with ``self * y == 0``;
+        ``kind="right"`` gives the ``y`` with ``y * self == 0``.
+
+        The basis is exact (rational coordinates, in reduced echelon
+        form) and each element is nonzero. It is empty exactly when
+        ``self`` is not a zero divisor and nonzero; for ``self == 0`` it
+        is every basis unit. The two kinds always have the same
+        dimension, but the two spaces can differ -- in the sampled
+        classical sedenion cases they coincided, while in split algebras
+        they often do not::
+
+            >>> x = Hy.from_array([0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0])
+            >>> ys = x.annihilator()
+            >>> all(x * y == 0 for y in ys), len(ys)
+            (True, 4)
+        """
+        if kind not in ("left", "right"):
+            raise ValueError(f"kind must be 'left' or 'right', got {kind!r}")
+        return tuple(
+            _unflatten(v, self.rank, self.signs)
+            for v in _annihilator_vectors(self, kind)
+        )
 
     def is_zero(self) -> bool:
         return _is_zero_val(self)
@@ -1634,6 +1706,50 @@ def _coerce_flat_element(v) -> Fraction:
 # ============================================================================
 # Helper for to_matrix()/from_matrix()
 # ============================================================================
+
+def _annihilator_vectors(x: "Hy", kind: str) -> list:
+    """A basis of the kernel of ``y -> x*y`` (kind="left") or ``y -> y*x``
+    (kind="right"), as lists of ``2**rank`` Fractions, by exact Gaussian
+    elimination over the rationals.
+
+    The columns of the map's matrix are the images of the positive units,
+    so the kernel vectors are the coefficient vectors ``v`` with
+    ``sum_j v[j] * (x*e_j) == 0``."""
+    n = 2 ** x.rank
+    basis = _positive_units(x.rank, x.signs)
+    if kind == "left":
+        cols = [_flatten(mul(x, e)) for e in basis]
+    else:
+        cols = [_flatten(mul(e, x)) for e in basis]
+    # rows[i][j] = i-th coordinate of the image of the j-th unit
+    rows = [[cols[j][i] for j in range(n)] for i in range(n)]
+    pivot_cols = []
+    r = 0
+    for c in range(n):
+        piv = next((i for i in range(r, n) if rows[i][c] != 0), None)
+        if piv is None:
+            continue
+        rows[r], rows[piv] = rows[piv], rows[r]
+        inv = 1 / rows[r][c]
+        rows[r] = [v * inv for v in rows[r]]
+        for i in range(n):
+            if i != r and rows[i][c] != 0:
+                f = rows[i][c]
+                rows[i] = [a - f * b for a, b in zip(rows[i], rows[r])]
+        pivot_cols.append(c)
+        r += 1
+        if r == n:
+            break
+    free_cols = [c for c in range(n) if c not in pivot_cols]
+    kernel = []
+    for fc in free_cols:
+        v = [Fraction(0)] * n
+        v[fc] = Fraction(1)
+        for row_idx, pc in enumerate(pivot_cols):
+            v[pc] = -rows[row_idx][fc]
+        kernel.append(v)
+    return kernel
+
 
 def _positive_units(rank: int, signs=None) -> list:
     """The 2**rank positive units of the rank-`rank` algebra (1, then each
