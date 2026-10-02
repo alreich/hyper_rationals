@@ -2,3 +2,5 @@ To-Be-Done.txt
 
 In the doc string for 'Hy', remove the paragraph explaining why 'Hy' is not a dataclass. That is, the paragraph that begins with, "``Hy`` is deliberately *not* a ``@dataclass``...". Replace that paragraph with a brief, high-level description that explains that the 'Hy' class is a single class that is used recursively, via the Cayley-Dickson construction, to represent rational hypercomplex numbers, such as rational complex numbers, rational quaternions, rational octonions, and so on. And, optionally, it can also represent split-hypercomplex numbers.
 
+The summary at the end of 'notebooks/hyprat_examples.ipynb' doesn't mention split-hypercomplex number support or to/from matrices. Latex output is not mentioned either. Please add those to the summary. Perhaps also add something about zero divisors and annihilators. Is anything else missing from the summary?
+
