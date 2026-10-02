@@ -4,6 +4,62 @@ In the doc string for 'Hy', remove the paragraph explaining why 'Hy' is not a da
 
 The summary at the end of 'notebooks/hyprat_examples.ipynb' doesn't mention split-hypercomplex number support or to/from matrices. Latex output is not mentioned either. Please add those to the summary. Perhaps also add something about zero divisors and annihilators. Is anything else missing from the summary?
 
-I like the work done on the 'Zi' and 'Qi' classes in the repo, 'https://github.com/alreich/gint-project', but I'd like to change it's name from 'gint-project' to 'gaussian-integers'. One problem, though, is that I already have an older public repo by that same name, 'https://github.com/alreich/gaussian_integers'. The newer repo, 'gint-project' supercedes the older repo, 'gaussian_integers', so I'd like to remove the older one, 'gaussian_integers'. Please tell me how to remove the older repo, and then if possible, how to change the name of the newer repo from 'gint-project' to 'gaussian-integers'.
+--------------------------------
 
-There is overlap between the 'Hy' class and the 'Zi' and 'Qi' classes of the repo, 'https://github.com/alreich/gint-project'. I don't want to change any of the code for those classes at this time, but I would like to discuss the pros and cons of "cross pollinating" both repos to extend and enhance their functionality. For example, could the 'Hy' class to support somethink like the number theoretic static methods of Zi? Or, would it be better, and more straightforward, to have methods that convert Zi and Qi to Hy, and vice versa? For what it's worth, a 'Qi' is the same as a rank 1 'Hy'. That's a very clear overlap between the two repos.
+With respect to my repository, 'https://github.com/alreich/gaussian-integers', please look at the structure and contents to determine if there are any inconsistencies or issues with it. Please see if there are any files, such as configuration files, documentation files, that need to be updated to reflect the existing source and test code? If so, please provide updates for them. One item in particular that vexes me is the file 'README.md'. I created it by saving it in markdown (.md) format from the Jupyter notebook file, 'notebooks/README.ipynb', but the image, 'gaussian_integers_plot.png', which appears just fine in the Jupyter notebook, doesn't show up in the .md file after I've moved the md file to the top-level of the repo. Please tell me how to fix that, or better yet, provide me with an updated 'notebooks/README.ipynb' that I can save to .md and then move it to the top-level of the repo. Or, maybe, should I put put 'README.ipynb' at the top-level and work with it there? Let me know.
+
+
+jupyter nbconvert --to markdown notebooks/README.ipynb --output README --output-dir .
+
+
+CLAUDE:
+
+
+I cloned the repo so I can read the source, tests, docs, and notebook directly; next I'm checking them against the packaging and doc files.I've finished comparing the repo against the code, and I'm now rebuilding the README notebook with the fixes, re-executing it, and exporting the Markdown.Still working: I'm fixing a small wording slip in the notebook, then writing the corrected `pyproject.toml`, `.readthedocs.yaml`, and the cleanup commands.I cloned the repo and ran everything. The 360 tests pass, the package builds, and I re-executed the new README notebook end to end. I haven't pushed anything, and the files are in the outputs folder.
+
+## Your README image problem
+
+The notebook has `![alt text](../gaussian_integers_plot.png)`. The `../` is right from `notebooks/`, but once `README.md` sits at the top level it points outside the repo. The PNG is in the right place; only the reference is wrong.
+
+In the new notebook the image uses an absolute `raw.githubusercontent.com/.../main/gaussian_integers_plot.png` URL. That works in the notebook (while online), on GitHub, and on PyPI. PyPI matters because `pyproject.toml` uses `README.md` as the package description, and PyPI doesn't resolve relative image paths.
+
+**Don't put `README.ipynb` at the top level.** GitHub only displays `README.md` and similar as the repo front page, and `readme = "README.md"` in `pyproject.toml` needs a text format. Keep the notebook as the source and export from the repo root:
+
+```bash
+jupyter nbconvert --to markdown notebooks/README.ipynb --output README --output-dir .
+```
+
+## Problems in the old README
+
+- **Missing method:** `Zi.is_relatively_prime` doesn't exist; it's now `Zi.is_coprime`. Those three cells were raw cells, which is why the section came out as garbled `> > >` blockquotes in the `.md`.
+- **Stale API list:** "Miscellaneous" listed `associates`, `to_gaussian_rational` and `norms_divide`, none of which exist. `Qi.string_to_rational` is also gone.
+- **Hidden state:** the Gaussian-primes example depended on `alpha` and `beta` left over from earlier cells.
+- **Smaller fixes:** unbalanced parentheses in a printed line, a stale "Prints intermediate results" comment, `w = 2.0` under an "integer" heading, inconsistent heading levels, and typos ("Just for run", "cooresponding", "where as").
+- **Gaps:** nothing on `gint.crypto`, `factor`/`lcm`/`crt`, installation, or the unit-symbol setting. I added short sections for each.
+- **Prompts removed:** I dropped the `>>>` prompts from code cells so the export gets proper Python syntax highlighting. Say if you want them back.
+
+## Other findings
+
+- **`pyproject.toml`:**
+  - The Homepage URL still points at `gint-project`.
+  - The description omits the crypto module.
+  - `license = {text=...}` plus a license classifier is the deprecated style. I switched to `license = "MIT"` with `setuptools>=77`.
+  - The version now comes from `gint.__version__`, so it lives in one place.
+- **Read the Docs:** `.readthedocs.yaml` had a commented-out duplicate of the live install block, which I removed. The RTD project is still named `gint-project`. Its slug doesn't change with the GitHub rename, so the old docs URL keeps working. Update the repository URL in RTD's project settings.
+- **No CI:** there is no `.github/` folder. I wrote a `ci.yml` testing Python 3.9–3.13. I haven't run it, so if 3.9 fails, raise `requires-python`.
+- **Clutter:** `.idea/`, `.DS_Store` files, `anaconda_projects/` and `trash/` are committed even though `.gitignore` covers some of them. `cleanup.sh` untracks them (history keeps the `trash/` copies) and fixes two typos: "ransparently" in `__init__.py` and "aZi" in `index.rst`. I dry-ran it on a scratch copy.
+- **Sphinx warnings:** docstrings in `Qi.gcd`, `Zi.factor` and the `zi` module header have reStructuredText indentation problems. I left the source alone.
+- **`notebooks/gaussian_rationals.ipynb`:** six cells fail against the current code (`Qi.string_to_rational`, `Qi.units`, `associates`, `is_associate`, `round`, and `floor`). `gaussian_integers.ipynb` runs cleanly, apart from still linking to `gint-project`.
+- **`papers/The_Gaussian_Integers__Conrad.pdf`:** you may want to link to it rather than redistribute it.
+
+## To apply
+
+1. Copy `pyproject.toml`, `.readthedocs.yaml` and `README.ipynb` into place (the notebook goes in `notebooks/`).
+2. Put `ci.yml` at `.github/workflows/ci.yml`.
+3. Run `bash cleanup.sh`, then the `nbconvert` command above. The exported `README.md` I included is identical to what that produces.
+
+
+
+---------------------------------
+
+There is overlap between the 'Hy' class defined in the repo, 'https://github.com/alreich/hyper_rationals', and the 'Zi' and 'Qi' classes in the repo, 'https://github.com/alreich/gaussian-integers'. I don't want to change any of the code for those classes at this time. Instead, I would like to discuss the pros and cons of modify one or both repos to extend and enhance their functionality. For example, could the 'Hy' class support something like the number theoretic staticmethods of Zi? Or, would it be better, and more straightforward, to have methods that convert Zi and Qi to Hy, and vice versa? For what it's worth, a 'Qi' is the same as a rank 1 'Hy'. That's a very clear overlap between the two repos. What do you think?
