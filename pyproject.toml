@@ -43,6 +43,12 @@ docs = ["sphinx>=7", "sphinx-rtd-theme>=2", "ipython>=8"]
 # None of these is a runtime dependency of hyprat -- each is imported
 # lazily by the one method that needs it -- but installing this extra
 # lets the tests for those methods run instead of being skipped.
+#
+# The Zi/Qi conversions (Hy.to_qi/to_zi/from_gint) use the separate `gint`
+# package (https://github.com/alreich/gaussian-integers).  It is deliberately
+# NOT listed here: the name "gint" on PyPI belongs to an unrelated package, and
+# a direct URL cannot be a dependency of a PyPI release.  Install it with
+#     pip install git+https://github.com/alreich/gaussian-integers.git
 interop = ["sympy>=1.12", "numpy-quaternion>=2023.0.3", "quaternionic>=1.0", "numpy>=1.24"]
 dev = ["pytest>=7", "sphinx>=7", "sphinx-rtd-theme>=2", "ipython>=8", "sympy>=1.12", "numpy-quaternion>=2023.0.3", "quaternionic>=1.0", "numpy>=1.24"]
 

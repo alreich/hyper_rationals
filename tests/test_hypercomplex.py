@@ -29,6 +29,16 @@ Organization:
                               a singular matrix    (needs numpy)
     TestLatex               - .latex(), vinculum=/mode= options, ranks 1-4
     TestParsing             - Hy.parse / Hy.from_string, ranks 1-4, errors
+    TestParseUnit           - Hy.parse(..., unit='i'/'j'): reading the text
+                              printed by gint's Zi/Qi (either unit symbol)
+    TestIsGaussian          - .is_gaussian() across ranks and signatures
+    TestFromGint            - Hy.from_gint() on Zi/Qi/int/Fraction/duck types
+                              and its errors (no gint needed)
+    TestGintImportGuard     - the lazy gint import, incl. the unrelated
+                              'gint' package on PyPI
+    TestGintConversions     - to_qi()/to_zi()/from_gint() round trips, and
+                              Qi/Zi vs rank-1 Hy arithmetic fuzz-checked
+                              against each other   (needs gint)
     TestModuleFunctions     - add, sub, neg, conj, mul, abs2, inverse, div
                               called directly (incl. on raw Fractions,
                               i.e. "rank 0")
@@ -95,6 +105,7 @@ Algebraic laws are checked empirically via seeded random fuzzing
 import math
 import random
 import sys
+import types
 import unittest
 from fractions import Fraction
 from unittest import mock
@@ -123,10 +134,18 @@ try:
 except ImportError:                                     # pragma: no cover
     quaternionic = None
 
+try:
+    import gint as _gint_mod                            # Gaussian integers / rationals
+    # An unrelated package named "gint" exists on PyPI; insist on the right one.
+    gint = _gint_mod if (hasattr(_gint_mod, "Zi") and hasattr(_gint_mod, "Qi")) else None
+except ImportError:                                     # pragma: no cover
+    gint = None
+
 HAVE_SYMPY = sympy is not None
 HAVE_NPQUAT = np is not None and npquat is not None
 HAVE_QUATERNIONIC = np is not None and quaternionic is not None
 HAVE_NUMPY = np is not None
+HAVE_GINT = gint is not None
 
 from hyprat import Hy
 from hyprat.hypercomplex import (
@@ -2965,6 +2984,363 @@ class TestZeroDivisors(unittest.TestCase):
                 m = sympy.Matrix([(x * e).to_array() for e in basis]).T
                 singular = m.rank() < 2 ** len(sg)
                 self.assertEqual(x.is_zero_divisor(), singular and bool(x))
+
+# ============================================================================
+# Hy.parse(..., unit=)
+# ============================================================================
+
+class TestParseUnit(unittest.TestCase):
+    def test_unit_i_reads_rank_one(self):
+        self.assertEqual(Hy.parse("(2-3i)", unit="i"), Hy(2, -3))
+        self.assertEqual(Hy.parse("2-3i", unit="i").rank, 1)
+        self.assertEqual(Hy.parse("(1/2+0i)", unit="i"), Hy("1/2", 0))
+        self.assertEqual(Hy.parse("-i", unit="i"), Hy(0, -1))
+        self.assertEqual(Hy.parse("7i", unit="i"), Hy(0, 7))
+        self.assertEqual(Hy.parse("5", unit="i"), Hy(5, 0))
+
+    def test_without_unit_i_means_a_quaternion(self):
+        q = Hy.parse("(2-3i)")
+        self.assertEqual(q.rank, 2)
+        self.assertEqual(q, Hy(Hy(2, -3), 0))
+
+    def test_unit_j_matches_the_default_for_rank_one_text(self):
+        for text in ("(2-3j)", "7j", "5", "(1/2-3/5j)", "(j)", "(-1+j)"):
+            self.assertEqual(Hy.parse(text, unit="j"), Hy.parse(text))
+
+    def test_other_units_are_rejected(self):
+        for text, unit in [("1+2j", "i"), ("1+2i", "j"), ("1+2k", "i"),
+                           ("1+iL", "i"), ("1+e4", "j"), ("1+i+j", "i")]:
+            with self.assertRaises(ValueError, msg=(text, unit)):
+                Hy.parse(text, unit=unit)
+
+    def test_bad_unit_argument(self):
+        for unit in ("k", "x", "", "ij", 1):
+            with self.assertRaises(ValueError):
+                Hy.parse("1+2j", unit=unit)
+
+    def test_combines_with_signs(self):
+        h = Hy.parse("(2-3i)", unit="i", signs=(1,))
+        self.assertEqual(h.mu, 1)
+        self.assertEqual(h, Hy(2, -3, mu=1))
+        with self.assertRaises(ValueError):
+            Hy.parse("(2-3i)", unit="i", signs="split-quaternion")
+
+    def test_from_string_alias_accepts_unit(self):
+        self.assertEqual(Hy.from_string("2-3i", unit="i"), Hy(2, -3))
+
+
+# ============================================================================
+# Hy.is_gaussian()
+# ============================================================================
+
+class TestIsGaussian(unittest.TestCase):
+    def test_rank_one_classical_values(self):
+        for h in (Hy(0, 0), Hy(5), Hy(0, 1), Hy("1/2", "-3/5"), Hy(-7, 2)):
+            self.assertTrue(h.is_gaussian(), h)
+
+    def test_split_complex_is_not_gaussian(self):
+        self.assertFalse(Hy(1, 2, mu=1).is_gaussian())
+        self.assertFalse(Hy(0, 0, mu=1).is_gaussian())
+        self.assertFalse(Hy(1, 2, mu=-2).is_gaussian())
+
+    def test_higher_rank_values_in_the_gaussian_subalgebra(self):
+        q = Hy(Hy(1, 2), 0)
+        o = Hy(Hy(Hy(1, 2), 0), 0)
+        self.assertEqual((q.rank, o.rank), (2, 3))
+        self.assertTrue(q.is_gaussian())
+        self.assertTrue(o.is_gaussian())
+
+    def test_any_other_nonzero_coordinate_disqualifies(self):
+        for rank in (2, 3, 4):
+            n = 2 ** rank
+            for k in range(2, n):
+                coeffs = [Fraction(0)] * n
+                coeffs[0], coeffs[1], coeffs[k] = Fraction(1), Fraction(2), Fraction(1, 3)
+                self.assertFalse(Hy.from_array(coeffs).is_gaussian(), (rank, k))
+
+    def test_lowest_level_signature_decides(self):
+        # lowest level mu=-1 (any higher levels): Gaussian when only 1, i used
+        self.assertTrue(Hy(Hy(1, 2), 0, mu=1).is_gaussian())     # (-1, 1)
+        # lowest level mu=+1: the (split) complex subalgebra, never Gaussian
+        self.assertFalse(Hy.from_array([1, 2, 0, 0], signs=(1, -1)).is_gaussian())
+
+    def test_agrees_with_embedding_a_rank_one_value(self):
+        Hy.seed(11)
+        for rank in (1, 2, 3, 4):
+            for _ in range(10):
+                g = Hy.random(1)
+                coeffs = [g.real, g.imag] + [Fraction(0)] * (2 ** rank - 2)
+                h = Hy.from_array(coeffs)
+                self.assertTrue(h.is_gaussian())
+                self.assertEqual(h, g)
+
+    def test_is_a_method_returning_bool(self):
+        self.assertIs(Hy(1, 2).is_gaussian(), True)
+        self.assertIs(Hy(1, 2, mu=1).is_gaussian(), False)
+
+
+# ============================================================================
+# Hy.from_gint() -- needs no gint
+# ============================================================================
+
+class _FakeGaussian:
+    """Duck-typed stand-in for a Zi/Qi: just .real and .imag."""
+    def __init__(self, real, imag):
+        self.real, self.imag = real, imag
+
+
+class TestFromGint(unittest.TestCase):
+    def test_duck_typed_rational_parts(self):
+        h = Hy.from_gint(_FakeGaussian(Fraction(1, 2), Fraction(-3, 5)))
+        self.assertEqual(h, Hy("1/2", "-3/5"))
+        self.assertEqual(h.rank, 1)
+        self.assertEqual(h.mu, -1)
+
+    def test_int_parts(self):
+        self.assertEqual(Hy.from_gint(_FakeGaussian(2, -3)), Hy(2, -3))
+
+    def test_plain_int_and_fraction(self):
+        self.assertEqual(Hy.from_gint(7), Hy(7, 0))
+        self.assertEqual(Hy.from_gint(Fraction(1, 3)), Hy("1/3", 0))
+
+    def test_result_is_a_rank_one_classical_hy(self):
+        h = Hy.from_gint(_FakeGaussian(1, 2))
+        self.assertIsInstance(h, Hy)
+        self.assertEqual(h.signs, (Fraction(-1),))
+        self.assertTrue(h.is_gaussian())
+
+    def test_rejects_floats_and_complex(self):
+        for bad in (1.5, 1 + 2j, _FakeGaussian(0.5, 1), _FakeGaussian(1, 0.5)):
+            with self.assertRaises(TypeError, msg=repr(bad)):
+                Hy.from_gint(bad)
+
+    def test_rejects_things_without_real_and_imag(self):
+        for bad in ("1+2j", None, [1, 2], object()):
+            with self.assertRaises(TypeError, msg=repr(bad)):
+                Hy.from_gint(bad)
+
+    def test_rejects_a_hy(self):
+        for h in (Hy(1, 2), Hy(1, 2, mu=1), Hy(Hy(1, 2), Hy(3, 4))):
+            with self.assertRaises(TypeError):
+                Hy.from_gint(h)
+
+
+# ============================================================================
+# The lazy gint import (no gint needed)
+# ============================================================================
+
+class TestGintImportGuard(unittest.TestCase):
+    def test_missing_gint_gives_a_helpful_importerror(self):
+        with mock.patch.dict(sys.modules, {"gint": None}):
+            with self.assertRaises(ImportError) as cm:
+                Hy(1, 2).to_qi()
+        self.assertIn("gaussian-integers", str(cm.exception))
+
+    def test_the_unrelated_pypi_gint_is_detected(self):
+        fake = types.ModuleType("gint")               # has no Zi / Qi
+        with mock.patch.dict(sys.modules, {"gint": fake}):
+            for call in (lambda: Hy(1, 2).to_qi(), lambda: Hy(1, 2).to_zi()):
+                with self.assertRaises(ImportError) as cm:
+                    call()
+                self.assertIn("unrelated", str(cm.exception))
+                self.assertIn("gaussian-integers", str(cm.exception))
+
+    def test_value_errors_do_not_need_gint(self):
+        with mock.patch.dict(sys.modules, {"gint": None}):
+            with self.assertRaises(ValueError):
+                Hy(1, 2, mu=1).to_qi()
+            with self.assertRaises(ValueError):
+                Hy(Hy(1, 2), Hy(0, 1)).to_qi()
+            with self.assertRaises(ValueError):
+                Hy(1, "1/2").to_zi()
+
+    def test_is_gaussian_and_from_gint_do_not_need_gint(self):
+        with mock.patch.dict(sys.modules, {"gint": None}):
+            self.assertTrue(Hy(1, 2).is_gaussian())
+            self.assertEqual(Hy.from_gint(_FakeGaussian(1, 2)), Hy(1, 2))
+
+
+# ============================================================================
+# Conversions to/from the real gint package, and cross-checks against it
+# ============================================================================
+
+@unittest.skipUnless(HAVE_GINT, "gint (Gaussian-integers package) is not installed")
+class TestGintConversions(unittest.TestCase):
+    def setUp(self):
+        self.Zi, self.Qi = gint.Zi, gint.Qi
+        self.rng = random.Random(20261003)
+
+    def _rand_qi(self):
+        h = Hy.random(1, rng=self.rng, lo=-30, hi=30, dmax=12)
+        return h.to_qi()
+
+    def _rand_zi(self):
+        return self.Zi(self.rng.randint(-50, 50), self.rng.randint(-50, 50))
+
+    # ---- basic conversions ----------------------------------------------
+    def test_from_gint_zi_and_qi(self):
+        self.assertEqual(Hy.from_gint(self.Zi(2, -3)), Hy(2, -3))
+        self.assertEqual(Hy.from_gint(self.Qi("1/2", "-3/5")), Hy("1/2", "-3/5"))
+        self.assertEqual(Hy.from_gint(self.Zi(0, 1)), Hy(0, 1))
+
+    def test_to_qi_non_integral(self):
+        q = Hy("1/2", "-3/5").to_qi()
+        self.assertIsInstance(q, self.Qi)
+        self.assertEqual(q, self.Qi("1/2", "-3/5"))
+
+    def test_to_qi_collapses_to_zi_when_integral(self):
+        z = Hy(2, 3).to_qi()
+        self.assertIsInstance(z, self.Zi)
+        self.assertEqual(z, self.Zi(2, 3))
+
+    def test_to_zi(self):
+        z = Hy(2, -3).to_zi()
+        self.assertIsInstance(z, self.Zi)
+        self.assertEqual(z, self.Zi(2, -3))
+        self.assertEqual(Hy(0, 0).to_zi(), self.Zi(0, 0))
+
+    def test_to_zi_rejects_non_integers(self):
+        for h in (Hy("1/2", 1), Hy(1, "1/3"), Hy("1/2", "1/2")):
+            with self.assertRaises(ValueError):
+                h.to_zi()
+
+    def test_embedded_values_convert(self):
+        self.assertEqual(Hy(Hy(1, 2), 0).to_zi(), self.Zi(1, 2))
+        self.assertEqual(Hy(Hy(Hy(1, "1/2"), 0), 0).to_qi(), self.Qi(1, "1/2"))
+
+    def test_non_gaussian_values_are_rejected(self):
+        for h in (Hy(1, 2, mu=1), Hy(Hy(1, 2), Hy(0, 1)), Hy(0, Hy(1, 0))):
+            with self.assertRaises(ValueError):
+                h.to_qi()
+            with self.assertRaises(ValueError):
+                h.to_zi()
+
+    def test_to_qi_succeeds_exactly_when_is_gaussian(self):
+        Hy.seed(5)
+        for rank in (1, 2, 3):
+            for _ in range(30):
+                h = Hy.random(rank)
+                # sprinkle in more Gaussian values, which random() rarely makes
+                for cand in (h, Hy.from_array([h.components()[0], h.components()[1]]
+                                              + [0] * (2 ** rank - 2))):
+                    if cand.is_gaussian():
+                        cand.to_qi()
+                    else:
+                        with self.assertRaises(ValueError):
+                            cand.to_qi()
+
+    # ---- round trips ------------------------------------------------------
+    def test_round_trip_zi(self):
+        for _ in range(100):
+            z = self._rand_zi()
+            back = Hy.from_gint(z).to_zi()
+            self.assertEqual(back, z)
+            self.assertIsInstance(back, self.Zi)
+
+    def test_round_trip_qi(self):
+        for _ in range(100):
+            q = self._rand_qi()
+            back = Hy.from_gint(q).to_qi()
+            self.assertEqual(back, q)
+            self.assertEqual(type(back), type(q))
+
+    def test_round_trip_hy(self):
+        Hy.seed(9)
+        for _ in range(100):
+            h = Hy.random(1)
+            self.assertEqual(Hy.from_gint(h.to_qi()), h)
+
+    def test_huge_exact_values(self):
+        big = 10 ** 60 + 7
+        z = self.Zi(big, -big)
+        self.assertEqual(Hy.from_gint(z).to_zi(), z)
+        q = self.Qi(Fraction(1, big), Fraction(-3, big + 2))
+        self.assertEqual(Hy.from_gint(q).to_qi(), q)
+
+    # ---- Qi / Zi vs rank-1 Hy, fuzzed against each other ------------------
+    def test_arithmetic_agrees_for_qi(self):
+        for _ in range(200):
+            a, b = self._rand_qi(), self._rand_qi()
+            ha, hb = Hy.from_gint(a), Hy.from_gint(b)
+            self.assertEqual(Hy.from_gint(a + b), ha + hb)
+            self.assertEqual(Hy.from_gint(a - b), ha - hb)
+            self.assertEqual(Hy.from_gint(a * b), ha * hb)
+            self.assertEqual(Hy.from_gint(-a), -ha)
+            self.assertEqual(Hy.from_gint(a.conjugate()), ha.conjugate())
+            if b != 0:
+                self.assertEqual(Hy.from_gint(a / b), ha / hb)
+                self.assertEqual(Hy.from_gint(b.inverse()), hb.inverse())
+
+    def test_arithmetic_agrees_for_zi(self):
+        for _ in range(200):
+            a, b = self._rand_zi(), self._rand_zi()
+            ha, hb = Hy.from_gint(a), Hy.from_gint(b)
+            self.assertEqual(Hy.from_gint(a + b), ha + hb)
+            self.assertEqual(Hy.from_gint(a - b), ha - hb)
+            self.assertEqual(Hy.from_gint(a * b), ha * hb)
+            self.assertEqual(Hy.from_gint(a.conjugate()), ha.conjugate())
+            if b != 0:
+                self.assertEqual(Hy.from_gint(a / b), ha / hb)
+
+    def test_powers_agree(self):
+        for _ in range(40):
+            a = self._rand_qi()
+            ha = Hy.from_gint(a)
+            for n in (0, 1, 2, 3, 5):
+                self.assertEqual(Hy.from_gint(a ** n), ha ** n)
+            if a != 0:
+                for n in (-1, -2, -3):
+                    self.assertEqual(Hy.from_gint(a ** n), ha ** n)
+
+    def test_norms_agree(self):
+        for _ in range(100):
+            a = self._rand_qi()
+            ha = Hy.from_gint(a)
+            self.assertEqual(Fraction(a.norm), ha.norm_squared())
+        for _ in range(100):
+            z = self._rand_zi()
+            self.assertEqual(Fraction(z.norm), Hy.from_gint(z).norm_squared())
+
+    def test_mixed_zi_and_qi(self):
+        for _ in range(100):
+            z, q = self._rand_zi(), self._rand_qi()
+            hz, hq = Hy.from_gint(z), Hy.from_gint(q)
+            self.assertEqual(Hy.from_gint(z * q), hz * hq)
+            self.assertEqual(Hy.from_gint(q + z), hq + hz)
+
+    def test_unit_predicates_agree(self):
+        for z in (self.Zi(1, 0), self.Zi(-1, 0), self.Zi(0, 1), self.Zi(0, -1),
+                  self.Zi(1, 1), self.Zi(0, 0), self.Zi(2, 0)):
+            self.assertEqual(Hy.from_gint(z).is_unit(), bool(z.is_unit))
+
+    # ---- strings: what Zi/Qi print is what Hy.parse reads -----------------
+    def _check_parse_round_trip(self, symbol):
+        old = (self.Zi.get_unit_symbol(), self.Qi.get_unit_symbol())
+        self.addCleanup(self.Zi.set_unit_symbol, old[0])
+        self.addCleanup(self.Qi.set_unit_symbol, old[1])
+        self.Zi.set_unit_symbol(symbol)
+        self.Qi.set_unit_symbol(symbol)
+        samples = [self.Zi(2, -3), self.Zi(0, 1), self.Zi(0, -1), self.Zi(5),
+                   self.Zi(0), self.Zi(0, 7), self.Zi(-4, 0), self.Zi(1, 1),
+                   self.Qi("1/2", "-3/5"), self.Qi("1/2", 0), self.Qi(0, "1/3"),
+                   self.Qi(0, "-1/2"), self.Qi("-7/3", "1/9")]
+        samples += [self._rand_zi() for _ in range(50)]
+        samples += [self._rand_qi() for _ in range(50)]
+        for x in samples:
+            text = str(x)
+            self.assertEqual(Hy.parse(text, unit=symbol), Hy.from_gint(x), text)
+            self.assertEqual(Hy.parse(text, unit=symbol).rank, 1, text)
+
+    def test_parse_reads_zi_qi_text_with_unit_symbol_j(self):
+        self._check_parse_round_trip("j")
+
+    def test_parse_reads_zi_qi_text_with_unit_symbol_i(self):
+        self._check_parse_round_trip("i")
+
+    def test_parse_reads_j_text_without_the_unit_keyword(self):
+        for x in (self.Zi(2, -3), self.Zi(0, 1), self.Qi("1/2", "-3/5"), self.Zi(5)):
+            self.assertEqual(Hy.parse(str(x)), Hy.from_gint(x))
+
 
 
 def _rank_of(rows):

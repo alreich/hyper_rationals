@@ -1331,3 +1331,224 @@ sanity check on the conventions:
     numpy-quaternion : quaternion(1.55555555555555, 21.8333333333333, 9.75, -11.9444444444444)
     quaternionic     : [  1.55555556  21.83333333   9.75       -11.94444444]
 
+Interoperability with ``gint`` (Gaussian Integers and Rationals)
+----------------------------------------------------------------
+
+The separate package ``gint``
+(https://github.com/alreich/gaussian-integers) implements the Gaussian
+integers, ``Zi``, and the Gaussian rationals, ``Qi``. A ``Qi`` is
+exactly a rank 1 ``Hy`` whose ``mu`` is :math:`-1`, and a ``Zi`` is the
+same thing restricted to integer coordinates, so the two can be
+converted into one another, exactly, in either direction. As with the
+quaternion packages above, ``gint`` is not required by ``hyprat``; it is
+imported only when a method that needs it is called. Install it from
+GitHub:
+
+::
+
+   pip install git+https://github.com/alreich/gaussian-integers.git
+
+(Do not ``pip install gint``: that name belongs to an unrelated package
+on PyPI. ``hyprat`` notices this and says so.)
+
+The conversions are explicit. A ``Zi`` or ``Qi`` is never ``==`` to a
+``Hy``, so mixing them in arithmetic fails loudly instead of silently
+picking an algebra.
+
+-  ``Hy.from_gint(x)`` builds a rank 1 ``Hy`` from a ``Zi`` or ``Qi``.
+   It needs no ``gint`` import at all.
+-  ``some_hy.to_qi()`` returns a ``Qi``, which, as ``Qi`` itself does,
+   collapses to a ``Zi`` when both coordinates are integers.
+-  ``some_hy.to_zi()`` returns a ``Zi``, or raises ``ValueError`` if a
+   coordinate is not an integer.
+-  ``some_hy.is_gaussian()`` is a cheap predicate that needs no
+   ``gint``.
+
+.. code:: ipython3
+
+    >>> from gint import Zi, Qi
+    
+    >>> Hy.from_gint(Qi('1/2', '-3/5'))
+
+
+
+
+.. parsed-literal::
+
+    Hy('1/2', '-3/5')
+
+
+
+.. code:: ipython3
+
+    >>> Hy.from_gint(Zi(2, -3))
+
+
+
+
+.. parsed-literal::
+
+    Hy('2', '-3')
+
+
+
+.. code:: ipython3
+
+    >>> Hy('1/2', '-3/5').to_qi()
+
+
+
+
+.. parsed-literal::
+
+    Qi('1/2', '-3/5')
+
+
+
+.. code:: ipython3
+
+    >>> Hy(2, 3).to_qi()   # integer coordinates: Qi collapses to a Zi
+
+
+
+
+.. parsed-literal::
+
+    Zi(2, 3)
+
+
+
+.. code:: ipython3
+
+    >>> Hy(2, -3).to_zi()
+
+
+
+
+.. parsed-literal::
+
+    Zi(2, -3)
+
+
+
+.. code:: ipython3
+
+    >>> try:
+    ...     Hy('1/2', 3).to_zi()
+    ... except ValueError as e:
+    ...     print(e)
+
+
+.. parsed-literal::
+
+    cannot convert to a gint Zi: the coordinates are not all integers (use to_qi() for a Gaussian rational)
+
+
+Which Values Are Gaussian?
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``is_gaussian()`` asks whether a value lies in the Gaussian rationals,
+:math:`\mathbb{Q}[i]`: its lowest doubling level must have
+:math:`\mu = -1` and every coordinate beyond the first two must be zero.
+It is a statement about the *value*, not just its rank, so a quaternion
+such as :math:`1 + 2i` qualifies (it equals the complex number
+:math:`1 + 2j` in ``Hy``\ ’s rank 1 notation), while a split-complex
+number or a quaternion with a nonzero :math:`j` or :math:`k` part does
+not. ``to_qi()`` succeeds exactly when ``is_gaussian()`` is true.
+
+.. code:: ipython3
+
+    >>> print(Hy('1/2', '-3/5').is_gaussian())              # a rank 1 value
+    >>> print(Hy(Hy(1, 2), 0).is_gaussian())                 # the quaternion 1+2i
+    >>> print(Hy(Hy(1, 2), Hy(0, 1)).is_gaussian())          # 1+2i+0j+1k: a k part
+    >>> print(Hy(1, 2, mu=1).is_gaussian())                  # split-complex
+
+
+.. parsed-literal::
+
+    True
+    True
+    False
+    False
+
+
+.. code:: ipython3
+
+    >>> Hy(Hy(1, 2), 0).to_zi()    # a quaternion that happens to be Gaussian
+
+
+
+
+.. parsed-literal::
+
+    Zi(1, 2)
+
+
+
+Strings
+~~~~~~~
+
+``Hy.parse`` reads everything ``Zi`` and ``Qi`` print. With the default
+unit symbol, ``j``, nothing special is needed. A ``Zi`` or ``Qi`` whose
+unit symbol has been switched to ``i`` prints ``(2-3i)``, which by
+itself means a *quaternion* to ``Hy.parse``; pass ``unit='i'`` to say
+that the text uses that one imaginary unit, so it is read as a rank 1
+value.
+
+.. code:: ipython3
+
+    >>> Hy.parse(str(Qi('1/2', '-3/5')))
+
+
+
+
+.. parsed-literal::
+
+    Hy('1/2', '-3/5')
+
+
+
+.. code:: ipython3
+
+    >>> Zi.set_unit_symbol('i'); Qi.set_unit_symbol('i')
+    
+    >>> text = str(Zi(2, -3))
+    >>> print(text)
+    >>> print(repr(Hy.parse(text)))                 # a quaternion, by default
+    >>> print(repr(Hy.parse(text, unit='i')))       # the rank 1 value that was meant
+    
+    >>> Zi.set_unit_symbol('j'); Qi.set_unit_symbol('j')
+
+
+.. parsed-literal::
+
+    (2-3i)
+    Hy(Hy('2', '-3'), Hy('0', '0'))
+    Hy('2', '-3')
+
+
+Cross-Checking the Two Implementations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Because ``Qi`` and a rank 1 ``Hy`` are two independent implementations
+of the same arithmetic, either one is a check on the other. Convert,
+operate, and compare:
+
+.. code:: ipython3
+
+    >>> from fractions import Fraction
+    
+    >>> a, b = Qi('1/2', '-3/5'), Qi(2, '1/3')
+    >>> ha, hb = Hy.from_gint(a), Hy.from_gint(b)
+    
+    >>> print(Hy.from_gint(a * b) == ha * hb)
+    >>> print(Hy.from_gint(a / b) == ha / hb)
+    >>> print(Fraction(a.norm) == ha.norm_squared())
+
+
+.. parsed-literal::
+
+    True
+    True
+    True
+

@@ -180,6 +180,32 @@ Hy`` round trip through *those* two is only exact if you ask for it
 (see the ``exact=`` and ``max_denominator=`` keywords of their
 ``from_*`` methods).
 
+Gaussian integers and rationals (the ``gint`` package)
+-------------------------------------------------------
+
+The separate ``gint`` package (https://github.com/alreich/gaussian-integers)
+implements the Gaussian integers ``Zi`` and the Gaussian rationals
+``Qi``.  A ``Qi`` is exactly a rank-1 ``Hy`` with ``mu = -1`` (and a
+``Zi`` is one with integer coordinates), so the two can be converted
+explicitly in either direction.  ``gint`` is not a dependency of
+``hyprat``; it is imported only when a method that needs it is called
+(``from_gint`` needs no import at all)::
+
+    some_hy.to_qi()          Hy.from_gint(x)       # x is a Zi or a Qi
+    some_hy.to_zi()
+    some_hy.is_gaussian()
+
+``is_gaussian()`` is a cheap predicate that needs no ``gint``: it is
+true when the value lies in the Gaussian-rational subalgebra, i.e. its
+lowest doubling level has ``mu = -1`` and every coordinate beyond the
+first two is zero (so a quaternion such as ``1+2i`` qualifies).  A
+``Zi`` or ``Qi`` is never equal to a ``Hy``; convert explicitly.
+
+``Hy.parse`` reads everything ``Zi`` and ``Qi`` print as-is, except that
+a ``Zi``/``Qi`` whose unit symbol was switched to ``i`` prints
+``'(2-3i)'``, which on its own means a quaternion; pass ``unit='i'`` to
+read such text as a rank-1 value.
+
 Units and LaTeX rendering
 --------------------------
 
@@ -714,7 +740,7 @@ class Hy:
     # Parsing
     # ---------------------------------------------------------------- #
     @classmethod
-    def parse(cls, s: str, *, signs=None) -> "Hy":
+    def parse(cls, s: str, *, signs=None, unit=None) -> "Hy":
         """Parse the kind of string produced by ``str(some_hy)`` -- e.g.
         ``'(5/2-16/5j)'``, ``'1+2i+3j+4k'``, ``'1-k+2kL'`` -- into a Hy.
 
@@ -727,8 +753,21 @@ class Hy:
 
             >>> Hy.parse('1+2j+3k', signs="split-quaternion").signs
             (Fraction(-1, 1), Fraction(1, 1))
+
+        Everything that ``gint``'s ``Zi`` and ``Qi`` print is accepted
+        as-is -- ``'(2-3j)'``, ``'7j'``, ``'5'``, ``'(1/2-3/5j)'`` -- with
+        one exception: a ``Zi``/``Qi`` whose unit symbol has been set to
+        ``'i'`` prints ``'(2-3i)'``, which by itself means a quaternion
+        here.  Pass ``unit='i'`` (or ``'j'``) to say that the text uses
+        that single imaginary unit, so it is read as a rank-1 value;
+        text using any other unit is then an error::
+
+            >>> Hy.parse('(2-3i)', unit='i')
+            Hy('2', '-3')
+            >>> Hy.parse('(2-3i)')
+            Hy(Hy('2', '-3'), Hy('0', '0'))
         """
-        return _parse(s, signs=signs)
+        return _parse(s, signs=signs, unit=unit)
 
     from_string = parse  # convenient alias
 
@@ -1340,6 +1379,123 @@ class Hy:
         fracs = [_float_to_fraction(v, exact, max_denominator) for v in wxyz]
         return _unflatten(fracs, 2)
 
+    # ---------------------------------------------------------------- #
+    # Gaussian integers / rationals (the separate ``gint`` package)
+    #
+    # ``Qi`` is exactly a rank-1 Hy with mu = -1, and ``Zi`` is the
+    # integer-coordinate subset of it.  Conversions are explicit (a Zi or
+    # Qi is never ``==`` a Hy).  ``gint`` is imported lazily, so it is
+    # not a dependency of hyprat; ``from_gint`` needs no import at all.
+    # ---------------------------------------------------------------- #
+    def is_gaussian(self) -> bool:
+        """True iff this value lies in the Gaussian-rational subalgebra
+        ``Q[i]``: the lowest doubling level has ``mu == -1`` and every
+        coordinate beyond the first two is zero.  Equivalently, it is
+        exactly what :meth:`to_qi` can convert.  Needs no ``gint``.
+
+        This is a statement about the *value*, not just its rank, so a
+        quaternion such as ``1+2i`` (equal to the complex number
+        ``1+2j``) qualifies, while ``Hy(1, 2, mu=1)`` (a split-complex
+        number) and ``Hy(0, Hy(1, 0))`` do not.
+
+            >>> Hy('1/2', '-3').is_gaussian()
+            True
+            >>> Hy(Hy(1, 2), Hy(0, 0)).is_gaussian()
+            True
+            >>> Hy(Hy(1, 2), Hy(0, 1)).is_gaussian()
+            False
+            >>> Hy(1, 2, mu=1).is_gaussian()
+            False
+        """
+        return self.signs[0] == _DEFAULT_MU and all(
+            c == 0 for c in _flatten(self)[2:]
+        )
+
+    @classmethod
+    def from_gint(cls, x) -> "Hy":
+        """Build a rank-1 ``Hy`` (with ``mu = -1``) from a ``gint.Zi`` or
+        ``gint.Qi``, exactly.  Needs no ``gint`` import: it only reads
+        ``x.real`` and ``x.imag``, which must be rational (an ``int`` or
+        ``Fraction``), so a plain ``int`` or ``Fraction`` also works,
+        but a ``float`` or ``complex`` raises ``TypeError``.
+
+            >>> from gint import Qi  # doctest: +SKIP
+            >>> Hy.from_gint(Qi('1/2', '-3/5'))  # doctest: +SKIP
+            Hy('1/2', '-3/5')
+        """
+        if isinstance(x, Hy):
+            raise TypeError(
+                "from_gint() expects a gint Zi or Qi, not a Hy (which would "
+                "silently lose its signature)"
+            )
+        try:
+            re_, im_ = x.real, x.imag
+        except AttributeError:
+            raise TypeError(
+                "from_gint() expects a gint Zi or Qi, "
+                f"not {type(x).__name__}"
+            ) from None
+        if not (isinstance(re_, numbers.Rational)
+                and isinstance(im_, numbers.Rational)):
+            raise TypeError(
+                "from_gint() needs rational (int or Fraction) real and "
+                f"imaginary parts, but got {type(x).__name__} with "
+                f"{type(re_).__name__} parts"
+            )
+        return cls._make(Fraction(re_), Fraction(im_))
+
+    def _gaussian_parts(self, target: str) -> tuple:
+        """Internal: ``(real, imag)`` of a Gaussian value, or ValueError."""
+        if self.signs[0] != _DEFAULT_MU:
+            raise ValueError(
+                f"cannot convert to {target}: this value's lowest doubling "
+                f"level has mu={self.signs[0]}, not -1, so it is not in the "
+                "Gaussian rationals"
+            )
+        flat = _flatten(self)
+        if any(c != 0 for c in flat[2:]):
+            raise ValueError(
+                f"cannot convert to {target}: this rank-{self.rank} value "
+                "has nonzero coordinates outside the Gaussian subalgebra "
+                "(only the first two coordinates, 1 and its first unit, "
+                "may be nonzero)"
+            )
+        return flat[0], flat[1]
+
+    def to_qi(self):
+        """Convert to a ``gint.Qi`` (Gaussian rational), exactly.  As with
+        ``Qi`` itself, the result collapses to a ``gint.Zi`` when both
+        coordinates are integers; use :meth:`to_zi` to insist on one.
+
+        Raises ``ValueError`` unless :meth:`is_gaussian` is true.
+        Requires ``gint`` (``pip install git+https://github.com/alreich/gaussian-integers.git``).
+
+            >>> Hy('1/2', '-3/5').to_qi()  # doctest: +SKIP
+            Qi('1/2', '-3/5')
+            >>> Hy(2, 3).to_qi()  # doctest: +SKIP
+            Zi(2, 3)
+        """
+        re_, im_ = self._gaussian_parts("a gint Qi")
+        return _import_gint().Qi(re_, im_)
+
+    def to_zi(self):
+        """Convert to a ``gint.Zi`` (Gaussian integer).
+
+        Raises ``ValueError`` unless :meth:`is_gaussian` is true *and*
+        both coordinates are integers (use :meth:`to_qi` otherwise).
+        Requires ``gint`` (``pip install git+https://github.com/alreich/gaussian-integers.git``).
+
+            >>> Hy(2, -3).to_zi()  # doctest: +SKIP
+            Zi(2, -3)
+        """
+        re_, im_ = self._gaussian_parts("a gint Zi")
+        if re_.denominator != 1 or im_.denominator != 1:
+            raise ValueError(
+                "cannot convert to a gint Zi: the coordinates are not all "
+                "integers (use to_qi() for a Gaussian rational)"
+            )
+        return _import_gint().Zi(int(re_), int(im_))
+
 
 # ============================================================================
 # Module-level recursive algebra (Cayley-Dickson construction)
@@ -1775,6 +1931,32 @@ def _import_optional(module_name: str, pip_name: str):
         ) from e
 
 
+_GINT_INSTALL = "git+https://github.com/alreich/gaussian-integers.git"
+
+
+def _import_gint():
+    """Import the ``gint`` package (Gaussian integers/rationals) lazily.
+
+    The name ``gint`` is also used on PyPI by an unrelated package, so
+    besides importing it this checks that it really provides ``Zi`` and
+    ``Qi``, and says how to install the right one if not.
+    """
+    try:
+        mod = importlib.import_module("gint")
+    except ImportError as e:
+        raise ImportError(
+            "this conversion requires the optional package 'gint' "
+            f"(pip install {_GINT_INSTALL})"
+        ) from e
+    if not (hasattr(mod, "Zi") and hasattr(mod, "Qi")):
+        raise ImportError(
+            "the installed 'gint' package does not provide Zi and Qi; it is "
+            "probably the unrelated 'gint' package from PyPI.  Install the "
+            f"Gaussian-integers one instead: pip install {_GINT_INSTALL}"
+        )
+    return mod
+
+
 def _quaternion_fractions(h: "Hy", target: str) -> tuple:
     """The four coordinates (w, x, y, z) of ``h`` as exact Fractions.
 
@@ -1932,13 +2114,26 @@ _TERM_RE = re.compile(
 )
 
 
-def _parse(s: str, signs=None, pad: bool = False) -> Hy:
+def _parse(s: str, signs=None, pad: bool = False, unit=None) -> Hy:
     s = s.strip()
     if s.startswith("(") and s.endswith(")"):
         s = s[1:-1]
     s = s.replace(" ", "")
     if s == "":
         raise ValueError("cannot parse an empty hypercomplex expression")
+
+    if unit is not None:
+        # The text uses one imaginary unit only, 'i' or 'j' (as printed by
+        # gint's Zi/Qi); read it as a rank-1 value in either case.
+        if unit not in ("i", "j"):
+            raise ValueError(f"unit must be 'i' or 'j', not {unit!r}")
+        other = {"i": "j", "j": "i"}[unit]
+        if any(ch in s for ch in (other, "k", "L", "e")):
+            raise ValueError(
+                f"{s!r} uses units other than {unit!r}, which unit={unit!r} "
+                "does not allow"
+            )
+        s = s.replace(unit, "j")
 
     tokens = re.findall(r"[+-]?[^+-]+", s)
     coeff_map: dict = {}

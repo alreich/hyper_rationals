@@ -60,6 +60,13 @@ jobs:
       - name: Install hyprat with test and interop extras
         run: pip install -e ".[test,interop]"
 
+      # gint (Gaussian integers/rationals: Zi and Qi) is optional too, and is
+      # installed from GitHub, NOT from PyPI: the name "gint" on PyPI belongs to
+      # an unrelated package.  It is what the Hy.to_qi/to_zi/from_gint
+      # conversions and their Qi-vs-Hy cross-check tests use.
+      - name: Install gint (Gaussian integers/rationals) from GitHub
+        run: pip install "git+https://github.com/alreich/gaussian-integers.git"
+
       - name: Run the full unit-test suite (including interoperability and matrix tests)
         run: pytest -v
 
