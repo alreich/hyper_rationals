@@ -66,3 +66,20 @@ There is overlap between the 'Hy' class defined in the repo, 'https://github.com
 
 I like the idea of using explicit conversions, making sure that Hy.parse accepts what Zi & Qi print, and vice versa. I also like the idea of 'Hy' having a cheap predicate, 'h.is_gaussian'. And, I do see quaternion (Hurwitz) number theory as something I would like to have in the future. If we proceed with coding the conversions, would they exist in 'hyprat' or 'gint' or both?
 
+----------------------------------
+
+What's nex?
+
+CLAUDE:
+
+I've saved where things stand, in the notes for both libraries.
+
+**Done**
+- **Step 1 (`hyprat`):** `is_gaussian()`, `from_gint`, `to_qi`, `to_zi` and `Hy.parse(..., unit=)` are pushed, and CI passed.
+- **Step 2 (`gaussian-integers`):** the parser change so `Zi`/`Qi` accept the omitted-coefficient forms like `'j'` and `'(-1+j)'` is pushed. CI passed, 384 tests pass, and the doctests give 50 passed in both your `tmp` and `base` environments.
+
+**Open items**
+1. **`Zi.to_hy()` and `Qi.to_hy()` in `gint`.** These would be one-line shortcuts calling `Hy.from_gint`, with `hyprat` imported lazily behind an optional extra. You've deferred them until you've used the `hyprat`-side conversions for a while. The cost to weigh is that the two packages would then reference each other, so each repo's CI would need to install the other. Right now `gint`'s CI has no `hyprat` step, so the two cross-check tests skip there.
+2. **Hurwitz quaternion number theory.** This would be a separate class built on `Hy`, not methods on `Hy`, and it would reuse these conversions. Nothing has been started.
+
+When you come back to either one, tell me which and I'll continue from here.
