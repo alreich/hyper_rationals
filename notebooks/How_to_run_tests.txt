@@ -1,0 +1,57 @@
+How_to_run_tests.txt
+
+Here's how to run everything, mirroring what your CI does. Run these from the repo root (`hyper_rationals/`), ideally in a fresh virtual environment.
+
+## 1. Install everything
+
+```bash
+pip install -e ".[test,interop]"
+pip install "git+https://github.com/alreich/gaussian-integers.git"
+```
+
+The second line installs the `gint` package from GitHub. Don't use `pip install gint`, because that name on PyPI is an unrelated package. If you already have `gint` installed in editable mode from your local `gaussian-integers` clone, you can skip that line.
+
+## 2. Unit tests
+
+```bash
+pytest -v
+```
+
+With all the optional packages installed, I get **404 passed, 0 skipped**. To make sure nothing was silently skipped:
+
+```bash
+pytest -rs -q
+```
+
+Any line starting with `SKIPPED` means an optional package is missing. It will name the one, such as `gint` or `sympy`.
+
+You can also run the tests without pytest, since the file defines an explicit `main()`:
+
+```bash
+python tests/test_hypercomplex.py
+```
+
+## 3. Doctests
+
+```bash
+pytest --doctest-modules src/hyprat
+```
+
+I get **10 passed, 11 skipped**. The skips are expected: the examples that call `gint`, SymPy, and the other optional packages are marked `# doctest: +SKIP`.
+
+## 4. Docs build (optional, but CI does it)
+
+```bash
+pip install -e ".[docs]"
+sphinx-build -b html docs/source docs/_build/html
+```
+
+This should finish without errors. A warning about being unable to fetch an intersphinx inventory is only a network issue and is harmless.
+
+## What a failure would mean
+
+- **A `gint` test fails with an ImportError mentioning "unrelated":** the PyPI `gint` is installed. Run `pip uninstall gint`, then reinstall from GitHub.
+- **Skips appear in step 2:** an optional package is missing. Reinstall the `interop` extra and `gint`.
+- **Tests that pass for me fail for you:** please send me the output. The most likely cause would be a difference in how your `gint` clone differs from the current `main` on GitHub, since my tests were run against the current GitHub version.
+
+If it's all green, you're ready to push. Once you do, the CI run on GitHub will repeat the same checks across Python 3.9 to 3.13.

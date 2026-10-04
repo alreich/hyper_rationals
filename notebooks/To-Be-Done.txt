@@ -63,3 +63,6 @@ jupyter nbconvert --to markdown notebooks/README.ipynb --output README --output-
 ---------------------------------
 
 There is overlap between the 'Hy' class defined in the repo, 'https://github.com/alreich/hyper_rationals', and the 'Zi' and 'Qi' classes in the repo, 'https://github.com/alreich/gaussian-integers'. I don't want to change any of the code for those classes at this time. Instead, I would like to discuss the pros and cons of modify one or both repos to extend and enhance their functionality. For example, could the 'Hy' class support something like the number theoretic staticmethods of Zi? Or, would it be better, and more straightforward, to have methods that convert Zi and Qi to Hy, and vice versa? For what it's worth, a 'Qi' is the same as a rank 1 'Hy'. That's a very clear overlap between the two repos. What do you think?
+
+I like the idea of using explicit conversions, making sure that Hy.parse accepts what Zi & Qi print, and vice versa. I also like the idea of 'Hy' having a cheap predicate, 'h.is_gaussian'. And, I do see quaternion (Hurwitz) number theory as something I would like to have in the future. If we proceed with coding the conversions, would they exist in 'hyprat' or 'gint' or both?
+
