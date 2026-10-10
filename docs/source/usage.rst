@@ -1955,3 +1955,138 @@ coefficients: ``g = a*x + b*y`` for ``xgcld`` and ``g = x*a + y*b`` for
     True
     Hu('3/2', '1/2', '-1/2', '1/2')
     Hu('3/2', '1/2', '-1/2', '1/2')
+
+Primes, Content and Primitive Parts
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A nonzero Hurwitz integer is **prime** exactly when its norm is an
+ordinary prime number. Notice that ``2`` is *not* prime here: it has
+norm 4, and factors as a product of two primes of norm 2. The
+**content** of an element is the largest positive integer that divides
+it, and it is **primitive** when its content is 1.
+
+.. code:: ipython3
+
+    >>> from hyprat import Hu
+    >>> print(Hu(1, 1, 0, 0).is_prime(), Hu(2).is_prime(), Hu(1, 2, 3, 4).is_prime())
+
+    >>> a = Hu(2, 4, 6, 8)
+    >>> print(a.content(), repr(a.primitive_part()), a.is_primitive())
+    >>> print(Hu(1, 1, 1, 1).content())          # 2 times the unit (1+i+j+k)/2
+
+
+.. parsed-literal::
+
+    True False False
+    2 Hu(1, 2, 3, 4) False
+    2
+
+
+Factoring into Primes
+~~~~~~~~~~~~~~~~~~~~~
+
+By the theorem of Conway and Smith, a primitive Hurwitz integer ``q``
+can be written as a product of primes whose norms are the prime factors
+of ``N(q)`` **in any order you like**. The factors are unique up to
+*unit migration*, in which a unit moves from one side of a factor to the
+other. ``factor`` returns the pieces as a named tuple with a
+``product()`` method that rebuilds the value.
+
+.. code:: ipython3
+
+    >>> q = Hu(1, 2, 3, 4)                      # norm 30 = 2 * 3 * 5
+    >>> f = q.factor()
+    >>> print(f.norms())
+    >>> for p in f.factors:
+    ...     print(repr(p), p.is_prime())
+    >>> print(f.product() == q)
+
+    >>> g = q.factor(order=[5, 3, 2])
+    >>> print(g.norms())
+    >>> for p in g.factors:
+    ...     print(repr(p))
+    >>> print(g.product() == q)
+
+
+.. parsed-literal::
+
+    (2, 3, 5)
+    Hu(1, 1, 0, 0) True
+    Hu('3/2', '1/2', '1/2', '1/2') True
+    Hu('3/2', '1/2', '3/2', '-1/2') True
+    True
+    (5, 3, 2)
+    Hu(2, 0, 1, 0)
+    Hu('3/2', '1/2', '-1/2', '-1/2')
+    Hu(0, 0, 1, 1)
+    True
+
+
+``reorder`` gives the factorization of the same value with the primes in
+a new order. Each factor is found as a greatest common left divisor,
+``pi = gcld(q, p)``, and then divided out of ``q`` on the left.
+
+.. code:: ipython3
+
+    >>> print(f.reorder([3, 5, 2]).norms())
+    >>> print(f.reorder([3, 5, 2]).product() == q)
+
+
+.. parsed-literal::
+
+    (3, 5, 2)
+    True
+
+
+When the Element Is Not Primitive
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A rational prime ``p`` is ``pi * conj(pi)`` for many different primes
+``pi``, so a non-primitive element has no single factorization. Instead,
+``factor`` reports the integer content separately and factors the
+primitive part. If nothing is left but a unit, the unit is reported too:
+the value is always ``content * unit * f1 * ... * fk``.
+
+.. code:: ipython3
+
+    >>> f = Hu(6, 12, 18, 24).factor()
+    >>> print(f.content, f.norms())
+    >>> print(f.product() == Hu(6, 12, 18, 24))
+
+    >>> f = Hu(14, 0, 0, 0).factor()
+    >>> print(f.content, repr(f.unit), f.factors)
+
+
+.. parsed-literal::
+
+    6 (2, 3, 5)
+    True
+    14 Hu(1, 0, 0, 0) ()
+
+
+Big Numbers and the Integer Factoring Helper
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Factoring ``q`` means factoring its norm, an ordinary integer. The
+module ``hyprat.intfactor`` does that in pure Python (trial division, a
+Baillie-PSW primality test and Pollard’s rho method); sympy is used for
+very large inputs only if it happens to be installed.
+
+.. code:: ipython3
+
+    >>> from hyprat.intfactor import factorint, is_probable_prime
+    >>> print(factorint(2**64 + 1))
+    >>> print(is_probable_prime(2**89 - 1))
+
+    >>> q = Hu(123456789, 987654321, 192837465, 918273645)
+    >>> print(q.norm(), factorint(q.norm()))
+    >>> f = q.factor()
+    >>> print(f.content, f.norms(), f.product() == q)
+
+
+.. parsed-literal::
+
+    {274177: 1, 67280421310721: 1}
+    True
+    1871115411549373812 {2: 2, 3: 5, 2855261: 1, 674199611: 1}
+    18 (3, 2855261, 674199611) True

@@ -24,3 +24,11 @@ API Reference
    :members:
    :undoc-members:
    :show-inheritance:
+
+``hyprat.intfactor``
+--------------------
+
+.. automodule:: hyprat.intfactor
+   :members:
+   :undoc-members:
+   :show-inheritance:

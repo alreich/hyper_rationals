@@ -61,6 +61,32 @@ coordinate tuple, so units map to 1)::
     >>> a == b * q + r and 2 * r.norm() <= b.norm()
     True
 
+Primes, content and factorization
+---------------------------------
+
+A nonzero Hurwitz integer is *prime* exactly when its norm is an ordinary
+prime (:meth:`Hu.is_prime`).  Its *content* is the largest positive integer
+dividing it (:meth:`Hu.content`), and it is *primitive* when the content
+is 1.  A primitive element factors into primes in a way that is almost
+unique and, remarkably, lets you choose the order of the prime norms
+(Conway and Smith, *On Quaternions and Octonions*, 2003)::
+
+    >>> f = Hu(1, 2, 3, 4).factor()              # norm 30 = 2 * 3 * 5
+    >>> f.norms()
+    (2, 3, 5)
+    >>> f.reorder([5, 2, 3]).norms()
+    (5, 2, 3)
+    >>> f.product()
+    Hu(1, 2, 3, 4)
+
+For a non-primitive element, the rational integer part is reported
+separately, as ``content``: a rational prime ``p`` is ``pi * conj(pi)`` for
+many different primes ``pi``, so there is no single answer to put in a
+list.  Factoring needs the factorization of the norm, which is done by
+:mod:`hyprat.intfactor`; pure Python copes with norms whose second-largest
+prime factor is up to about 1e15, and sympy (if installed) is used for
+larger inputs.
+
 Converting to and from ``Hy``
 -----------------------------
 
@@ -98,10 +124,12 @@ from itertools import product
 import math
 import numbers
 import re
+from typing import NamedTuple
 
 from .hypercomplex import Hy, _flatten, _DEFAULT_MU
+from .intfactor import factorint, is_probable_prime
 
-__all__ = ["Hu"]
+__all__ = ["Hu", "HuFactorization"]
 
 
 # ---------------------------------------------------------------------------
@@ -911,3 +939,154 @@ class Hu:
             True
         """
         return self.xgcrd(other)[0]
+
+    # ------------------------------------------------------------------
+    # primes, content and factorization
+    # ------------------------------------------------------------------
+
+    def is_prime(self) -> bool:
+        """Whether ``self`` is a Hurwitz prime.
+
+        A Hurwitz integer is prime (irreducible) exactly when its norm is an
+        ordinary prime number.  Units and zero are not prime.
+
+            >>> Hu(1, 1, 0, 0).is_prime()            # norm 2
+            True
+            >>> Hu(1, 2, 3, 4).is_prime()            # norm 30
+            False
+            >>> Hu(2).is_prime()                     # norm 4: 2 is not prime here
+            False
+        """
+        return is_probable_prime(self.norm())
+
+    def content(self) -> int:
+        """The largest positive integer ``m`` such that ``self / m`` is again
+        a Hurwitz integer.
+
+        Rational integers are central, so it does not matter on which side
+        they divide.  Zero has no content (``ValueError``).
+
+            >>> Hu(2, 4, 6, 8).content()
+            2
+            >>> Hu(1, 1, 1, 1).content()             # 2 * (1+i+j+k)/2
+            2
+            >>> Hu(1, 2, 3, 4).content()
+            1
+        """
+        if not self:
+            raise ValueError("zero has no content")
+        g = math.gcd(math.gcd(self._a, self._b), math.gcd(self._c, self._d))
+        # g divides every doubled coordinate.  The quotients have a common
+        # parity unless g is even and they are mixed; then g/2 works.
+        if g % 2 == 0 and any((x // g) % 2 == 0 for x in self.doubled):
+            g //= 2
+        return g
+
+    def primitive_part(self) -> "Hu":
+        """``self`` divided by its :meth:`content`: a primitive Hurwitz
+        integer, meaning one not divisible by any integer greater than 1.
+
+            >>> Hu(2, 4, 6, 8).primitive_part()
+            Hu(1, 2, 3, 4)
+        """
+        m = self.content()
+        return self._raw(self._a // m, self._b // m, self._c // m, self._d // m)
+
+    def is_primitive(self) -> bool:
+        """Whether ``self`` is nonzero with :meth:`content` 1."""
+        return bool(self) and self.content() == 1
+
+    def factor(self, order=None) -> "HuFactorization":
+        """Factor ``self`` into Hurwitz primes (Conway and Smith).
+
+        Write ``self = m * q`` with ``m = content`` and ``q`` primitive.
+        Then for **any** ordering ``p1, ..., pk`` of the prime factors of
+        ``N(q)`` (with multiplicity) there are primes ``pi_1, ..., pi_k`` with
+        ``N(pi_i) = p_i`` and ``q = pi_1 * ... * pi_k``, and the factors are
+        unique up to *unit migration*: replacing ``pi_i`` by
+        ``u_(i-1)^-1 * pi_i * u_i`` (with ``u_0 = u_k = 1``) changes nothing.
+
+        ``order`` is the wanted sequence of norms ``p1, ..., pk``; by default
+        the primes in increasing order.  The factors are found one at a
+        time as ``pi_1 = gcld(q, p1)``, then the same for the quotient; all
+        but the last are canonical right associates, and the last absorbs
+        whatever unit is left over.
+
+        The rational integer ``m`` is **not** split into Hurwitz primes (each
+        rational prime ``p`` is ``pi * conj(pi)`` in several ways); it is
+        returned as :attr:`HuFactorization.content`.  Zero cannot be factored.
+
+            >>> f = Hu(1, 2, 3, 4).factor()          # norm 30 = 2 * 3 * 5
+            >>> [p.norm() for p in f.factors]
+            [2, 3, 5]
+            >>> f.product() == Hu(1, 2, 3, 4)
+            True
+            >>> g = Hu(1, 2, 3, 4).factor(order=[5, 3, 2])
+            >>> [p.norm() for p in g.factors]
+            [5, 3, 2]
+            >>> g.product() == Hu(1, 2, 3, 4)
+            True
+        """
+        if not self:
+            raise ValueError("zero cannot be factored")
+        content = self.content()
+        q = self.primitive_part()
+        primes = []
+        for p, e in factorint(q.norm(), method="auto").items():
+            primes.extend([p] * e)
+        if order is None:
+            order = primes
+        else:
+            order = [int(p) if isinstance(p, numbers.Integral) else p for p in order]
+            if sorted(order) != primes:
+                raise ValueError(
+                    f"order must be a rearrangement of the prime factors "
+                    f"{primes} of the norm, not {order}")
+        if not order:
+            return HuFactorization(content, q, ())
+        factors = []
+        for p in order[:-1]:
+            pi = q.gcld(p)
+            assert pi.norm() == p, "gcld of a primitive element and p has norm p"
+            factors.append(pi)
+            q = q.div_exact_left(pi)
+        factors.append(q)               # norm is the last prime: itself prime
+        return HuFactorization(content, Hu(1), tuple(factors))
+
+
+class HuFactorization(NamedTuple):
+    """The result of :meth:`Hu.factor`: ``value == content * unit * f1 * ... * fk``.
+
+    ``content`` is a positive int, ``factors`` a tuple of Hurwitz primes in
+    the order requested, and ``unit`` is ``1`` unless there are no prime
+    factors at all (then the value is ``content`` times a unit).
+    """
+
+    content: int
+    unit: "Hu"
+    factors: tuple
+
+    def product(self) -> "Hu":
+        """The value that was factored, rebuilt from the pieces.
+
+            >>> f = Hu(3, 1, 4, 1).factor()
+            >>> f.product()
+            Hu(3, 1, 4, 1)
+        """
+        acc = self.content * self.unit
+        for p in self.factors:
+            acc = acc * p
+        return acc
+
+    def norms(self) -> tuple:
+        """The norms of the factors, in order."""
+        return tuple(p.norm() for p in self.factors)
+
+    def reorder(self, order) -> "HuFactorization":
+        """The factorization of the same value with the primes in a new order.
+
+            >>> f = Hu(3, 1, 4, 1).factor()
+            >>> f.reorder(reversed(f.norms())).product() == f.product()
+            True
+        """
+        return self.product().factor(list(order))

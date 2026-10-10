@@ -39,6 +39,12 @@ Organization:
     TestAssociates          - is_left/right_associate, canonical_associate
     TestGcd                 - gcld/gcrd/xgcld/xgcrd: Bezout, divisibility,
                               universal property, scaling, canonical form
+    TestPrime               - is_prime(): the norm criterion, element counts
+                              24*sigma_odd(n), huge (Baillie-PSW) norms
+    TestContent             - content(), primitive_part(), is_primitive()
+    TestFactor              - factor(order): products, all orderings, repeated
+                              primes, uniqueness (brute force), unit migration,
+                              reorder(), content reported separately
 
 Algebraic laws are checked empirically via seeded random fuzzing
 (deterministic across runs), in addition to fixed hand-verified examples.
@@ -1269,6 +1275,304 @@ class TestGcd(unittest.TestCase):
             zh = Hu(int(zg.real), int(zg.imag))
             self.assertEqual(g.norm(), zh.norm())
             self.assertTrue(g.is_right_associate(zh))
+
+
+# ----------------------------------------------------------------------------
+# phase 3: primes, content, factorization
+# ----------------------------------------------------------------------------
+
+def elements_of_norm(n):
+    """All Hurwitz integers of norm n, by brute force over doubled coordinates."""
+    import itertools
+    bound = math.isqrt(4 * n)
+    out = []
+    for v in itertools.product(range(-bound, bound + 1), repeat=4):
+        if sum(x * x for x in v) == 4 * n and len({x % 2 for x in v}) == 1:
+            out.append(Hu.from_doubled(*v))
+    return out
+
+
+def sigma_odd(n):
+    """Sum of the odd divisors of n."""
+    return sum(d for d in range(1, n + 1, 2) if n % d == 0)
+
+
+def random_prime_norm_element(rng, bits):
+    from hyprat.intfactor import is_probable_prime
+    while True:
+        h = Hu(*[rng.randint(-2 ** bits, 2 ** bits) for _ in range(4)])
+        if is_probable_prime(h.norm()):
+            return h
+
+
+class TestPrime(unittest.TestCase):
+
+    def test_by_norm(self):
+        from hyprat.intfactor import is_probable_prime
+        for n in range(1, 30):
+            for h in elements_of_norm(n):
+                self.assertEqual(h.is_prime(), is_probable_prime(n), (n, h))
+
+    def test_counts_of_elements_of_given_norm(self):
+        # 24 * sigma_odd(n) Hurwitz integers have norm n
+        for n in range(1, 25):
+            self.assertEqual(len(elements_of_norm(n)), 24 * sigma_odd(n), n)
+
+    def test_not_prime(self):
+        self.assertFalse(Hu(0).is_prime())
+        for u in UNITS:
+            self.assertFalse(u.is_prime())
+        self.assertFalse(Hu(2).is_prime())
+        self.assertFalse(Hu(3).is_prime())
+        self.assertFalse(Hu(1, 2, 3, 4).is_prime())
+
+    def test_associates_of_primes_are_prime(self):
+        rng = random.Random(2)
+        p = random_prime_norm_element(rng, 10)
+        for u in UNITS:
+            self.assertTrue((u * p).is_prime())
+            self.assertTrue((p * u).is_prime())
+        self.assertTrue(p.conjugate().is_prime())
+
+    def test_huge_prime_norm(self):
+        rng = random.Random(9)
+        p = random_prime_norm_element(rng, 45)          # norm > 3.3e24: Baillie-PSW
+        self.assertGreater(p.norm(), 3.3e24)
+        self.assertTrue(p.is_prime())
+        self.assertFalse((p * p).is_prime())
+
+
+class TestContent(unittest.TestCase):
+
+    def test_hand_checked(self):
+        self.assertEqual(Hu(2, 4, 6, 8).content(), 2)
+        self.assertEqual(Hu(1, 2, 3, 4).content(), 1)
+        self.assertEqual(Hu(1, 1, 1, 1).content(), 2)          # 2 * omega
+        self.assertEqual(Hu(2, 2, 2, 2).content(), 4)
+        self.assertEqual(Hu(0, 0, 0, 7).content(), 7)
+        self.assertEqual(Hu(0, 0, 0, -7).content(), 7)
+        self.assertEqual(OMEGA.content(), 1)
+        self.assertEqual(Hu(3).content(), 3)
+
+    def test_units_have_content_one(self):
+        for u in UNITS:
+            self.assertEqual(u.content(), 1)
+            self.assertTrue(u.is_primitive())
+
+    def test_largest_integer_divisor_against_oracle(self):
+        rng = random.Random(31)
+        for _ in range(300):
+            a = nonzero_hu(rng, 12)
+            h = a.to_hy()
+            best = max(m for m in range(1, 60) if (h / m).is_hurwitz())
+            self.assertEqual(a.content(), best, a)
+
+    def test_scaling_and_unit_invariance(self):
+        rng = random.Random(32)
+        for _ in range(200):
+            a = nonzero_hu(rng, 6)
+            m = rng.randint(1, 9)
+            self.assertEqual((m * a).content(), m * a.content())
+            u = UNITS[rng.randrange(24)]
+            self.assertEqual((u * a).content(), a.content())
+            self.assertEqual((a * u).content(), a.content())
+            self.assertEqual(a.conjugate().content(), a.content())
+
+    def test_primitive_part(self):
+        rng = random.Random(33)
+        for _ in range(200):
+            a = nonzero_hu(rng, 8)
+            m, q = a.content(), a.primitive_part()
+            self.assertEqual(m * q, a)
+            self.assertEqual(q.content(), 1)
+            self.assertTrue(q.is_primitive())
+            self.assertEqual(q.primitive_part(), q)
+            self.assertEqual(q.norm() * m * m, a.norm())
+
+    def test_primitive_means_no_integer_divisor(self):
+        for n in (1, 2, 3, 4, 6, 8, 9, 10, 12):
+            for h in elements_of_norm(n):
+                expected = not any((h.to_hy() / m).is_hurwitz() for m in range(2, 5))
+                self.assertEqual(h.is_primitive(), expected, h)
+
+    def test_zero(self):
+        with self.assertRaises(ValueError):
+            Hu(0).content()
+        with self.assertRaises(ValueError):
+            Hu(0).primitive_part()
+        self.assertFalse(Hu(0).is_primitive())
+
+    def test_huge(self):
+        a = Hu(10 ** 30, 3 * 10 ** 30, 0, 7 * 10 ** 30)
+        self.assertEqual(a.content(), 10 ** 30)
+        self.assertEqual(a.primitive_part(), Hu(1, 3, 0, 7))
+
+
+class TestFactor(unittest.TestCase):
+
+    def check(self, a, order=None):
+        f = a.factor(order)
+        self.assertEqual(f.product(), a)
+        for p in f.factors:
+            self.assertTrue(p.is_prime(), p)
+        return f
+
+    def test_fixed(self):
+        f = self.check(Hu(1, 2, 3, 4))
+        self.assertEqual(f.norms(), (2, 3, 5))
+        self.assertEqual(f.content, 1)
+        self.assertEqual(f.unit, ONE)
+        f = self.check(Hu(1, 2, 3, 4), order=[5, 3, 2])
+        self.assertEqual(f.norms(), (5, 3, 2))
+
+    def test_fuzz_all_orders(self):
+        import itertools
+        rng = random.Random(41)
+        for _ in range(250):
+            a = nonzero_hu(rng, 10)
+            f = self.check(a)
+            self.assertEqual(f.content, a.content())
+            q = a.primitive_part()
+            self.assertEqual(math.prod(f.norms()), q.norm())
+            for order in list(set(itertools.permutations(f.norms())))[:8]:
+                g = self.check(a, order=list(order))
+                self.assertEqual(g.norms(), order)
+
+    def test_deterministic(self):
+        a = Hu(5, -3, 8, 2)
+        self.assertEqual(a.factor(), a.factor())
+        self.assertEqual(a.factor(), a.factor(order=sorted(a.factor().norms())))
+
+    def test_prime_is_its_own_factorization(self):
+        rng = random.Random(42)
+        p = random_prime_norm_element(rng, 12)
+        f = p.factor()
+        self.assertEqual(f.factors, (p,))
+        self.assertEqual(f.content, 1)
+
+    def test_units_and_rational_integers(self):
+        for u in UNITS:
+            f = u.factor()
+            self.assertEqual((f.content, f.unit, f.factors), (1, u, ()))
+            self.assertEqual(f.product(), u)
+        f = (6 * OMEGA).factor()
+        self.assertEqual((f.content, f.unit, f.factors), (6, OMEGA, ()))
+        self.assertEqual(f.product(), 6 * OMEGA)
+        f = Hu(7).factor()
+        self.assertEqual((f.content, f.unit, f.factors), (7, ONE, ()))
+
+    def test_content_is_reported_separately(self):
+        rng = random.Random(43)
+        for _ in range(60):
+            q = nonzero_hu(rng, 5)
+            a = 12 * q
+            f = self.check(a)
+            self.assertEqual(f.content, 12 * q.content())
+            self.assertEqual(f.norms(), q.factor().norms())
+
+    def test_zero(self):
+        with self.assertRaises(ValueError):
+            Hu(0).factor()
+
+    def test_bad_orders(self):
+        a = Hu(1, 2, 3, 4)                                   # norms 2, 3, 5
+        for bad in ([2, 3], [2, 3, 5, 7], [2, 3, 3], [2, 3, 6], [1, 2, 3, 5], []):
+            with self.assertRaises(ValueError):
+                a.factor(order=bad)
+        with self.assertRaises((ValueError, TypeError)):
+            a.factor(order=[2, 3, "5"])
+
+    def test_repeated_primes(self):
+        # primitive elements whose norm has repeated prime factors
+        rng = random.Random(44)
+        found = 0
+        for _ in range(2000):
+            a = nonzero_hu(rng, 15)
+            q = a.primitive_part()
+            n = q.norm()
+            if n % 4 == 0 or n % 9 == 0 or n % 25 == 0:
+                f = self.check(q)
+                g = self.check(q, order=sorted(f.norms(), reverse=True))
+                self.assertEqual(g.norms(), tuple(sorted(f.norms(), reverse=True)))
+                found += 1
+        self.assertGreater(found, 20)
+
+    def test_first_factor_is_the_unique_left_divisor_class(self):
+        # Conway-Smith: the left divisors of norm p form exactly one class
+        # of right associates (so 24 elements), and factor() picks from it
+        rng = random.Random(45)
+        for _ in range(60):
+            a = nonzero_hu(rng, 4).primitive_part()
+            for p in set(a.factor().norms()):
+                divisors = [g for g in elements_of_norm(p) if g.left_divides(a)]
+                self.assertEqual(len(divisors), 24, (a, p))
+                self.assertTrue(all(g.is_right_associate(divisors[0]) for g in divisors))
+                order = list(a.factor().norms())
+                order.remove(p)
+                order.insert(0, p)
+                first = a.factor(order=order).factors[0]
+                self.assertIn(first, divisors)
+
+    def test_unit_migration(self):
+        rng = random.Random(46)
+        for _ in range(100):
+            a = nonzero_hu(rng, 8)
+            f = a.factor()
+            ps = list(f.factors)
+            if len(ps) < 2:
+                continue
+            us = [ONE] + [UNITS[rng.randrange(24)] for _ in range(len(ps) - 1)] + [ONE]
+            moved = [us[i].conjugate() * ps[i] * us[i + 1] for i in range(len(ps))]
+            self.assertEqual(self._prod(moved), self._prod(ps))
+            for old, new in zip(ps, moved):
+                self.assertEqual(old.norm(), new.norm())
+                self.assertTrue(new.is_prime())
+
+    @staticmethod
+    def _prod(items):
+        acc = ONE
+        for x in items:
+            acc = acc * x
+        return acc
+
+    def test_reorder(self):
+        rng = random.Random(47)
+        for _ in range(80):
+            a = nonzero_hu(rng, 8)
+            f = a.factor()
+            self.assertEqual(f.reorder(f.norms()), f)
+            rev = tuple(reversed(f.norms()))
+            g = f.reorder(rev)
+            self.assertEqual(g.norms(), rev)
+            self.assertEqual(g.product(), a)
+            self.assertEqual(g, a.factor(order=list(rev)))
+
+    def test_namedtuple_shape(self):
+        f = Hu(3, 1, 4, 1).factor()
+        content, unit, factors = f
+        self.assertEqual((content, unit, factors), (f.content, f.unit, f.factors))
+        self.assertIsInstance(f.factors, tuple)
+
+    def test_large_norm_primes(self):
+        rng = random.Random(48)
+        pieces = [random_prime_norm_element(rng, 13) for _ in range(4)]
+        a = self._prod(pieces)
+        if not a.is_primitive():
+            self.skipTest("unlucky draw: not primitive")
+        f = self.check(a)
+        self.assertEqual(sorted(f.norms()), sorted(p.norm() for p in pieces))
+        order = [p.norm() for p in reversed(pieces)]
+        g = self.check(a, order=order)
+        self.assertEqual(g.norms(), tuple(order))
+
+    def test_huge_coordinates(self):
+        # coordinates around 1e18, but a smooth norm so that factoring is quick
+        rng = random.Random(49)
+        pieces = [random_prime_norm_element(rng, 8) for _ in range(6)]
+        a = self._prod(pieces)
+        self.assertGreater(max(abs(x) for x in a.doubled), 10 ** 10)
+        f = self.check(a)
+        self.assertEqual(f.content, a.content())
 
 
 def main():
