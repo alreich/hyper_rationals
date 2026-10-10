@@ -1,0 +1,38 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>1859</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyUnreachableCodeInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unreachable code</problem_class>
+  <description>This code is unreachable</description>
+  <highlighted_element>real_part = _sub(_mul(a, c), cross)</highlighted_element>
+  <language>Python</language>
+  <offset>8</offset>
+  <length>35</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>1861</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyUnreachableCodeInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unreachable code</problem_class>
+  <description>This code is unreachable</description>
+  <highlighted_element>real_part = _add(_mul(a, c), cross)</highlighted_element>
+  <language>Python</language>
+  <offset>8</offset>
+  <length>35</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>1889</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyUnreachableCodeInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unreachable code</problem_class>
+  <description>This code is unreachable</description>
+  <highlighted_element>if _is_zero_val(x): message = &quot;hypercomplex value has zero norm; not invertible&quot; ...</highlighted_element>
+  <language>Python</language>
+  <offset>8</offset>
+  <length>321</length>
+</problem>
+</problems>

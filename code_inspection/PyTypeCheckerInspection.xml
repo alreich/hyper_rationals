@@ -1,0 +1,74 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>863</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'Random', got 'Any | None' instead</description>
+  <highlighted_element>rng</highlighted_element>
+  <language>Python</language>
+  <offset>21</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>2027</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type '{_real, _imag}', got 'Fraction | Hy' instead</description>
+  <highlighted_element>mul(x, e)</highlighted_element>
+  <language>Python</language>
+  <offset>25</offset>
+  <length>9</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>2029</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type '{_real, _imag}', got 'Fraction | Hy' instead</description>
+  <highlighted_element>mul(e, x)</highlighted_element>
+  <language>Python</language>
+  <offset>25</offset>
+  <length>9</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>2128</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type '{_real, _imag}', got 'Fraction | Hy' instead</description>
+  <highlighted_element>_embed(h, 2)</highlighted_element>
+  <language>Python</language>
+  <offset>26</offset>
+  <length>12</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>3349</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Unexpected argument (from ParamSpec '_P')</description>
+  <highlighted_element>old[0]</highlighted_element>
+  <language>Python</language>
+  <offset>49</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>3350</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Unexpected argument (from ParamSpec '_P')</description>
+  <highlighted_element>old[1]</highlighted_element>
+  <language>Python</language>
+  <offset>49</offset>
+  <length>6</length>
+</problem>
+</problems>

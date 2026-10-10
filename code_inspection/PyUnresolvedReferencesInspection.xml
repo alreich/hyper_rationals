@@ -1,0 +1,98 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>1661</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyUnresolvedReferencesInspection" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Unresolved references</problem_class>
+  <description>Member 'None' of 'Any | None' does not have attribute 'as_quat_array'</description>
+  <highlighted_element>as_quat_array</highlighted_element>
+  <language>Python</language>
+  <offset>21</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>2507</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyUnresolvedReferencesInspection" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Unresolved references</problem_class>
+  <description>Member 'int' of 'Hy | int' does not have attribute 'signs'</description>
+  <highlighted_element>signs</highlighted_element>
+  <language>Python</language>
+  <offset>36</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>2572</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyUnresolvedReferencesInspection" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Unresolved references</problem_class>
+  <description>Member 'Fraction' of 'Fraction | Hy' does not have attribute 'signs'</description>
+  <highlighted_element>signs</highlighted_element>
+  <language>Python</language>
+  <offset>27</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>2578</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyUnresolvedReferencesInspection" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Unresolved references</problem_class>
+  <description>Member 'Fraction' of 'Fraction | Hy' does not have attribute 'signs'</description>
+  <highlighted_element>signs</highlighted_element>
+  <language>Python</language>
+  <offset>51</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>2799</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyUnresolvedReferencesInspection" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Unresolved references</problem_class>
+  <description>Member 'Fraction' of 'Fraction | Hy' does not have attribute 'signs'</description>
+  <highlighted_element>signs</highlighted_element>
+  <language>Python</language>
+  <offset>27</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>3198</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyUnresolvedReferencesInspection" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Unresolved references</problem_class>
+  <description>Member 'None' of 'Any | None' does not have attribute 'Zi'</description>
+  <highlighted_element>Zi</highlighted_element>
+  <language>Python</language>
+  <offset>32</offset>
+  <length>2</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>3198</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyUnresolvedReferencesInspection" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Unresolved references</problem_class>
+  <description>Member 'None' of 'Any | None' does not have attribute 'Qi'</description>
+  <highlighted_element>Qi</highlighted_element>
+  <language>Python</language>
+  <offset>41</offset>
+  <length>2</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_intfactor.py</file>
+  <line>125</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_intfactor.py" />
+  <problem_class id="PyUnresolvedReferencesInspection" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Unresolved references</problem_class>
+  <description>Member 'None' of 'ModuleType | None | Any' does not have attribute 'isprime'</description>
+  <highlighted_element>isprime</highlighted_element>
+  <language>Python</language>
+  <offset>61</offset>
+  <length>7</length>
+</problem>
+</problems>
