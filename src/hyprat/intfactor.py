@@ -233,7 +233,7 @@ def factorint(n: int, method: str = "python") -> dict:
         else:
             return {int(p): int(e) for p, e in sorted(sympy_factorint(n).items())}
 
-    out = {}
+    out: dict = {}
     for p in _SMALL_PRIMES:
         if p * p > n:
             break

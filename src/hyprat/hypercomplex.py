@@ -263,6 +263,7 @@ import numbers
 import random
 import re
 from fractions import Fraction
+from typing import Any, Union
 
 
 __all__ = ["Hy"]
@@ -280,6 +281,10 @@ class _Missing:
 _MISSING = _Missing()
 
 _ScalarLike = (int, float, Fraction, str)
+
+# What a component of a Hy may be when it is passed in: a number, a string
+# such as "1/2" or "(1+2j)", or another Hy.  (Only used in annotations.)
+_Component = Union["Hy", int, float, Fraction, str]
 
 # --------------------------------------------------------------------------
 # Cayley-Dickson parameters ("signs").  Every doubling step of the tower
@@ -328,6 +333,12 @@ class Hy:
 
     __slots__ = ("_real", "_imag", "_mu")
 
+    # Declared for readers and type checkers; the values are stored with
+    # object.__setattr__ because the class is immutable.
+    _real: Any
+    _imag: Any
+    _mu: Fraction
+
     # Named signature presets (tuples of mu values, lowest level first),
     # usable anywhere a ``signs=`` argument is accepted, either as these
     # tuples or by name, e.g. ``signs="split-quaternion"``.
@@ -342,7 +353,13 @@ class Hy:
     # ---------------------------------------------------------------- #
     # Construction
     # ---------------------------------------------------------------- #
-    def __init__(self, real, imag=_MISSING, *, mu=None):
+    def __init__(
+        self,
+        real: _Component,
+        imag: Union[_Component, _Missing] = _MISSING,
+        *,
+        mu: Union[int, Fraction, str, None] = None,
+    ):
         mu_c = None if mu is None else _coerce_mu(mu)
         real_c = _coerce_component(real)
 
@@ -2155,7 +2172,7 @@ def _basis_labels(rank: int):
 
 
 def _format_terms(coeffs, labels) -> str:
-    parts = []
+    parts: list = []
     for c, u in zip(coeffs, labels):
         if c == 0:
             continue
@@ -2194,7 +2211,7 @@ def _format_fraction_latex(c: Fraction, vinculum: str) -> str:
 
 
 def _format_terms_latex(coeffs, labels, vinculum: str) -> str:
-    parts = []
+    parts: list = []
     for c, u in zip(coeffs, labels):
         if c == 0:
             continue

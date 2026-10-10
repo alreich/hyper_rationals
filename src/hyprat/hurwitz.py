@@ -235,7 +235,7 @@ def _rebuild(cls, a, b, c, d):
     return cls._raw(a, b, c, d)
 
 
-_UNIT_CACHE = []
+_UNIT_CACHE: list = []
 
 
 def _unit_values():
@@ -278,6 +278,13 @@ class Hu:
     """
 
     __slots__ = ("_a", "_b", "_c", "_d")
+
+    # Declared for readers and type checkers; the values are stored with
+    # object.__setattr__ because the class is immutable.
+    _a: int
+    _b: int
+    _c: int
+    _d: int
 
     # ---------------------------------------------------------------- #
     # construction
@@ -324,13 +331,13 @@ class Hu:
                 raise TypeError(
                     f"from_doubled() needs ints, not {type(v).__name__}"
                 )
-        vals = tuple(int(v) for v in vals)
-        if len({v & 1 for v in vals}) != 1:
+        ints = tuple(int(v) for v in vals)
+        if len({v & 1 for v in ints}) != 1:
             raise ValueError(
                 "coordinates (" + ", ".join(_show(v) for v in vals) + ") must "
                 "be all integers or all halves of odd integers"
             )
-        return cls._raw(*vals)
+        return cls._raw(*ints)
 
     @classmethod
     def parse(cls, text: str) -> "Hu":
