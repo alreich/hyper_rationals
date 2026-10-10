@@ -32,6 +32,10 @@ Organization:
     TestParseUnit           - Hy.parse(..., unit='i'/'j'): reading the text
                               printed by gint's Zi/Qi (either unit symbol)
     TestIsGaussian          - .is_gaussian() across ranks and signatures
+    TestIsLipschitzHurwitz  - .is_lipschitz() / .is_hurwitz() across ranks,
+                              signatures and half-integer coordinates
+    TestEmbed               - .embed(rank): zero-padding, signatures kept,
+                              and the algebra-homomorphism property
     TestFromGint            - Hy.from_gint() on Zi/Qi/int/Fraction/duck types
                               and its errors (no gint needed)
     TestGintImportGuard     - the lazy gint import, incl. the unrelated
@@ -3340,6 +3344,187 @@ class TestGintConversions(unittest.TestCase):
     def test_parse_reads_j_text_without_the_unit_keyword(self):
         for x in (self.Zi(2, -3), self.Zi(0, 1), self.Qi("1/2", "-3/5"), self.Zi(5)):
             self.assertEqual(Hy.parse(str(x)), Hy.from_gint(x))
+
+
+# ============================================================================
+# Hy.is_lipschitz() / Hy.is_hurwitz()
+# ============================================================================
+
+def _quat(a, b, c, d):
+    """The classical rank-2 Hy a + b*i + c*j + d*k (any int/str coordinates)."""
+    return Hy.from_array([a, b, c, d])
+
+
+class TestIsLipschitzHurwitz(unittest.TestCase):
+    def test_integer_quaternions_are_lipschitz_and_hurwitz(self):
+        for coords in [(0, 0, 0, 0), (1, 0, 0, 0), (1, 2, 3, 4), (-5, 7, 0, -1)]:
+            q = _quat(*coords)
+            self.assertTrue(q.is_lipschitz(), coords)
+            self.assertTrue(q.is_hurwitz(), coords)
+
+    def test_all_half_odd_quaternions_are_hurwitz_not_lipschitz(self):
+        for coords in [("1/2",) * 4, ("1/2", "-1/2", "1/2", "1/2"),
+                       ("3/2", "1/2", "-5/2", "1/2"), ("-1/2",) * 4]:
+            q = _quat(*coords)
+            self.assertTrue(q.is_hurwitz(), coords)
+            self.assertFalse(q.is_lipschitz(), coords)
+
+    def test_mixed_denominators_are_neither(self):
+        for coords in [("1/2", "1/2", "1/2", 1), ("1/2", "1/2", 0, 0),
+                       (1, 1, 1, "1/2"), ("1/2", 0, 0, 0), (0, 0, 0, "1/2")]:
+            q = _quat(*coords)
+            self.assertFalse(q.is_hurwitz(), coords)
+            self.assertFalse(q.is_lipschitz(), coords)
+
+    def test_other_denominators_are_neither(self):
+        for coords in [("1/3",) * 4, ("1/4",) * 4, ("1/2", "1/2", "1/2", "1/4"),
+                       (1, 2, 3, "1/3")]:
+            q = _quat(*coords)
+            self.assertFalse(q.is_hurwitz(), coords)
+            self.assertFalse(q.is_lipschitz(), coords)
+
+    def test_lipschitz_implies_hurwitz(self):
+        Hy.seed(21)
+        for _ in range(200):
+            q = Hy.random(2, lo=-4, hi=4, dmax=2)
+            if q.is_lipschitz():
+                self.assertTrue(q.is_hurwitz())
+
+    def test_rank_one_values_are_read_as_a_plus_bi(self):
+        self.assertTrue(Hy(2, -3).is_lipschitz())
+        self.assertTrue(Hy(2, -3).is_hurwitz())
+        self.assertFalse(Hy("1/2", "1/2").is_hurwitz())       # (1/2, 1/2, 0, 0)
+        self.assertFalse(Hy("1/2", 1).is_hurwitz())
+        self.assertFalse(Hy("1/3", 0).is_hurwitz())
+
+    def test_higher_rank_values_inside_the_quaternions(self):
+        o = _quat(1, 2, 3, 4).embed(3)
+        s = _quat("1/2", "1/2", "1/2", "1/2").embed(4)
+        self.assertTrue(o.is_lipschitz() and o.is_hurwitz())
+        self.assertTrue(s.is_hurwitz())
+        self.assertFalse(s.is_lipschitz())
+
+    def test_any_nonzero_coordinate_beyond_the_fourth_disqualifies(self):
+        for rank in (3, 4):
+            n = 2 ** rank
+            for k in range(4, n):
+                coeffs = [0] * n
+                coeffs[:4] = [1, 2, 3, 4]
+                coeffs[k] = 1
+                h = Hy.from_array(coeffs)
+                self.assertFalse(h.is_hurwitz(), (rank, k))
+                self.assertFalse(h.is_lipschitz(), (rank, k))
+
+    def test_non_classical_lowest_levels_disqualify(self):
+        self.assertFalse(Hy(1, 2, mu=1).is_hurwitz())                       # split-complex
+        self.assertFalse(Hy.from_array([1, 2, 3, 4], signs=(-1, 1)).is_hurwitz())   # split-quaternion
+        self.assertFalse(Hy.from_array([1, 2, 3, 4], signs=(1, -1)).is_hurwitz())
+        self.assertFalse(Hy.from_array([1, 2, 3, 4], signs=(-1, 1)).is_lipschitz())
+        self.assertFalse(Hy.from_array([1, 2, 0, 0], signs=(1, -1)).is_lipschitz())
+
+    def test_signs_above_the_second_level_do_not_matter(self):
+        for signs in [(-1, -1, 1), (-1, -1, -1), (-1, -1, 1, 1), (-1, -1, 2, -3)]:
+            coeffs = [1, 2, 3, 4] + [0] * (2 ** len(signs) - 4)
+            self.assertTrue(Hy.from_array(coeffs, signs=signs).is_lipschitz(), signs)
+
+    def test_gaussian_integers_are_lipschitz(self):
+        Hy.seed(5)
+        for _ in range(50):
+            g = Hy.random(1, lo=-9, hi=9, dmax=1)         # integer coordinates
+            self.assertTrue(g.is_gaussian() and g.is_lipschitz() and g.is_hurwitz())
+
+    def test_return_type_is_bool(self):
+        self.assertIs(_quat(1, 2, 3, 4).is_hurwitz(), True)
+        self.assertIs(_quat(1, 2, 3, "1/3").is_hurwitz(), False)
+        self.assertIs(_quat(1, 2, 3, 4).is_lipschitz(), True)
+        self.assertIs(_quat("1/2", "1/2", "1/2", "1/2").is_lipschitz(), False)
+
+    def test_closed_under_multiplication(self):
+        # the defining property of an order: products stay inside
+        rng = random.Random(77)
+        pool = []
+        for _ in range(60):
+            if rng.random() < 0.5:
+                c = [rng.randint(-6, 6) for _ in range(4)]
+            else:
+                c = [Fraction(2 * rng.randint(-4, 4) + 1, 2) for _ in range(4)]
+            pool.append(Hy.from_array(c))
+        for x in pool:
+            self.assertTrue(x.is_hurwitz())
+            for y in pool[:15]:
+                self.assertTrue((x * y).is_hurwitz())
+                self.assertTrue((x + y).is_hurwitz())
+                self.assertTrue((x - y).is_hurwitz())
+
+
+# ============================================================================
+# Hy.embed()
+# ============================================================================
+
+class TestEmbed(unittest.TestCase):
+    def test_zero_padding_and_rank(self):
+        h = Hy(2, 3)
+        for rank in (2, 3, 4):
+            e = h.embed(rank)
+            self.assertEqual(e.rank, rank)
+            self.assertEqual(e.to_array()[:2], [2, 3])
+            self.assertTrue(all(c == 0 for c in e.to_array()[2:]))
+
+    def test_quaternion_text(self):
+        self.assertEqual(str(Hy(2, 3).embed(2)), "(2+3i)")
+        self.assertEqual(Hy(2, 3).embed(2), Hy(Hy(2, 3), Hy(0, 0)))
+
+    def test_same_rank_returns_self(self):
+        h = Hy(2, 3)
+        self.assertIs(h.embed(1), h)
+        q = _quat(1, 2, 3, 4)
+        self.assertIs(q.embed(2), q)
+
+    def test_cannot_go_down(self):
+        with self.assertRaises(ValueError):
+            _quat(1, 2, 3, 4).embed(1)
+        with self.assertRaises(ValueError):
+            Hy(1, 2).embed(0)
+
+    def test_bad_rank_type(self):
+        for bad in (2.0, "2", None, True):
+            with self.assertRaises(TypeError, msg=repr(bad)):
+                Hy(1, 2).embed(bad)
+
+    def test_existing_signs_kept_and_new_levels_classical(self):
+        h = Hy(1, 2, mu=1)                     # split-complex
+        e = h.embed(3)
+        self.assertEqual(e.signs, (Fraction(1), Fraction(-1), Fraction(-1)))
+        self.assertEqual(Hy.from_array([1, 2, 3, 4], signs=(-1, 1)).embed(3).signs,
+                         (Fraction(-1), Fraction(1), Fraction(-1)))
+
+    def test_is_an_algebra_homomorphism(self):
+        Hy.seed(33)
+        for signs in [None, (1,), (-2,), (-1, 1), (3, -1), (-1, -1, 1)]:
+            rank = 1 if signs is None else len(signs)
+            for target in range(rank, 5):
+                for _ in range(12):
+                    x = Hy.random(rank, signs=signs)
+                    y = Hy.random(rank, signs=signs)
+                    ex, ey = x.embed(target), y.embed(target)
+                    self.assertEqual(ex + ey, (x + y).embed(target))
+                    self.assertEqual(ex - ey, (x - y).embed(target))
+                    self.assertEqual(ex * ey, (x * y).embed(target))
+                    self.assertEqual(ex.conjugate(), x.conjugate().embed(target))
+                    self.assertEqual(ex.norm_squared(), x.norm_squared())
+
+    def test_embedding_the_gaussian_rationals(self):
+        Hy.seed(8)
+        for _ in range(30):
+            g = Hy.random(1)
+            q = g.embed(2)
+            self.assertEqual(q.is_gaussian(), g.is_gaussian())
+            self.assertEqual(q.to_array(), [g.real, g.imag, 0, 0])
+
+    def test_embedding_composes(self):
+        h = Hy(2, 3)
+        self.assertEqual(h.embed(2).embed(4), h.embed(4))
+        self.assertEqual(h.embed(3).embed(3), h.embed(3))
 
 
 

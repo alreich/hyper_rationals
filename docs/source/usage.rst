@@ -1552,3 +1552,288 @@ operate, and compare:
     True
     True
 
+Hurwitz Integers (the Class ``Hu``)
+-----------------------------------
+
+The *Hurwitz integers* are the quaternions
+:math:`a + b\,i + c\,j + d\,k` whose four coordinates are either **all
+integers** or **all halves of odd integers**, so that
+:math:`(1 + i + j + k)/2` is one of them. They form a ring in which
+every element has an integer norm, and which has 24 units. That makes
+them the quaternion analogue of the Gaussian integers, with ``Hy``
+playing the role that ``Qi`` plays for ``Zi``: ``Hy`` is the ambient
+algebra over the rationals, and the class ``Hu`` holds the integer
+points inside it.
+
+A ``Hu`` stores its four coordinates **doubled**, as plain Python
+integers of the same parity, so its arithmetic involves no fractions at
+all. A set of coordinates that is not a Hurwitz integer cannot be
+constructed.
+
+.. code:: ipython3
+
+    >>> from hyprat import Hu
+
+    >>> q = Hu(1, 2, 3, 4)
+    >>> print(q)
+    >>> q
+
+
+.. parsed-literal::
+
+    (1+2i+3j+4k)
+
+
+
+
+.. parsed-literal::
+
+    Hu(1, 2, 3, 4)
+
+
+
+.. code:: ipython3
+
+    >>> w = Hu('1/2', '1/2', '1/2', '1/2')   # (1+i+j+k)/2: not a Lipschitz integer
+    >>> print(w)
+    >>> print(w.is_lipschitz(), w.doubled)
+
+
+.. parsed-literal::
+
+    (1/2+1/2i+1/2j+1/2k)
+    False (1, 1, 1, 1)
+
+
+.. code:: ipython3
+
+    >>> try:
+    ...     Hu('1/2', 0, 0, 0)
+    ... except ValueError as e:
+    ...     print(e)
+
+
+.. parsed-literal::
+
+    coordinates (1/2, 0, 0, 0) must be all integers or all halves of odd integers
+
+
+Arithmetic
+~~~~~~~~~~
+
+``+``, ``-``, ``*`` and ``**`` work between ``Hu`` values and with plain
+integers. Multiplication is not commutative. There is deliberately no
+``/``: the Hurwitz integers are not closed under division, so use
+``to_hy()`` for exact rational division.
+
+.. code:: ipython3
+
+    >>> i, j, k = Hu(0, 1, 0, 0), Hu(0, 0, 1, 0), Hu(0, 0, 0, 1)
+
+    >>> print(i * j, j * i)
+    >>> print(q * w)
+    >>> print(w * w, w ** 3, w ** 6)
+
+
+.. parsed-literal::
+
+    (k) (-k)
+    (-4+i+3j+2k)
+    (-1/2+1/2i+1/2j+1/2k) (-1) (1)
+
+
+Norm, Trace and Conjugate
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The norm :math:`N(q) = q\,\bar q = a^2 + b^2 + c^2 + d^2` is always an
+``int`` (the same quantity that ``Hy.norm()`` gives), and it is
+multiplicative. The trace :math:`q + \bar q = 2a` is an ``int`` too.
+
+.. code:: ipython3
+
+    >>> print(q.norm(), q.trace(), q.conjugate())
+    >>> print(w.norm(), w.trace())
+    >>> print(q * q.conjugate())
+    >>> print((q * w).norm() == q.norm() * w.norm())
+
+
+.. parsed-literal::
+
+    30 2 (1-2i-3j-4k)
+    1 1
+    (30)
+    True
+
+
+The 24 Units
+~~~~~~~~~~~~
+
+The units are the elements of norm 1: the eight Lipschitz units
+:math:`\pm 1, \pm i, \pm j, \pm k` and the sixteen
+:math:`(\pm 1 \pm i \pm j \pm k)/2`. Only the first eight are
+``Hy.units(2)``. A unit has an inverse in the ring, its conjugate, so
+negative powers are allowed for units and only for units.
+
+.. code:: ipython3
+
+    >>> units = Hu.units()
+    >>> print(len(units))
+    >>> list(units)[:10]
+
+
+.. parsed-literal::
+
+    24
+
+
+
+
+.. parsed-literal::
+
+    ['1',
+     '-1',
+     'i',
+     '-i',
+     'j',
+     '-j',
+     'k',
+     '-k',
+     '1/2+1/2i+1/2j+1/2k',
+     '1/2+1/2i+1/2j-1/2k']
+
+
+
+.. code:: ipython3
+
+    >>> print(w ** -1, w ** -1 == w.conjugate())
+    >>> print(w.is_unit(), q.is_unit())
+
+    >>> try:
+    ...     q ** -1
+    ... except ValueError as e:
+    ...     print(e)
+
+
+.. parsed-literal::
+
+    (1/2-1/2i-1/2j-1/2k) True
+    True False
+    only units have inverses in the Hurwitz integers, so a negative power needs a unit; use to_hy() ** n for rational values
+
+
+Converting To and From ``Hy``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The conversions are explicit, and a ``Hu`` is never ``==`` to a ``Hy``.
+``Hy`` has matching predicates, ``is_hurwitz()`` and ``is_lipschitz()``,
+which are about the *value*: a rank 1 value :math:`a + b\,j` counts as
+the quaternion :math:`a + b\,i`, and so does a value of higher rank
+whose coordinates beyond the first four are all zero. ``Hy.embed(rank)``
+pads with zeros to a higher rank.
+
+.. code:: ipython3
+
+    >>> h = q.to_hy()
+    >>> print(repr(h))
+    >>> print(h == q, Hu.from_hy(h) == q)
+
+
+.. parsed-literal::
+
+    Hy(Hy('1', '2'), Hy('3', '4'))
+    False True
+
+
+.. code:: ipython3
+
+    >>> print(Hy(Hy('1/2', '1/2'), Hy('1/2', '-3/2')).is_hurwitz())
+    >>> print(Hy(Hy('1/2', '1/2'), Hy(0, 0)).is_hurwitz())
+    >>> print(Hy(2, -3).is_hurwitz(), Hy(2, -3).is_lipschitz())    # the Gaussian integer 2-3i
+    >>> Hu.from_hy(Hy(2, -3))
+
+
+.. parsed-literal::
+
+    True
+    False
+    True True
+
+
+
+
+.. parsed-literal::
+
+    Hu(2, -3, 0, 0)
+
+
+
+.. code:: ipython3
+
+    >>> Hu.from_hy(Hy(Hy(1, 2), Hy(0, 0)).embed(3))               # an octonion inside the quaternions
+
+
+
+
+.. parsed-literal::
+
+    Hu(1, 2, 0, 0)
+
+
+
+.. code:: ipython3
+
+    >>> try:
+    ...     Hu.from_hy(Hy(1, 2, mu=1))        # split-complex: not in the classical quaternions
+    ... except ValueError as e:
+    ...     print(e)
+
+
+.. parsed-literal::
+
+    not a Hurwitz integer: its two lowest doubling levels do not both have mu = -1, so it is not in the classical quaternions
+
+
+Text
+~~~~
+
+``str(Hu)`` and ``Hu('...')`` always use the quaternion labels ``i``,
+``j``, ``k``. That differs from ``Hy.parse``, which reads text that
+mentions only ``j`` as a *rank 1* value (the way ``gint``\ ’s ``Zi`` and
+``Qi`` print). To read ``gint``-style text as a Hurwitz integer, go
+through ``Hy`` explicitly.
+
+.. code:: ipython3
+
+    >>> print(repr(Hu('(3j)')))                        # the quaternion 3j
+    >>> print(repr(Hu.from_hy(Hy.parse('(3j)'))))     # the rank 1 value 3j, read as 3i
+    >>> print(repr(Hu('(1/2-1/2i+1/2j+1/2k)')))
+
+
+.. parsed-literal::
+
+    Hu(0, 0, 3, 0)
+    Hu(0, 3, 0, 0)
+    Hu('1/2', '-1/2', '1/2', '1/2')
+
+
+Cross-Checking against ``Hy``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Because ``Hy`` and ``Hu`` are independent implementations of the same
+arithmetic, either is a check on the other:
+
+.. code:: ipython3
+
+    >>> a, b = Hu(1, -2, 3, 4), Hu('3/2', '1/2', '-5/2', '1/2')
+    >>> ha, hb = a.to_hy(), b.to_hy()
+
+    >>> print((a * b).to_hy() == ha * hb)
+    >>> print((a + b).to_hy() == ha + hb)
+    >>> print((a * b).norm() == (ha * hb).norm())
+
+
+.. parsed-literal::
+
+    True
+    True
+    True

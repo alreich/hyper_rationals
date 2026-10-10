@@ -16,3 +16,11 @@ API Reference
    :members:
    :undoc-members:
    :show-inheritance:
+
+``hyprat.hurwitz``
+-------------------
+
+.. automodule:: hyprat.hurwitz
+   :members:
+   :undoc-members:
+   :show-inheritance:
