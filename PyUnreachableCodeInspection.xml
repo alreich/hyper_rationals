@@ -1,0 +1,14 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>1870</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyUnreachableCodeInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unreachable code</problem_class>
+  <description>This code is unreachable</description>
+  <highlighted_element>if _is_zero_val(x): raise ZeroDivisionError( &quot;hypercomplex value has zer...</highlighted_element>
+  <language>Python</language>
+  <offset>8</offset>
+  <length>308</length>
+</problem>
+</problems>

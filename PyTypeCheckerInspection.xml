@@ -1,0 +1,722 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>391</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type '{_real, _mu}', got 'Fraction | Hy' instead</description>
+  <highlighted_element>real_c</highlighted_element>
+  <language>Python</language>
+  <offset>24</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>391</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type '{_real, _mu}', got 'Fraction | Hy' instead</description>
+  <highlighted_element>imag_c</highlighted_element>
+  <language>Python</language>
+  <offset>40</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>469</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'Hy', got 'Fraction | Hy' instead</description>
+  <highlighted_element>inverse(self)</highlighted_element>
+  <language>Python</language>
+  <offset>15</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>620</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type '{_real, _mu}', got 'Hy | Fraction | NotImplementedType' instead</description>
+  <highlighted_element>other_h</highlighted_element>
+  <language>Python</language>
+  <offset>25</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>628</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type '{_real, _imag, _mu}', got 'Hy | Fraction | NotImplementedType' instead</description>
+  <highlighted_element>other_h</highlighted_element>
+  <language>Python</language>
+  <offset>25</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>634</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type '{_real, _mu}', got 'Hy | Fraction | NotImplementedType' instead</description>
+  <highlighted_element>other_h</highlighted_element>
+  <language>Python</language>
+  <offset>19</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>640</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type '{_real, _mu}', got 'Hy | Fraction | NotImplementedType' instead</description>
+  <highlighted_element>other_h</highlighted_element>
+  <language>Python</language>
+  <offset>25</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>646</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type '{_real, _mu}', got 'Hy | Fraction | NotImplementedType' instead</description>
+  <highlighted_element>other_h</highlighted_element>
+  <language>Python</language>
+  <offset>19</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>652</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type '{_real, _mu, _imag}', got 'Hy | Fraction | NotImplementedType' instead</description>
+  <highlighted_element>other_h</highlighted_element>
+  <language>Python</language>
+  <offset>25</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>658</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type '{_real, _mu}', got 'Hy | Fraction | NotImplementedType' instead</description>
+  <highlighted_element>other_h</highlighted_element>
+  <language>Python</language>
+  <offset>19</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>661</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'Hy', got 'Fraction | Hy' instead</description>
+  <highlighted_element>neg(self)</highlighted_element>
+  <language>Python</language>
+  <offset>15</offset>
+  <length>9</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>865</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'Hy', got 'Fraction | Hy' instead</description>
+  <highlighted_element>build(rank)</highlighted_element>
+  <language>Python</language>
+  <offset>15</offset>
+  <length>11</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>1372</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'Iterable[Any]' (matched generic type 'Iterable[_T]'), got 'None | bool | list[Any] | dict[Any, Any] | Any' instead</description>
+  <highlighted_element>data</highlighted_element>
+  <language>Python</language>
+  <offset>25</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>1802</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type '{_real, _mu}', got 'Fraction | Hy' instead</description>
+  <highlighted_element>neg(y)</highlighted_element>
+  <language>Python</language>
+  <offset>18</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>1806</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type '{_real, _imag}', got 'Fraction | Hy' instead</description>
+  <highlighted_element>neg(y)</highlighted_element>
+  <language>Python</language>
+  <offset>19</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>1846</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type '{_real, _imag}', got 'Fraction | Hy' instead</description>
+  <highlighted_element>_scale(cross, mu)</highlighted_element>
+  <language>Python</language>
+  <offset>37</offset>
+  <length>17</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>1848</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'Fraction', got 'Literal[-1, 1] | Any' instead</description>
+  <highlighted_element>mu</highlighted_element>
+  <language>Python</language>
+  <offset>42</offset>
+  <length>2</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>1882</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type '{_real, _mu}', got 'Fraction | Hy' instead</description>
+  <highlighted_element>inverse(y)</highlighted_element>
+  <language>Python</language>
+  <offset>18</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hurwitz.py</file>
+  <line>1148</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hurwitz.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'str', got 'Literal[&quot;both&quot;, &quot;Left&quot;, 1] | None' instead</description>
+  <highlighted_element>bad</highlighted_element>
+  <language>Python</language>
+  <offset>51</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hurwitz.py</file>
+  <line>1667</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hurwitz.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'int', got 'Literal[&quot;5&quot;, True] | float | None' instead</description>
+  <highlighted_element>bad</highlighted_element>
+  <language>Python</language>
+  <offset>27</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hurwitz.py</file>
+  <line>1669</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hurwitz.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'int', got 'Literal[&quot;5&quot;, True] | float | None' instead</description>
+  <highlighted_element>bad</highlighted_element>
+  <language>Python</language>
+  <offset>33</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hurwitz.py</file>
+  <line>1768</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hurwitz.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'int', got 'Literal[&quot;5&quot;, True] | float | None' instead</description>
+  <highlighted_element>bad</highlighted_element>
+  <language>Python</language>
+  <offset>29</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hurwitz.py</file>
+  <line>1770</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hurwitz.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'int', got 'Literal[&quot;5&quot;, True] | float | None' instead</description>
+  <highlighted_element>bad</highlighted_element>
+  <language>Python</language>
+  <offset>32</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>281</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'Hy | int | float | Fraction | str', got 'complex' instead</description>
+  <highlighted_element>complex(2.5, -3.2)</highlighted_element>
+  <language>Python</language>
+  <offset>15</offset>
+  <length>18</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>290</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'Hy | int | float | Fraction | str', got 'object' instead</description>
+  <highlighted_element>object()</highlighted_element>
+  <language>Python</language>
+  <offset>15</offset>
+  <length>8</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>571</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected an iterable, got 'tuple[Any, Any] | None'</description>
+  <highlighted_element>found</highlighted_element>
+  <language>Python</language>
+  <offset>15</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>638</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'Sized', got 'Fraction | Hy' instead</description>
+  <highlighted_element>rand_value(rank, rng)</highlighted_element>
+  <language>Python</language>
+  <offset>33</offset>
+  <length>21</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>779</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'contextlib.AbstractContextManager', got 'Any | None' instead</description>
+  <highlighted_element>self.assertRaises(ValueError)</highlighted_element>
+  <language>Python</language>
+  <offset>17</offset>
+  <length>29</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>780</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'int | None', got 'Literal[-1, &quot;2&quot;, True, False] | float' instead</description>
+  <highlighted_element>bad_rank</highlighted_element>
+  <language>Python</language>
+  <offset>25</offset>
+  <length>8</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>1194</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'contextlib.AbstractContextManager', got 'Any | None' instead</description>
+  <highlighted_element>self.assertRaises(ValueError)</highlighted_element>
+  <language>Python</language>
+  <offset>17</offset>
+  <length>29</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>1195</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'int | None', got 'Literal[0, -1, &quot;2&quot;, True, False] | float' instead</description>
+  <highlighted_element>bad_rank</highlighted_element>
+  <language>Python</language>
+  <offset>26</offset>
+  <length>8</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>1273</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'contextlib.AbstractContextManager', got 'Any | None' instead</description>
+  <highlighted_element>self.assertRaises(ValueError)</highlighted_element>
+  <language>Python</language>
+  <offset>17</offset>
+  <length>29</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>1384</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'contextlib.AbstractContextManager', got 'Any | None' instead</description>
+  <highlighted_element>self.assertRaises(ValueError)</highlighted_element>
+  <language>Python</language>
+  <offset>17</offset>
+  <length>29</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>1389</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'contextlib.AbstractContextManager', got 'Any | None' instead</description>
+  <highlighted_element>self.assertRaises(TypeError)</highlighted_element>
+  <language>Python</language>
+  <offset>17</offset>
+  <length>28</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>1441</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'contextlib.AbstractContextManager', got 'Any | None' instead</description>
+  <highlighted_element>self.assertRaises(ValueError)</highlighted_element>
+  <language>Python</language>
+  <offset>17</offset>
+  <length>29</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>1573</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'contextlib.AbstractContextManager', got 'Any | None' instead</description>
+  <highlighted_element>self.assertRaises(ValueError)</highlighted_element>
+  <language>Python</language>
+  <offset>17</offset>
+  <length>29</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>1827</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'int | Fraction | str | None', got 'Literal[1, '1'] | Fraction | float' instead</description>
+  <highlighted_element>mu=given</highlighted_element>
+  <language>Python</language>
+  <offset>25</offset>
+  <length>8</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>1831</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'int | Fraction | str | None', got 'float' instead</description>
+  <highlighted_element>mu=0.25</highlighted_element>
+  <language>Python</language>
+  <offset>34</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>1835</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'contextlib.AbstractContextManager', got 'Any | None' instead</description>
+  <highlighted_element>self.assertRaises(ValueError)</highlighted_element>
+  <language>Python</language>
+  <offset>17</offset>
+  <length>29</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>1836</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'int | Fraction | str | None', got 'Literal[0, '0'] | float | Fraction' instead</description>
+  <highlighted_element>mu=bad</highlighted_element>
+  <language>Python</language>
+  <offset>25</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>1840</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'contextlib.AbstractContextManager', got 'Any | None' instead</description>
+  <highlighted_element>self.assertRaises(TypeError)</highlighted_element>
+  <language>Python</language>
+  <offset>17</offset>
+  <length>28</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>1841</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'int | Fraction | str | None', got 'Literal[True, False] | list[int] | type[None]' instead</description>
+  <highlighted_element>mu=bad</highlighted_element>
+  <language>Python</language>
+  <offset>25</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>2540</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'contextlib.AbstractContextManager', got 'Any | None' instead</description>
+  <highlighted_element>self.assertRaises(ValueError)</highlighted_element>
+  <language>Python</language>
+  <offset>17</offset>
+  <length>29</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>2746</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'contextlib.AbstractContextManager', got 'Any | None' instead</description>
+  <highlighted_element>self.assertRaises(ValueError)</highlighted_element>
+  <language>Python</language>
+  <offset>17</offset>
+  <length>29</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>2798</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'Fraction', got 'int' instead</description>
+  <highlighted_element>-1</highlighted_element>
+  <language>Python</language>
+  <offset>20</offset>
+  <length>2</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>2973</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'str', got 'None' instead</description>
+  <highlighted_element>kind=None</highlighted_element>
+  <language>Python</language>
+  <offset>33</offset>
+  <length>9</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>3017</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'contextlib.AbstractContextManager', got 'Any | None' instead</description>
+  <highlighted_element>self.assertRaises(ValueError, msg=(text, unit))</highlighted_element>
+  <language>Python</language>
+  <offset>17</offset>
+  <length>47</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>3022</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'contextlib.AbstractContextManager', got 'Any | None' instead</description>
+  <highlighted_element>self.assertRaises(ValueError)</highlighted_element>
+  <language>Python</language>
+  <offset>17</offset>
+  <length>29</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>3118</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'contextlib.AbstractContextManager', got 'Any | None' instead</description>
+  <highlighted_element>self.assertRaises(TypeError, msg=repr(bad))</highlighted_element>
+  <language>Python</language>
+  <offset>17</offset>
+  <length>43</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>3123</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'contextlib.AbstractContextManager', got 'Any | None' instead</description>
+  <highlighted_element>self.assertRaises(TypeError, msg=repr(bad))</highlighted_element>
+  <language>Python</language>
+  <offset>17</offset>
+  <length>43</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>3128</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'contextlib.AbstractContextManager', got 'Any | None' instead</description>
+  <highlighted_element>self.assertRaises(TypeError)</highlighted_element>
+  <language>Python</language>
+  <offset>17</offset>
+  <length>28</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>3147</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'contextlib.AbstractContextManager', got 'Any | None' instead</description>
+  <highlighted_element>self.assertRaises(ImportError)</highlighted_element>
+  <language>Python</language>
+  <offset>21</offset>
+  <length>30</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>3208</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'contextlib.AbstractContextManager', got 'Any | None' instead</description>
+  <highlighted_element>self.assertRaises(ValueError)</highlighted_element>
+  <language>Python</language>
+  <offset>17</offset>
+  <length>29</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>3217</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'contextlib.AbstractContextManager', got 'Any | None' instead</description>
+  <highlighted_element>self.assertRaises(ValueError)</highlighted_element>
+  <language>Python</language>
+  <offset>17</offset>
+  <length>29</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>3491</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'contextlib.AbstractContextManager', got 'Any | None' instead</description>
+  <highlighted_element>self.assertRaises(TypeError, msg=repr(bad))</highlighted_element>
+  <language>Python</language>
+  <offset>17</offset>
+  <length>43</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>3492</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'int', got 'Literal[&quot;2&quot;, True] | float | None' instead</description>
+  <highlighted_element>bad</highlighted_element>
+  <language>Python</language>
+  <offset>31</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_intfactor.py</file>
+  <line>117</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_intfactor.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'int', got 'Literal[&quot;7&quot;, True] | float | None' instead</description>
+  <highlighted_element>bad</highlighted_element>
+  <language>Python</language>
+  <offset>34</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_intfactor.py</file>
+  <line>129</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_intfactor.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Type 'int' doesn't have expected attribute '__ifloordiv__'</description>
+  <highlighted_element>n</highlighted_element>
+  <language>Python</language>
+  <offset>59</offset>
+  <length>1</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_intfactor.py</file>
+  <line>135</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_intfactor.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Type 'int' doesn't have expected attribute '__ifloordiv__'</description>
+  <highlighted_element>n</highlighted_element>
+  <language>Python</language>
+  <offset>59</offset>
+  <length>1</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_intfactor.py</file>
+  <line>177</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_intfactor.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'int', got 'Literal[&quot;6&quot;, True] | float | None' instead</description>
+  <highlighted_element>bad</highlighted_element>
+  <language>Python</language>
+  <offset>26</offset>
+  <length>3</length>
+</problem>
+</problems>

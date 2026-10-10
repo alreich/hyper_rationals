@@ -1,0 +1,26 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>1316</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyPropertyAccessInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Inappropriate access to properties</problem_class>
+  <description>Property 'real' cannot be set</description>
+  <highlighted_element>h.real</highlighted_element>
+  <language>Python</language>
+  <offset>12</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>2800</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyPropertyAccessInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Inappropriate access to properties</problem_class>
+  <description>Property 'mu' cannot be set</description>
+  <highlighted_element>x.mu</highlighted_element>
+  <language>Python</language>
+  <offset>12</offset>
+  <length>4</length>
+</problem>
+</problems>

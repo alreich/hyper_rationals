@@ -1,0 +1,62 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>2413</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyUnusedImportsInspection" severity="WARNING" attribute_key="INFO_ATTRIBUTES">Unused imports</problem_class>
+  <description>'_np' in the try block with 'except ImportError' should also be defined in the except block</description>
+  <highlighted_element>_np</highlighted_element>
+  <language>Python</language>
+  <offset>24</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/intfactor.py</file>
+  <line>229</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/intfactor.py" />
+  <problem_class id="PyUnusedImportsInspection" severity="WARNING" attribute_key="INFO_ATTRIBUTES">Unused imports</problem_class>
+  <description>'sympy_factorint' in the try block with 'except ImportError' should also be defined in the except block</description>
+  <highlighted_element>sympy_factorint</highlighted_element>
+  <language>Python</language>
+  <offset>43</offset>
+  <length>15</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hurwitz.py</file>
+  <line>1266</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hurwitz.py" />
+  <problem_class id="PyUnusedImportsInspection" severity="WARNING" attribute_key="INFO_ATTRIBUTES">Unused imports</problem_class>
+  <description>'Zi' in the try block with 'except ImportError' should also be defined in the except block</description>
+  <highlighted_element>Zi</highlighted_element>
+  <language>Python</language>
+  <offset>29</offset>
+  <length>2</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>142</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyUnusedImportsInspection" severity="WARNING" attribute_key="INFO_ATTRIBUTES">Unused imports</problem_class>
+  <description>'_gint_mod' in the try block with 'except ImportError' should also be defined in the except block</description>
+  <highlighted_element>_gint_mod</highlighted_element>
+  <language>Python</language>
+  <offset>19</offset>
+  <length>9</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_intfactor.py</file>
+  <line>105</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_intfactor.py" />
+  <problem_class id="PyUnusedImportsInspection" severity="WARNING" attribute_key="INFO_ATTRIBUTES">Unused imports</problem_class>
+  <description>'sympy' in the try block with 'except ImportError' should also be defined in the except block</description>
+  <highlighted_element>sympy</highlighted_element>
+  <language>Python</language>
+  <offset>19</offset>
+  <length>5</length>
+</problem>
+</problems>

@@ -1,0 +1,38 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>1538</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyRedundantParenthesesInspection" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Redundant parentheses</problem_class>
+  <description>Remove redundant parentheses</description>
+  <highlighted_element>(a, b, Fraction(0), Fraction(0))</highlighted_element>
+  <language>Python</language>
+  <offset>19</offset>
+  <length>32</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>1910</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyRedundantParenthesesInspection" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Redundant parentheses</problem_class>
+  <description>Remove redundant parentheses</description>
+  <highlighted_element>(_to_nested_tuple(x._real), _to_nested_tuple(x._imag), x._mu)</highlighted_element>
+  <language>Python</language>
+  <offset>11</offset>
+  <length>61</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hurwitz.py</file>
+  <line>792</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hurwitz.py" />
+  <problem_class id="PyRedundantParenthesesInspection" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Redundant parentheses</problem_class>
+  <description>Remove redundant parentheses</description>
+  <highlighted_element>(a, b, c, d)</highlighted_element>
+  <language>Python</language>
+  <offset>26</offset>
+  <length>12</length>
+</problem>
+</problems>

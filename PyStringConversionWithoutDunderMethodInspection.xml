@@ -1,0 +1,206 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>375</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyStringConversionWithoutDunderMethodInspection" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">String conversion without dunder method</problem_class>
+  <description>Type 'None' doesn't define '__str__', '__repr__', or '__format__', so the result might not be useful</description>
+  <highlighted_element>mu_c</highlighted_element>
+  <language>Python</language>
+  <offset>55</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>1144</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyStringConversionWithoutDunderMethodInspection" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">String conversion without dunder method</problem_class>
+  <description>Type 'None' doesn't define '__str__', '__repr__', or '__format__', so the result might not be useful</description>
+  <highlighted_element>rank</highlighted_element>
+  <language>Python</language>
+  <offset>38</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>1327</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyStringConversionWithoutDunderMethodInspection" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">String conversion without dunder method</problem_class>
+  <description>Type 'None' doesn't define '__str__', '__repr__', or '__format__', so the result might not be useful</description>
+  <highlighted_element>getattr(q, 'shape', None)</highlighted_element>
+  <language>Python</language>
+  <offset>34</offset>
+  <length>25</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/src/hyprat/hypercomplex.py</file>
+  <line>1700</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/src/hyprat/hypercomplex.py" />
+  <problem_class id="PyStringConversionWithoutDunderMethodInspection" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">String conversion without dunder method</problem_class>
+  <description>Type 'None' doesn't define '__repr__', so the result might not be useful</description>
+  <highlighted_element>rank</highlighted_element>
+  <language>Python</language>
+  <offset>63</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hurwitz.py</file>
+  <line>161</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hurwitz.py" />
+  <problem_class id="PyStringConversionWithoutDunderMethodInspection" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">String conversion without dunder method</problem_class>
+  <description>Type 'object' string value might not be useful</description>
+  <highlighted_element>bad</highlighted_element>
+  <language>Python</language>
+  <offset>55</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hurwitz.py</file>
+  <line>389</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hurwitz.py" />
+  <problem_class id="PyStringConversionWithoutDunderMethodInspection" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">String conversion without dunder method</problem_class>
+  <description>Type 'None' doesn't define '__repr__', so the result might not be useful</description>
+  <highlighted_element>bad</highlighted_element>
+  <language>Python</language>
+  <offset>55</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hurwitz.py</file>
+  <line>637</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hurwitz.py" />
+  <problem_class id="PyStringConversionWithoutDunderMethodInspection" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">String conversion without dunder method</problem_class>
+  <description>Type 'None' doesn't define '__repr__', so the result might not be useful</description>
+  <highlighted_element>bad</highlighted_element>
+  <language>Python</language>
+  <offset>55</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hurwitz.py</file>
+  <line>825</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hurwitz.py" />
+  <problem_class id="PyStringConversionWithoutDunderMethodInspection" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">String conversion without dunder method</problem_class>
+  <description>Type 'None' doesn't define '__repr__', so the result might not be useful</description>
+  <highlighted_element>other</highlighted_element>
+  <language>Python</language>
+  <offset>50</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hurwitz.py</file>
+  <line>911</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hurwitz.py" />
+  <problem_class id="PyStringConversionWithoutDunderMethodInspection" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">String conversion without dunder method</problem_class>
+  <description>Type 'None' doesn't define '__repr__', so the result might not be useful</description>
+  <highlighted_element>bad</highlighted_element>
+  <language>Python</language>
+  <offset>55</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hurwitz.py</file>
+  <line>913</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hurwitz.py" />
+  <problem_class id="PyStringConversionWithoutDunderMethodInspection" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">String conversion without dunder method</problem_class>
+  <description>Type 'None' doesn't define '__repr__', so the result might not be useful</description>
+  <highlighted_element>bad</highlighted_element>
+  <language>Python</language>
+  <offset>55</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hurwitz.py</file>
+  <line>915</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hurwitz.py" />
+  <problem_class id="PyStringConversionWithoutDunderMethodInspection" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">String conversion without dunder method</problem_class>
+  <description>Type 'None' doesn't define '__repr__', so the result might not be useful</description>
+  <highlighted_element>bad</highlighted_element>
+  <language>Python</language>
+  <offset>55</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hurwitz.py</file>
+  <line>917</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hurwitz.py" />
+  <problem_class id="PyStringConversionWithoutDunderMethodInspection" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">String conversion without dunder method</problem_class>
+  <description>Type 'None' doesn't define '__repr__', so the result might not be useful</description>
+  <highlighted_element>bad</highlighted_element>
+  <language>Python</language>
+  <offset>55</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hurwitz.py</file>
+  <line>919</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hurwitz.py" />
+  <problem_class id="PyStringConversionWithoutDunderMethodInspection" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">String conversion without dunder method</problem_class>
+  <description>Type 'None' doesn't define '__repr__', so the result might not be useful</description>
+  <highlighted_element>bad</highlighted_element>
+  <language>Python</language>
+  <offset>55</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>3118</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyStringConversionWithoutDunderMethodInspection" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">String conversion without dunder method</problem_class>
+  <description>Type '_FakeGaussian' doesn't define '__repr__', so the result might not be useful</description>
+  <highlighted_element>bad</highlighted_element>
+  <language>Python</language>
+  <offset>55</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>3123</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyStringConversionWithoutDunderMethodInspection" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">String conversion without dunder method</problem_class>
+  <description>Type 'None' doesn't define '__repr__', so the result might not be useful</description>
+  <highlighted_element>bad</highlighted_element>
+  <language>Python</language>
+  <offset>55</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>3123</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyStringConversionWithoutDunderMethodInspection" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">String conversion without dunder method</problem_class>
+  <description>Type 'object' string value might not be useful</description>
+  <highlighted_element>bad</highlighted_element>
+  <language>Python</language>
+  <offset>55</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>3491</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="PyStringConversionWithoutDunderMethodInspection" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">String conversion without dunder method</problem_class>
+  <description>Type 'None' doesn't define '__repr__', so the result might not be useful</description>
+  <highlighted_element>bad</highlighted_element>
+  <language>Python</language>
+  <offset>55</offset>
+  <length>3</length>
+</problem>
+</problems>
