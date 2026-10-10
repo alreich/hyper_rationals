@@ -36,3 +36,5 @@ https://www.math.uchicago.edu/~may/VIGRE/VIGRE2008/REUPapers/Ng.pdf
 
 https://math.colorado.edu/~rohi1040/expository/sumoffoursquares.pdf
 
+https://github.com/HARP-research-Inc/hurwitz
+
