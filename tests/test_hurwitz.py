@@ -57,6 +57,7 @@ Algebraic laws are checked empirically via seeded random fuzzing
 """
 
 import copy
+import importlib
 import math
 import pickle
 import random
@@ -217,6 +218,7 @@ class TestCoordinates(unittest.TestCase):
         self.assertEqual(x[-1], 4)
         self.assertEqual(x[1:3], (2, 3))
         with self.assertRaises(IndexError):
+            # noinspection PyStatementEffect
             x[4]
 
     def test_is_lipschitz(self):
@@ -789,7 +791,7 @@ def _all_doubled_vectors(values):
         for b in values:
             for c in values:
                 for d in values:
-                    yield (a, b, c, d)
+                    yield a, b, c, d
 
 
 # ============================================================================
@@ -930,8 +932,10 @@ class TestUnsupportedOperations(unittest.TestCase):
 
     def test_no_ordering(self):
         with self.assertRaises(TypeError):
+            # noinspection PyStatementEffect
             Hu(1) < Hu(2)
         with self.assertRaises(TypeError):
+            # noinspection PyStatementEffect
             Hu(1) >= 0
 
     def test_no_int_float_complex_conversion(self):
@@ -1124,7 +1128,8 @@ class TestAssociates(unittest.TestCase):
 
     def test_canonical_properties(self):
         rng = random.Random(8)
-        for side, mul in (("left", lambda u, a: u * a), ("right", lambda u, a: a * u)):
+        for side, mul in (("left", lambda unit, value: unit * value),
+                          ("right", lambda unit, value: value * unit)):
             for _ in range(80):
                 a = nonzero_hu(rng)
                 c = a.canonical_associate(side)
@@ -1141,6 +1146,7 @@ class TestAssociates(unittest.TestCase):
             self.assertEqual(u.canonical_associate("left"), ONE)
             self.assertEqual(u.canonical_associate("right"), ONE)
 
+    # noinspection PyTypeChecker
     def test_canonical_zero_and_errors(self):
         self.assertEqual(Hu(0).canonical_associate("left"), Hu(0))
         for bad in ("both", "Left", None, 1):
@@ -1263,9 +1269,9 @@ class TestGcd(unittest.TestCase):
 
     def test_gint_crosscheck(self):
         try:
-            from gint import Zi
-        except ImportError:
-            self.skipTest("gint not installed")
+            Zi = getattr(importlib.import_module("gint"), "Zi")
+        except (ImportError, AttributeError):       # not installed, or the wrong 'gint'
+            raise unittest.SkipTest("gint not installed")
         rng = random.Random(23)
         for _ in range(100):
             x = [rng.randint(-30, 30) for _ in range(4)]
@@ -1657,6 +1663,7 @@ class TestOfNorm(unittest.TestCase):
     def test_larger(self):
         self.assertEqual(len(Hu.of_norm(360)), Hu.count_of_norm(360))
 
+    # noinspection PyTypeChecker
     def test_errors(self):
         with self.assertRaises(ValueError):
             Hu.of_norm(-1)
@@ -1758,6 +1765,7 @@ class TestFourSquares(unittest.TestCase):
             a, b, c, d = Hu.four_squares(n)
             self.assertEqual(a * a + b * b + c * c + d * d, n)
 
+    # noinspection PyTypeChecker
     def test_errors(self):
         with self.assertRaises(ValueError):
             Hu.with_norm(-1)

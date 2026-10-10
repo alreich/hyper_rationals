@@ -8,6 +8,7 @@ Pollard-Brent rho), compared against naive code on small inputs, known
 pseudoprimes, and sympy when it is installed.
 """
 
+import importlib
 import math
 import random
 import sys
@@ -18,13 +19,28 @@ from hyprat import intfactor
 from hyprat.intfactor import factorint, is_probable_prime, primes_upto, sqrt_mod_prime
 
 
-def naive_is_prime(n):
+def _need_module(name, attribute=None):
+    """Import and return the module `name` (or one of its attributes),
+    skipping the running test if it is not installed."""
+    try:
+        module = importlib.import_module(name)
+    except ImportError:
+        raise unittest.SkipTest(f"{name} not installed")
+    if attribute is None:
+        return module
+    found = getattr(module, attribute, None)
+    if found is None:
+        raise unittest.SkipTest(f"{name} has no {attribute} (wrong package?)")
+    return found
+
+
+def naive_is_prime(n: int) -> bool:
     if n < 2:
         return False
     return all(n % d for d in range(2, math.isqrt(n) + 1))
 
 
-def naive_factorint(n):
+def naive_factorint(n: int) -> dict:
     out, d = {}, 2
     while d * d <= n:
         while n % d == 0:
@@ -36,7 +52,7 @@ def naive_factorint(n):
     return out
 
 
-def product_of(factors):
+def product_of(factors: dict) -> int:
     return math.prod(p ** e for p, e in factors.items())
 
 
@@ -101,16 +117,14 @@ class TestIsProbablePrime(unittest.TestCase):
             self.assertEqual(bpsw, naive_is_prime(n), n)
 
     def test_random_against_sympy(self):
-        try:
-            import sympy
-        except ImportError:
-            self.skipTest("sympy not installed")
+        sympy = _need_module("sympy")
         rng = random.Random(1)
         for bits in range(20, 200, 7):
             for _ in range(25):
                 n = rng.getrandbits(bits)
                 self.assertEqual(is_probable_prime(n), sympy.isprime(n), n)
 
+    # noinspection PyTypeChecker
     def test_types(self):
         for bad in (2.0, "7", None, True):
             with self.assertRaises(TypeError):
@@ -168,6 +182,7 @@ class TestFactorint(unittest.TestCase):
         self.assertEqual(factorint(9746347772161), {7: 1, 11: 1, 13: 1, 17: 1, 19: 1,
                                                       31: 1, 37: 1, 41: 1, 641: 1})
 
+    # noinspection PyTypeChecker
     def test_errors(self):
         for bad in (0, -1, -100):
             with self.assertRaises(ValueError):
@@ -179,10 +194,7 @@ class TestFactorint(unittest.TestCase):
             factorint(6, method="magic")
 
     def test_methods_agree(self):
-        try:
-            import sympy  # noqa: F401
-        except ImportError:
-            self.skipTest("sympy not installed")
+        _need_module("sympy")
         rng = random.Random(8)
         for _ in range(40):
             n = rng.getrandbits(rng.randint(2, 70)) + 1

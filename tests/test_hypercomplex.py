@@ -106,43 +106,37 @@ Algebraic laws are checked empirically via seeded random fuzzing
 (deterministic across runs) in addition to fixed, hand-verified examples.
 """
 
+import importlib
 import math
 import random
 import sys
 import types
 import unittest
 from fractions import Fraction
+from typing import Any
 from unittest import mock
+
+
+def _try_import(name: str) -> Any:
+    """The module `name`, or None if it is not installed.  (Typed as Any so
+    that code guarded by the HAVE_* flags below is not flagged by IDEs.)"""
+    try:
+        return importlib.import_module(name)
+    except ImportError:                                 # pragma: no cover
+        return None
+
 
 # Optional third-party quaternion packages, used only by the interoperability
 # tests (which are skipped if the relevant package is missing).
-try:
-    import numpy as np
-except ImportError:                                     # pragma: no cover
-    np = None
-
-try:
-    import sympy
-except ImportError:                                     # pragma: no cover
-    sympy = None
-
-try:
-    import quaternion as npquat                         # the numpy-quaternion package
-    if not hasattr(npquat, "quaternion"):               # some other 'quaternion' module
-        npquat = None
-except ImportError:                                     # pragma: no cover
-    npquat = None
-
-try:
-    import quaternionic
-except ImportError:                                     # pragma: no cover
-    quaternionic = None
-
-try:
-    import gint as _gint_mod                            # Gaussian integers / rationals
-    # An unrelated package named "gint" exists on PyPI; insist on the right one.
-    gint = _gint_mod if (hasattr(_gint_mod, "Zi") and hasattr(_gint_mod, "Qi")) else None
-except ImportError:                                     # pragma: no cover
+np = _try_import("numpy")
+sympy = _try_import("sympy")
+npquat = _try_import("quaternion")                      # the numpy-quaternion package
+if npquat is not None and not hasattr(npquat, "quaternion"):
+    npquat = None                                       # some other 'quaternion' module
+quaternionic = _try_import("quaternionic")
+gint = _try_import("gint")                              # Gaussian integers / rationals
+# An unrelated package named "gint" exists on PyPI; insist on the right one.
+if gint is not None and not (hasattr(gint, "Zi") and hasattr(gint, "Qi")):
     gint = None
 
 HAVE_SYMPY = sympy is not None
@@ -185,7 +179,7 @@ def rand_fraction(rng, lo=-9, hi=9, dmax=6):
     return Fraction(num, den)
 
 
-def rand_value(rank, rng):
+def rand_value(rank, rng) -> Any:
     """A random value of the given rank: a Fraction for rank 0, else a Hy
     built purely through the public Hy(...) constructor."""
     if rank == 0:
@@ -277,6 +271,7 @@ class TestConstructor(unittest.TestCase):
         self.assertEqual(h.real, Hy('3', '0'))
         self.assertEqual(h.imag, Hy('1/2', '1/3'))
 
+    # noinspection PyTypeChecker
     def test_complex_input_type_is_accepted(self):
         h = Hy(complex(2.5, -3.2))
         self.assertEqual(h, Hy('5/2', '-16/5'))
@@ -285,6 +280,7 @@ class TestConstructor(unittest.TestCase):
         self.assertEqual(Hy(True).real, Fraction(1))
         self.assertEqual(Hy(False).real, Fraction(0))
 
+    # noinspection PyTypeChecker
     def test_invalid_component_type_raises(self):
         with self.assertRaises(TypeError):
             Hy(object())
@@ -536,6 +532,7 @@ class TestArithmeticFuzz(unittest.TestCase):
                 break
         self.assertTrue(found_non_associative)
 
+    # noinspection PyTypeChecker
     def test_sedenions_have_zero_divisors(self):
         # Rank 4 (dimension 16) is the first rank where the algebra stops
         # being a composition/division algebra: there exist nonzero x, y
@@ -632,6 +629,7 @@ class TestSequenceProtocol(unittest.TestCase):
         self.assertEqual(h[1], Fraction(-3))
         self.assertEqual(h[:], (Fraction(1, 2), Fraction(-3)))
 
+    # noinspection PyTypeChecker
     def test_len_is_always_two(self):
         for rank in RANKS[1:]:
             rng = random.Random(rank)
@@ -774,6 +772,7 @@ class TestUnits(unittest.TestCase):
             for key, val in Hy.units(rank).items():
                 self.assertEqual(str(val), f"({key})")
 
+    # noinspection PyTypeChecker
     def test_units_rejects_bad_rank(self):
         for bad_rank in (-1, 2.5, "2", True, False):
             with self.assertRaises(ValueError):
@@ -1189,6 +1188,7 @@ class TestRandom(unittest.TestCase):
             self.assertEqual(h.rank, rank)
             self.assertEqual(h.dimension, 2 ** rank)
 
+    # noinspection PyTypeChecker
     def test_random_rejects_non_positive_or_non_int_rank(self):
         for bad_rank in (0, -1, 2.5, "2", True, False):
             with self.assertRaises(ValueError):
@@ -1268,6 +1268,7 @@ class TestArrayConversion(unittest.TestCase):
         self.assertEqual(Hy.from_array((1, 2)), Hy(1, 2))
         self.assertEqual(Hy.from_array(x for x in (1, 2, 3, 4)), Hy(Hy(1, 2), Hy(3, 4)))
 
+    # noinspection PyTypeChecker
     def test_from_array_length_must_be_power_of_two(self):
         for bad_len in (0, 1, 3, 5, 6, 7, 9):
             with self.assertRaises(ValueError):
@@ -1313,10 +1314,12 @@ class TestImmutability(unittest.TestCase):
     def test_cannot_set_real_or_imag(self):
         h = Hy('1', '2')
         with self.assertRaises(AttributeError):
+            # noinspection PyPropertyAccess
             h.real = Fraction(5)
         with self.assertRaises(AttributeError):
             h._real = Fraction(5)
         with self.assertRaises(AttributeError):
+            # noinspection PyDunderSlots,PyUnresolvedReferences
             h.some_new_attr = 1
 
     def test_cannot_delete_attributes(self):
@@ -1348,6 +1351,7 @@ def as_floats(h):
 class _FakeNumpyQuaternion:
     """Stands in for a numpy.quaternion scalar (only .w/.x/.y/.z, .ndim)."""
     ndim = 0
+    shape: tuple = ()
 
     def __init__(self, w, x, y, z):
         self.w, self.x, self.y, self.z = w, x, y, z
@@ -1379,11 +1383,13 @@ class TestFloatToFraction(unittest.TestCase):
             self.assertEqual(float(_float_to_fraction(f, False, None)), f)
             self.assertEqual(float(_float_to_fraction(f, True, None)), f)
 
+    # noinspection PyTypeChecker
     def test_non_finite_values_rejected(self):
         for bad in (float('nan'), float('inf'), float('-inf')):
             with self.assertRaises(ValueError):
                 _float_to_fraction(bad, False, None)
 
+    # noinspection PyTypeChecker
     def test_non_numbers_rejected(self):
         for bad in ('1.5', b'1', None, [1], 1j):
             with self.assertRaises(TypeError):
@@ -1436,6 +1442,7 @@ class TestSympyToFraction(unittest.TestCase):
         self.assertNotEqual(_sympy_to_fraction(f, False, None), Fraction(1, 3))
         self.assertEqual(_sympy_to_fraction(f, False, 1000), Fraction(1, 3))
 
+    # noinspection PyTypeChecker
     def test_non_real_or_non_finite_rejected(self):
         for kwargs in (dict(is_real=False), dict(is_finite=False), dict(is_real=None)):
             with self.assertRaises(ValueError):
@@ -1568,6 +1575,7 @@ class TestSympyInterop(unittest.TestCase):
         self.assertEqual((q.a, q.b, q.c, q.d),
                          (Fraction(5, 2), Fraction(-16, 5), 0, 0))
 
+    # noinspection PyTypeChecker
     def test_higher_ranks_rejected(self):
         for rank in (3, 4):
             with self.assertRaises(ValueError):
@@ -1822,6 +1830,7 @@ class TestSignatureBasics(unittest.TestCase):
             self.assertEqual(h.signs, (-1,) * rank)
             self.assertEqual(h.mu, -1)
 
+    # noinspection PyTypeChecker
     def test_mu_is_stored_as_a_fraction(self):
         for given in (1, Fraction(1), '1', 1.0):
             h = Hy(1, 2, mu=given)
@@ -1830,6 +1839,7 @@ class TestSignatureBasics(unittest.TestCase):
         self.assertEqual(Hy(1, 2, mu='3/2').mu, Fraction(3, 2))
         self.assertEqual(Hy(1, 2, mu=0.25).mu, Fraction(1, 4))
 
+    # noinspection PyTypeChecker
     def test_mu_must_be_nonzero_rational(self):
         for bad in (0, 0.0, '0', Fraction(0)):
             with self.assertRaises(ValueError):
@@ -2533,6 +2543,7 @@ class TestSignatureCoercionAndMixing(unittest.TestCase):
         self.assertNotEqual(Hy(1, 2, mu=1), 1 + 2j)
         self.assertEqual(Hy(1, 2), 1 + 2j)
 
+    # noinspection PyTypeChecker
     def test_incompatible_signatures_raise_on_arithmetic(self):
         a, b = Hy(1, 2, mu=1), Hy(3, 4)
         for op in (lambda: a + b, lambda: a - b, lambda: a * b, lambda: a / b,
@@ -2740,6 +2751,7 @@ class TestSignatureMatrixRepresentation(unittest.TestCase):
 
 class TestSignatureInterop(unittest.TestCase):
 
+    # noinspection PyTypeChecker
     def test_conversion_guard_rejects_non_classical_signatures(self):
         from hyprat.hypercomplex import _quaternion_fractions
         for sg in ((1,), (-1, 1), (1, 1), (-1, 2), (3,)):
@@ -2792,11 +2804,13 @@ class TestSignatureHelpers(unittest.TestCase):
         self.assertEqual(len(x), 2)
         self.assertEqual(x[0], 1)
 
+    # noinspection PyTypeChecker
     def test_immutability_covers_mu(self):
         x = Hy(1, 2, mu=1)
         with self.assertRaises(AttributeError):
             x._mu = -1
         with self.assertRaises(AttributeError):
+            # noinspection PyPropertyAccess
             x.mu = -1
 
     def test_latex_is_positional_and_unchanged(self):
@@ -2940,8 +2954,8 @@ class TestZeroDivisors(unittest.TestCase):
     def test_bilinear_form_adjointness_underlies_the_symmetry(self):
         # B(x*y, z) == B(y, conj(x)*z) and B(y*x, z) == B(y, z*conj(x)),
         # where B is the polarization of norm_squared()
-        def B(a, b, sg):
-            return sum((1 if i == 0 else -Hy.unit_square(i, sg)) * p * q
+        def B(a, b, signs):
+            return sum((1 if i == 0 else -Hy.unit_square(i, signs)) * p * q
                        for i, (p, q) in enumerate(zip(a.to_array(), b.to_array())))
         for n, sg in enumerate(SIGNATURES_UP_TO_RANK_3 + SIGNATURES_RANK_4):
             rng = random.Random(7500 + n)
@@ -2966,6 +2980,7 @@ class TestZeroDivisors(unittest.TestCase):
                 self.assertFalse(x.is_zero_divisor())
                 self.assertEqual(x.annihilator(), ())
 
+    # noinspection PyTypeChecker
     def test_annihilator_kind_is_validated(self):
         with self.assertRaises(ValueError):
             Hy(1, 2).annihilator("middle")
@@ -3011,12 +3026,14 @@ class TestParseUnit(unittest.TestCase):
         for text in ("(2-3j)", "7j", "5", "(1/2-3/5j)", "(j)", "(-1+j)"):
             self.assertEqual(Hy.parse(text, unit="j"), Hy.parse(text))
 
+    # noinspection PyTypeChecker
     def test_other_units_are_rejected(self):
         for text, unit in [("1+2j", "i"), ("1+2i", "j"), ("1+2k", "i"),
                            ("1+iL", "i"), ("1+e4", "j"), ("1+i+j", "i")]:
             with self.assertRaises(ValueError, msg=(text, unit)):
                 Hy.parse(text, unit=unit)
 
+    # noinspection PyTypeChecker
     def test_bad_unit_argument(self):
         for unit in ("k", "x", "", "ij", 1):
             with self.assertRaises(ValueError):
@@ -3092,6 +3109,9 @@ class _FakeGaussian:
     def __init__(self, real, imag):
         self.real, self.imag = real, imag
 
+    def __repr__(self):
+        return f"_FakeGaussian({self.real!r}, {self.imag!r})"
+
 
 class TestFromGint(unittest.TestCase):
     def test_duck_typed_rational_parts(self):
@@ -3113,16 +3133,19 @@ class TestFromGint(unittest.TestCase):
         self.assertEqual(h.signs, (Fraction(-1),))
         self.assertTrue(h.is_gaussian())
 
+    # noinspection PyTypeChecker
     def test_rejects_floats_and_complex(self):
         for bad in (1.5, 1 + 2j, _FakeGaussian(0.5, 1), _FakeGaussian(1, 0.5)):
             with self.assertRaises(TypeError, msg=repr(bad)):
                 Hy.from_gint(bad)
 
+    # noinspection PyTypeChecker
     def test_rejects_things_without_real_and_imag(self):
         for bad in ("1+2j", None, [1, 2], object()):
             with self.assertRaises(TypeError, msg=repr(bad)):
                 Hy.from_gint(bad)
 
+    # noinspection PyTypeChecker
     def test_rejects_a_hy(self):
         for h in (Hy(1, 2), Hy(1, 2, mu=1), Hy(Hy(1, 2), Hy(3, 4))):
             with self.assertRaises(TypeError):
@@ -3140,6 +3163,7 @@ class TestGintImportGuard(unittest.TestCase):
                 Hy(1, 2).to_qi()
         self.assertIn("gaussian-integers", str(cm.exception))
 
+    # noinspection PyTypeChecker
     def test_the_unrelated_pypi_gint_is_detected(self):
         fake = types.ModuleType("gint")               # has no Zi / Qi
         with mock.patch.dict(sys.modules, {"gint": fake}):
@@ -3203,6 +3227,7 @@ class TestGintConversions(unittest.TestCase):
         self.assertEqual(z, self.Zi(2, -3))
         self.assertEqual(Hy(0, 0).to_zi(), self.Zi(0, 0))
 
+    # noinspection PyTypeChecker
     def test_to_zi_rejects_non_integers(self):
         for h in (Hy("1/2", 1), Hy(1, "1/3"), Hy("1/2", "1/2")):
             with self.assertRaises(ValueError):
@@ -3212,6 +3237,7 @@ class TestGintConversions(unittest.TestCase):
         self.assertEqual(Hy(Hy(1, 2), 0).to_zi(), self.Zi(1, 2))
         self.assertEqual(Hy(Hy(Hy(1, "1/2"), 0), 0).to_qi(), self.Qi(1, "1/2"))
 
+    # noinspection PyTypeChecker
     def test_non_gaussian_values_are_rejected(self):
         for h in (Hy(1, 2, mu=1), Hy(Hy(1, 2), Hy(0, 1)), Hy(0, Hy(1, 0))):
             with self.assertRaises(ValueError):
@@ -3486,6 +3512,7 @@ class TestEmbed(unittest.TestCase):
         with self.assertRaises(ValueError):
             Hy(1, 2).embed(0)
 
+    # noinspection PyTypeChecker
     def test_bad_rank_type(self):
         for bad in (2.0, "2", None, True):
             with self.assertRaises(TypeError, msg=repr(bad)):

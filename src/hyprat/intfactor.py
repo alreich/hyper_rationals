@@ -203,6 +203,15 @@ def _factor_rec(n: int, out: dict) -> None:
     _factor_rec(n // factor, out)
 
 
+def _sympy_factorint():
+    """``sympy.factorint``, or ``None`` if sympy is not installed."""
+    try:
+        from sympy import factorint
+    except ImportError:
+        return None
+    return factorint
+
+
 def factorint(n: int, method: str = "python") -> dict:
     """The prime factorization of the positive integer ``n``, as a dict
     ``{prime: exponent}`` in increasing order of the primes.
@@ -225,11 +234,10 @@ def factorint(n: int, method: str = "python") -> dict:
         raise ValueError(f"method must be 'python', 'sympy' or 'auto', not {method!r}")
 
     if method == "sympy" or (method == "auto" and n.bit_length() > 100):
-        try:
-            from sympy import factorint as sympy_factorint
-        except ImportError:
+        sympy_factorint = _sympy_factorint()
+        if sympy_factorint is None:
             if method == "sympy":
-                raise ImportError("method='sympy' needs sympy to be installed") from None
+                raise ImportError("method='sympy' needs sympy to be installed")
         else:
             return {int(p): int(e) for p, e in sorted(sympy_factorint(n).items())}
 

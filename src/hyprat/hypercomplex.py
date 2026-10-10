@@ -24,7 +24,7 @@ This is exactly the classical Cayley-Dickson doubling construction
 (the one that turns R -> C -> H -> O -> sedenions -> ...), specialized
 to exact rational coefficients.  Multiplication, conjugation, norms,
 inverses and division are all defined by the standard recursive
-formulas, so the algebra automatically "does the right thing" for
+formulas. So, the algebra automatically "does the right thing" for
 complex, quaternion and octonion values, and continues to make sense
 (algebraically, if no longer as a division algebra) at higher ranks.
 
@@ -223,7 +223,7 @@ the units for its own rank::
 display in a Jupyter notebook (e.g. via ``IPython.display.Math``).
 Basis units at rank 1-3 (``j``; ``i, j, k``; ``i, j, k, L, iL, jL,
 kL``) render unchanged; the ``e1, e2, ...`` labels used from rank 4
-up are subscripted (``e_{1}``, ``e_{2}``, ...); non-integer
+up are subscripted (``e_{1}``, ``e_{2}``, ...); noninteger
 coefficients are rendered as ``\\frac{num}{den}``
 (the default, ``vinculum='horizontal'``) or as a plain slash,
 ``num/den`` (``vinculum='diagonal'``)::
@@ -258,12 +258,13 @@ unless ``allow_nonassociative=True`` is passed::
 from __future__ import annotations
 
 import importlib
+import importlib.util
 import math
 import numbers
 import random
 import re
 from fractions import Fraction
-from typing import Any, Union
+from typing import Any, Optional, Union, cast
 
 
 __all__ = ["Hy"]
@@ -285,6 +286,9 @@ _ScalarLike = (int, float, Fraction, str)
 # What a component of a Hy may be when it is passed in: a number, a string
 # such as "1/2" or "(1+2j)", or another Hy.  (Only used in annotations.)
 _Component = Union["Hy", int, float, Fraction, str]
+
+# A raw value of the tower: a bare Fraction (rank 0) or a Hy.
+_Value = Union[Fraction, "Hy"]
 
 # --------------------------------------------------------------------------
 # Cayley-Dickson parameters ("signs").  Every doubling step of the tower
@@ -381,7 +385,7 @@ class Hy:
                 object.__setattr__(self, "_imag", real_c._imag)
                 object.__setattr__(self, "_mu", real_c._mu)
                 return
-            imag_c = Fraction(0)
+            imag_c: _Value = Fraction(0)
         else:
             imag_c = _coerce_component(imag)
 
@@ -397,7 +401,7 @@ class Hy:
         )
 
     @classmethod
-    def _make(cls, real, imag, mu=_DEFAULT_MU) -> "Hy":
+    def _make(cls, real: _Value, imag: _Value, mu: Fraction = _DEFAULT_MU) -> "Hy":
         """Internal fast constructor: assumes `real`/`imag` already have
         matching rank and signature and skips all normalization. Not for
         public use."""
@@ -458,15 +462,15 @@ class Hy:
         return 2 ** self.rank
 
     def components(self) -> tuple:
-        """All of the real (Fraction) coordinates, in the canonical
+        """All the real (Fraction) coordinates, in the canonical
         Cayley-Dickson order (e.g. for a quaternion: 1, i, j, k)."""
         return tuple(_flatten(self))
 
     def conjugate(self) -> "Hy":
-        return conj(self)
+        return cast("Hy", conj(self))
 
     def inverse(self) -> "Hy":
-        return inverse(self)
+        return cast("Hy", inverse(self))
 
     def norm(self) -> Fraction:
         """The *squared* norm, computed exactly as a Fraction.
@@ -593,7 +597,8 @@ class Hy:
     # ---------------------------------------------------------------- #
     # Arithmetic
     # ---------------------------------------------------------------- #
-    def _coerce_other(self, other):
+    def _coerce_other(self, other) -> Optional[_Value]:
+        """``other`` as a raw value, or ``None`` if it cannot be one."""
         if isinstance(other, Hy):
             return other
         if isinstance(other, complex):
@@ -610,55 +615,55 @@ class Hy:
                         return _parse(other, signs=self.signs, pad=True)
                 return _coerce_component(other)
             except (TypeError, ValueError):
-                return NotImplemented
-        return NotImplemented
+                return None
+        return None
 
-    def __add__(self, other):
+    def __add__(self, other) -> "Hy":
         other_h = self._coerce_other(other)
-        if other_h is NotImplemented:
+        if other_h is None:
             return NotImplemented
-        return add(self, other_h)
+        return cast("Hy", add(self, other_h))
 
     __radd__ = __add__
 
-    def __sub__(self, other):
+    def __sub__(self, other) -> "Hy":
         other_h = self._coerce_other(other)
-        if other_h is NotImplemented:
+        if other_h is None:
             return NotImplemented
-        return sub(self, other_h)
+        return cast("Hy", sub(self, other_h))
 
-    def __rsub__(self, other):
+    def __rsub__(self, other) -> "Hy":
         other_h = self._coerce_other(other)
-        if other_h is NotImplemented:
+        if other_h is None:
             return NotImplemented
-        return sub(other_h, self)
+        return cast("Hy", sub(other_h, self))
 
-    def __mul__(self, other):
+    def __mul__(self, other) -> "Hy":
         other_h = self._coerce_other(other)
-        if other_h is NotImplemented:
+        if other_h is None:
             return NotImplemented
-        return mul(self, other_h)
+        return cast("Hy", mul(self, other_h))
 
-    def __rmul__(self, other):
+    def __rmul__(self, other) -> "Hy":
         other_h = self._coerce_other(other)
-        if other_h is NotImplemented:
+        if other_h is None:
             return NotImplemented
-        return mul(other_h, self)
+        return cast("Hy", mul(other_h, self))
 
-    def __truediv__(self, other):
+    def __truediv__(self, other) -> "Hy":
         other_h = self._coerce_other(other)
-        if other_h is NotImplemented:
+        if other_h is None:
             return NotImplemented
-        return div(self, other_h)
+        return cast("Hy", div(self, other_h))
 
-    def __rtruediv__(self, other):
+    def __rtruediv__(self, other) -> "Hy":
         other_h = self._coerce_other(other)
-        if other_h is NotImplemented:
+        if other_h is None:
             return NotImplemented
-        return div(other_h, self)
+        return cast("Hy", div(other_h, self))
 
     def __neg__(self) -> "Hy":
-        return neg(self)
+        return cast("Hy", neg(self))
 
     def __pos__(self) -> "Hy":
         return self
@@ -699,7 +704,7 @@ class Hy:
     # ---------------------------------------------------------------- #
     def __eq__(self, other):
         other_h = self._coerce_other(other)
-        if other_h is NotImplemented:
+        if other_h is None:
             return NotImplemented
         return _values_equal(self, other_h)
 
@@ -849,20 +854,23 @@ class Hy:
         rank, signs = _resolve_rank_and_signs(rank, signs, min_rank=1)
         if rng is not None and seed is not None:
             raise ValueError("pass either `rng` or `seed`, not both")
+        source: random.Random
         if seed is not None:
-            rng = random.Random(seed)
+            source = random.Random(seed)
         elif rng is None:
-            rng = _default_rng
+            source = _default_rng
+        else:
+            source = rng
 
         def rand_coeff() -> Fraction:
-            return Fraction(rng.randint(lo, hi), rng.randint(1, dmax))
+            return Fraction(source.randint(lo, hi), source.randint(1, dmax))
 
-        def build(r: int):
+        def build(r: int) -> _Value:
             if r == 0:
                 return rand_coeff()
             return Hy._make(build(r - 1), build(r - 1), signs[r - 1])
 
-        return build(rank)
+        return cast("Hy", build(rank))
 
     # ---------------------------------------------------------------- #
     # Flat-array conversion
@@ -907,7 +915,7 @@ class Hy:
         Python list in Cayley-Dickson order -- the inverse of
         :meth:`from_array`.
 
-        By default the entries are ``Fraction`` objects; pass
+        By default, the entries are ``Fraction`` objects; pass
         ``as_str=True`` to get their string form instead (e.g. ``'5/2'``),
         which is convenient for JSON or other text-based serialization,
         and which :meth:`from_array` will happily read back in.
@@ -1184,7 +1192,7 @@ class Hy:
         Parameters
         ----------
         vinculum : {"horizontal", "diagonal"}, default "horizontal"
-            How to typeset a non-integer coefficient's fraction bar
+            How to typeset a noninteger coefficient's fraction bar
             (its *vinculum*). ``"horizontal"`` renders it as
             ``\\frac{num}{den}``; ``"diagonal"`` renders it as a plain
             slash, ``num/den``.
@@ -1365,7 +1373,7 @@ class Hy:
             >>> Hy.from_quaternionic(quaternionic.array([1, 0.5, 0, -2]))  # doctest: +SKIP
             Hy(Hy('1', '1/2'), Hy('0', '-2'))
         """
-        data = getattr(q, "ndarray", q)        # unwrap a quaternionic array
+        data: Any = getattr(q, "ndarray", q)   # unwrap a quaternionic array
         try:
             if isinstance(data, (str, bytes)):
                 raise TypeError
@@ -1535,7 +1543,7 @@ class Hy:
             return None
         if self.rank == 1:
             a, b = _flatten(self)
-            return (a, b, Fraction(0), Fraction(0))
+            return a, b, Fraction(0), Fraction(0)
         if signs[1] != _DEFAULT_MU:
             return None
         flat = _flatten(self)
@@ -1631,7 +1639,7 @@ class Hy:
 # ("embedding") the lower-rank operand up to match the higher-rank one.
 # ============================================================================
 
-def _rank(x) -> int:
+def _rank(x: _Value) -> int:
     return 0 if isinstance(x, Fraction) else x.rank
 
 
@@ -1712,7 +1720,8 @@ def _resolve_rank_and_signs(rank, signs, *, min_rank: int):
     return rank, sg
 
 
-def _signs(x) -> tuple:
+# noinspection PyProtectedMember
+def _signs(x: _Value) -> tuple:
     """The signature of a raw value: () for a Fraction, otherwise one mu
     per doubling level, lowest first (so the last entry is x's own mu)."""
     if isinstance(x, Fraction):
@@ -1720,7 +1729,7 @@ def _signs(x) -> tuple:
     return _signs(x._real) + (x._mu,)
 
 
-def _common_signs(x, y) -> tuple:
+def _common_signs(x: _Value, y: _Value) -> tuple:
     """The signature of the algebra in which a binary operation on `x`
     and `y` takes place: the longer of their two signatures, provided the
     shorter is a prefix of it (so the lower-rank operand embeds)."""
@@ -1734,7 +1743,8 @@ def _common_signs(x, y) -> tuple:
     return big
 
 
-def _embed_signs(x, target: tuple):
+# noinspection PyProtectedMember
+def _embed_signs(x: _Value, target: tuple) -> _Value:
     """Promote `x` into the algebra with signature `target`, by pairing it
     with zeros at each additional doubling step. `x`'s own signature must
     be a prefix of `target`, and its rank no larger."""
@@ -1756,7 +1766,7 @@ def _embed_signs(x, target: tuple):
     )
 
 
-def _embed(x, target):
+def _embed(x: _Value, target: Union[int, tuple]) -> _Value:
     """Promote `x` (Fraction or Hy) up to exactly `target`, by pairing it
     with zeros at each doubling step. `target` is either a rank (an int;
     any *new* doubling levels get the default mu = -1) or a full signature
@@ -1781,32 +1791,36 @@ def _embed(x, target):
 # identical rank and signature, so no further checking is needed.
 # --------------------------------------------------------------------------
 
-def add(x, y):
+def add(x: _Value, y: _Value) -> _Value:
     T = _common_signs(x, y)
     return _add(_embed_signs(x, T), _embed_signs(y, T))
 
 
-def _add(x, y):
+# noinspection PyProtectedMember
+def _add(x: _Value, y: _Value) -> _Value:
     if isinstance(x, Fraction):
         return x + y
+    y = cast("Hy", y)             # same rank as x, so also a Hy
     return Hy._make(_add(x._real, y._real), _add(x._imag, y._imag), x._mu)
 
 
-def neg(x):
+# noinspection PyProtectedMember
+def neg(x: _Value) -> _Value:
     if isinstance(x, Fraction):
         return -x
     return Hy._make(neg(x._real), neg(x._imag), x._mu)
 
 
-def sub(x, y):
+def sub(x: _Value, y: _Value) -> _Value:
     return add(x, neg(y))
 
 
-def _sub(x, y):
+def _sub(x: _Value, y: _Value) -> _Value:
     return _add(x, neg(y))
 
 
-def conj(x):
+# noinspection PyProtectedMember
+def conj(x: _Value) -> _Value:
     """Cayley-Dickson conjugate: conj(a, b) = (conj(a), -b). It does not
     depend on mu."""
     if isinstance(x, Fraction):
@@ -1814,14 +1828,15 @@ def conj(x):
     return Hy._make(conj(x._real), neg(x._imag), x._mu)
 
 
-def _scale(x, f: Fraction):
+# noinspection PyProtectedMember
+def _scale(x: _Value, f: Fraction) -> _Value:
     """x * f for a rational scalar f, componentwise."""
     if isinstance(x, Fraction):
         return x * f
     return Hy._make(_scale(x._real, f), _scale(x._imag, f), x._mu)
 
 
-def mul(x, y):
+def mul(x: _Value, y: _Value) -> _Value:
     """Cayley-Dickson product with parameter mu at each doubling level:
     (a,b)(c,d) = (ac + mu*conj(d)b, da + b*conj(c)). With the default
     mu = -1 this is the classical (ac - conj(d)b, da + b*conj(c))."""
@@ -1831,12 +1846,14 @@ def mul(x, y):
     return _mul(_embed_signs(x, T), _embed_signs(y, T))
 
 
-def _mul(x, y):
+# noinspection PyProtectedMember
+def _mul(x: _Value, y: _Value) -> _Value:
     if isinstance(x, Fraction):
         return x * y
+    y = cast("Hy", y)             # same rank as x, so also a Hy
     a, b = x._real, x._imag
     c, d = y._real, y._imag
-    mu = x._mu
+    mu: Fraction = x._mu
     cross = _mul(conj(d), b)
     if mu == -1:
         real_part = _sub(_mul(a, c), cross)
@@ -1848,7 +1865,8 @@ def _mul(x, y):
     return Hy._make(real_part, imag_part, mu)
 
 
-def abs2(x) -> Fraction:
+# noinspection PyProtectedMember
+def abs2(x: _Value) -> Fraction:
     """The quadratic form x*conj(x), as an exact Fraction: N(a, b) = N(a)
     - mu*N(b), N(r) = r*r. For the classical algebras (every mu = -1)
     this is the squared Euclidean norm, the sum of squares of every real
@@ -1858,37 +1876,39 @@ def abs2(x) -> Fraction:
     return abs2(x._real) - x._mu * abs2(x._imag)
 
 
-def _scalar_div(x, f: Fraction):
+# noinspection PyProtectedMember
+def _scalar_div(x: _Value, f: Fraction) -> _Value:
     if isinstance(x, Fraction):
         return x / f
     return Hy._make(_scalar_div(x._real, f), _scalar_div(x._imag, f), x._mu)
 
 
-def inverse(x):
+def inverse(x: _Value) -> _Value:
     n = abs2(x)
     if n == 0:
         if _is_zero_val(x):
-            raise ZeroDivisionError(
-                "hypercomplex value has zero norm; not invertible"
+            message = "hypercomplex value has zero norm; not invertible"
+        else:
+            message = (
+                "hypercomplex value has zero norm (it is a nonzero null "
+                "element of a split algebra); not invertible"
             )
-        raise ZeroDivisionError(
-            "hypercomplex value has zero norm (it is a nonzero null "
-            "element of a split algebra); not invertible"
-        )
+        raise ZeroDivisionError(message)
     return _scalar_div(conj(x), n)
 
 
-def div(x, y):
+def div(x: _Value, y: _Value) -> _Value:
     return mul(x, inverse(y))
 
 
-def _is_zero_val(x) -> bool:
+# noinspection PyProtectedMember
+def _is_zero_val(x: _Value) -> bool:
     if isinstance(x, Fraction):
         return x == 0
     return _is_zero_val(x._real) and _is_zero_val(x._imag)
 
 
-def _values_equal(x, y) -> bool:
+def _values_equal(x: _Value, y: _Value) -> bool:
     """Equality of two raw values: the same element once zero-padded to a
     common rank, *and* living in the same algebra (same mu at every level
     that is actually used)."""
@@ -1897,6 +1917,7 @@ def _values_equal(x, y) -> bool:
     )
 
 
+# noinspection PyProtectedMember
 def _canonical_trim(x):
     """Strip away outer (Fraction-zero-imag) layers, for hashing purposes."""
     while isinstance(x, Hy) and _is_zero_val(x._imag):
@@ -1904,18 +1925,21 @@ def _canonical_trim(x):
     return x
 
 
+# noinspection PyProtectedMember
 def _to_nested_tuple(x):
     if isinstance(x, Fraction):
         return x
-    return (_to_nested_tuple(x._real), _to_nested_tuple(x._imag), x._mu)
+    return _to_nested_tuple(x._real), _to_nested_tuple(x._imag), x._mu
 
 
+# noinspection PyProtectedMember
 def _flatten(x) -> list:
     if isinstance(x, Fraction):
         return [x]
     return _flatten(x._real) + _flatten(x._imag)
 
 
+# noinspection PyProtectedMember
 def _unflatten(coeffs, rank, signs=None):
     if signs is None:
         signs = (_DEFAULT_MU,) * rank
@@ -1933,7 +1957,7 @@ def _unflatten(coeffs, rank, signs=None):
 # Scalar coercion (Fraction/int/float/str/Hy -> a component)
 # ============================================================================
 
-def _coerce_component(v):
+def _coerce_component(v: Any) -> _Value:
     if isinstance(v, Hy):
         return v
     if isinstance(v, Fraction):
@@ -2332,8 +2356,9 @@ def _parse(s: str, signs=None, pad: bool = False, unit=None) -> Hy:
     return _unflatten(coeffs, rank, sg)
 
 
-if __name__ == "__main__":
-    # A handful of sanity checks / usage examples.
+def _self_test() -> None:
+    """A handful of sanity checks and usage examples; run by
+    ``python -m hyprat.hypercomplex``."""
     z = Hy("5/2", "-16/5")
     print("z       =", z, "  repr:", repr(z))
     assert str(z) == "(5/2-16/5j)"
@@ -2409,12 +2434,14 @@ if __name__ == "__main__":
     print("Hy.latex(): OK, e.g. Hy('5/2', '-16/5').latex() =", Hy("5/2", "-16/5").latex())
 
     # to_matrix() / from_matrix()
-    try:
-        import numpy as _np
+    if importlib.util.find_spec("numpy") is None:
+        print("Hy.to_matrix()/Hy.from_matrix(): skipped (numpy not installed)")
+    else:
+        import numpy as np
 
         assert Hy.from_matrix(q.to_matrix()) == q
-        assert _np.array_equal(
-            _np.dot(x.to_matrix(), y.to_matrix()), (x * y).to_matrix()
+        assert np.array_equal(
+            np.dot(x.to_matrix(), y.to_matrix()), (x * y).to_matrix()
         )
         try:
             o.to_matrix()
@@ -2423,8 +2450,6 @@ if __name__ == "__main__":
             pass
         print("Hy.to_matrix()/Hy.from_matrix(): OK (roundtrip + homomorphism "
               "at rank 2, rank>=3 guard raises as expected)")
-    except ImportError:
-        print("Hy.to_matrix()/Hy.from_matrix(): skipped (numpy not installed)")
 
     # signatures: split-complex and split-quaternions
     sj = Hy(0, 1, mu=1)
@@ -2438,3 +2463,7 @@ if __name__ == "__main__":
     print("split algebras / signatures: OK")
 
     print("\nAll self-tests passed.")
+
+
+if __name__ == "__main__":
+    _self_test()
