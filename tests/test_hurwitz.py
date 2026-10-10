@@ -33,6 +33,12 @@ Organization:
                               copy/pickle, bool, subclassing
     TestUnsupportedOperations
                             - mixing with floats, Fractions, Hy; no division
+    TestDivision            - divmod_left/divmod_right: identity, the
+                              2*N(r) <= N(b) bound, brute-force nearest point
+    TestExactDivision       - left_divides/right_divides, div_exact_*
+    TestAssociates          - is_left/right_associate, canonical_associate
+    TestGcd                 - gcld/gcrd/xgcld/xgcrd: Bezout, divisibility,
+                              universal property, scaling, canonical form
 
 Algebraic laws are checked empirically via seeded random fuzzing
 (deterministic across runs), in addition to fixed hand-verified examples.
@@ -920,6 +926,349 @@ class TestUnsupportedOperations(unittest.TestCase):
         for conv in (int, float, complex):
             with self.assertRaises(TypeError):
                 conv(Hu(1))
+
+
+# ----------------------------------------------------------------------------
+# phase 2: division with remainder, divisibility, associates, gcd
+# ----------------------------------------------------------------------------
+
+UNITS = tuple(Hu.units().values())
+
+
+def nonzero_hu(rng, bound=8):
+    while True:
+        h = rand_hu(rng, bound)
+        if h:
+            return h
+
+
+class TestDivision(unittest.TestCase):
+
+    def test_hand_checked(self):
+        a, b = Hu(1, 2, 3, 5), Hu(1, 1, 1, 0)
+        self.assertEqual(a.divmod_left(b), (Hu(2, -1, 2, 1), Hu(0, 0, 0, 1)))
+        self.assertEqual(a.divmod_right(b), (Hu(2, 2, -1, 2), Hu(0)))
+
+    def test_fuzz_identity_and_bound(self):
+        rng = random.Random(2024)
+        for _ in range(600):
+            a, b = rand_hu(rng), nonzero_hu(rng)
+            q, r = a.divmod_left(b)
+            self.assertEqual(a, b * q + r)
+            self.assertLessEqual(2 * r.norm(), b.norm())
+            q, r = a.divmod_right(b)
+            self.assertEqual(a, q * b + r)
+            self.assertLessEqual(2 * r.norm(), b.norm())
+
+    def test_quotient_is_nearest_hurwitz_point(self):
+        # brute force: no Hurwitz integer in a box beats the chosen one
+        rng = random.Random(7)
+        for _ in range(60):
+            a, b = rand_hu(rng, 5), nonzero_hu(rng, 5)
+            q, r = a.divmod_left(b)
+            best = r.norm()
+            for dq in itertools_product_hurwitz(q, 2):
+                self.assertGreaterEqual((a - b * dq).norm(), best)
+            q, r = a.divmod_right(b)
+            best = r.norm()
+            for dq in itertools_product_hurwitz(q, 2):
+                self.assertGreaterEqual((a - dq * b).norm(), best)
+
+    def test_ties(self):
+        # 1 = 2*q + r has several nearest points; the result must still obey
+        # the identity and the bound, and be deterministic
+        q, r = Hu(1).divmod_left(Hu(2))
+        self.assertEqual(Hu(1), Hu(2) * q + r)
+        self.assertLessEqual(2 * r.norm(), 4)
+        self.assertEqual((q, r), Hu(1).divmod_left(Hu(2)))
+
+    def test_remainder_zero_iff_divisible(self):
+        rng = random.Random(11)
+        for _ in range(300):
+            b = nonzero_hu(rng, 4)
+            x = rand_hu(rng, 4)
+            self.assertFalse((b * x).divmod_left(b)[1])
+            self.assertFalse((x * b).divmod_right(b)[1])
+            a = rand_hu(rng, 6)
+            self.assertEqual(not a.divmod_left(b)[1], b.left_divides(a))
+            self.assertEqual(not a.divmod_right(b)[1], b.right_divides(a))
+
+    def test_int_operands(self):
+        self.assertEqual(Hu(7).divmod_left(2)[0] * 2 + Hu(7).divmod_left(2)[1], Hu(7))
+        q, r = Hu(1, 2, 3, 4).divmod_right(3)
+        self.assertEqual(q * 3 + r, Hu(1, 2, 3, 4))
+
+    def test_zero_divisor(self):
+        with self.assertRaises(ZeroDivisionError):
+            Hu(1).divmod_left(Hu(0))
+        with self.assertRaises(ZeroDivisionError):
+            Hu(1).divmod_right(0)
+
+    def test_bad_operand(self):
+        for bad in (1.5, Fraction(1, 2), "1", Hy(1)):
+            with self.assertRaises(TypeError):
+                Hu(1).divmod_left(bad)
+            with self.assertRaises(TypeError):
+                Hu(1).divmod_right(bad)
+
+    def test_huge(self):
+        a = Hu(10**40 + 3, -10**39, 7, 10**38)
+        b = Hu(10**20 + 1, 5, -10**19, 3)
+        q, r = a.divmod_left(b)
+        self.assertEqual(a, b * q + r)
+        self.assertLessEqual(2 * r.norm(), b.norm())
+
+
+def itertools_product_hurwitz(center, radius):
+    """Hurwitz integers within `radius` (in each doubled coord /2) of center."""
+    import itertools
+    base = center.doubled
+    rng_ = range(-2 * radius, 2 * radius + 1)
+    for off in itertools.product(rng_, repeat=4):
+        v = tuple(x + o for x, o in zip(base, off))
+        if len({x % 2 for x in v}) == 1:
+            yield Hu.from_doubled(*v)
+
+
+class TestExactDivision(unittest.TestCase):
+
+    def test_hand_checked(self):
+        g, x = Hu(1, 1, 1, 0), Hu(0, 0, 1, 1)
+        a = g * x
+        self.assertEqual(a, Hu(-1, 1, 0, 2))
+        self.assertTrue(g.left_divides(a))
+        self.assertFalse(g.right_divides(a))
+        self.assertEqual(a.div_exact_left(g), x)
+
+    def test_fuzz_roundtrip(self):
+        rng = random.Random(5)
+        for _ in range(400):
+            g, x = nonzero_hu(rng, 5), rand_hu(rng, 5)
+            self.assertEqual((g * x).div_exact_left(g), x)
+            self.assertEqual((x * g).div_exact_right(g), x)
+            self.assertTrue(g.left_divides(g * x))
+            self.assertTrue(g.right_divides(x * g))
+
+    def test_not_divisible(self):
+        with self.assertRaises(ValueError):
+            Hu(1).div_exact_left(Hu(1, 1, 0, 0) * Hu(1, 1, 0, 0) * Hu(1, 2, 0, 0))
+        with self.assertRaises(ValueError):
+            Hu(1).div_exact_right(2)
+
+    def test_zero(self):
+        with self.assertRaises(ZeroDivisionError):
+            Hu(1).div_exact_left(0)
+        with self.assertRaises(ZeroDivisionError):
+            Hu(1).div_exact_right(0)
+        self.assertTrue(Hu(0).left_divides(0))
+        self.assertFalse(Hu(0).left_divides(1))
+        self.assertTrue(Hu(1).left_divides(0))
+        self.assertTrue(Hu(0).right_divides(0))
+        self.assertFalse(Hu(0).right_divides(Hu(1)))
+
+    def test_units_divide_everything(self):
+        rng = random.Random(3)
+        for u in UNITS:
+            a = rand_hu(rng)
+            self.assertTrue(u.left_divides(a))
+            self.assertTrue(u.right_divides(a))
+
+    def test_non_hurwitz_quotient_is_not_exact(self):
+        # 1 is not divisible by (1+i)
+        self.assertFalse(Hu(1, 1, 0, 0).left_divides(Hu(1)))
+        self.assertFalse(Hu(1, 1, 0, 0).right_divides(Hu(1)))
+        # the half-integer case: omega divides 1 only as a unit
+        self.assertTrue(OMEGA.left_divides(Hu(1)))
+
+    def test_bad_operand(self):
+        with self.assertRaises(TypeError):
+            Hu(1).left_divides(1.0)
+        with self.assertRaises(TypeError):
+            Hu(1).div_exact_left("2")
+
+
+class TestAssociates(unittest.TestCase):
+
+    def test_relations(self):
+        rng = random.Random(21)
+        for _ in range(100):
+            a = nonzero_hu(rng)
+            for u in UNITS:
+                self.assertTrue(a.is_left_associate(u * a))
+                self.assertTrue(a.is_right_associate(a * u))
+        self.assertFalse(Hu(1, 2, 0, 0).is_left_associate(Hu(1, 0, 2, 0)))
+        self.assertFalse(Hu(1, 2, 0, 0).is_right_associate(Hu(1, 0, 2, 0)))
+
+    def test_left_vs_right_differ(self):
+        a = Hu(1, 2, 3, 0)
+        b = I * a
+        self.assertTrue(a.is_left_associate(b))
+        self.assertFalse(a.is_right_associate(b))
+
+    def test_zero(self):
+        self.assertTrue(Hu(0).is_left_associate(0))
+        self.assertFalse(Hu(0).is_left_associate(1))
+        self.assertFalse(Hu(1).is_right_associate(0))
+
+    def test_canonical_properties(self):
+        rng = random.Random(8)
+        for side, mul in (("left", lambda u, a: u * a), ("right", lambda u, a: a * u)):
+            for _ in range(80):
+                a = nonzero_hu(rng)
+                c = a.canonical_associate(side)
+                orbit = {mul(u, a) for u in UNITS}
+                self.assertEqual(len(orbit), 24)
+                self.assertIn(c, orbit)
+                self.assertEqual(c.canonical_associate(side), c)
+                for u in UNITS:
+                    self.assertEqual(mul(u, a).canonical_associate(side), c)
+                self.assertEqual(c.doubled, max(x.doubled for x in orbit))
+
+    def test_canonical_of_units_is_one(self):
+        for u in UNITS:
+            self.assertEqual(u.canonical_associate("left"), ONE)
+            self.assertEqual(u.canonical_associate("right"), ONE)
+
+    def test_canonical_zero_and_errors(self):
+        self.assertEqual(Hu(0).canonical_associate("left"), Hu(0))
+        for bad in ("both", "Left", None, 1):
+            with self.assertRaises(ValueError):
+                Hu(1, 1, 0, 0).canonical_associate(bad)
+
+
+class TestGcd(unittest.TestCase):
+
+    def test_hand_checked(self):
+        a, b = Hu(-2, 1, 3, 3), Hu(3, -3, -1, -3)
+        self.assertEqual(a.xgcld(b), (Hu(1), Hu(0, -1, -1, -1), Hu(0, -1, 0, -1)))
+
+    def test_fuzz_bezout_and_divisibility(self):
+        rng = random.Random(99)
+        for _ in range(400):
+            a, b = rand_hu(rng), rand_hu(rng)
+            g, x, y = a.xgcld(b)
+            self.assertEqual(g, a * x + b * y)
+            self.assertEqual(g, a.gcld(b))
+            if g:
+                self.assertTrue(g.left_divides(a))
+                self.assertTrue(g.left_divides(b))
+                self.assertEqual(g, g.canonical_associate("right"))
+            g, x, y = a.xgcrd(b)
+            self.assertEqual(g, x * a + y * b)
+            self.assertEqual(g, a.gcrd(b))
+            if g:
+                self.assertTrue(g.right_divides(a))
+                self.assertTrue(g.right_divides(b))
+                self.assertEqual(g, g.canonical_associate("left"))
+
+    def test_universal_property(self):
+        # every common left divisor divides the gcld on the left
+        rng = random.Random(4)
+        for _ in range(200):
+            c = nonzero_hu(rng, 3)
+            a, b = c * rand_hu(rng, 3), c * rand_hu(rng, 3)
+            g = a.gcld(b)
+            if g:
+                self.assertTrue(c.left_divides(g))
+            c2 = nonzero_hu(rng, 3)
+            a, b = rand_hu(rng, 3) * c2, rand_hu(rng, 3) * c2
+            g = a.gcrd(b)
+            if g:
+                self.assertTrue(c2.right_divides(g))
+
+    def test_scaling(self):
+        rng = random.Random(6)
+        for _ in range(100):
+            c = nonzero_hu(rng, 4)
+            u, v = rand_hu(rng, 4), rand_hu(rng, 4)
+            # gcld(c u, c v) = c * gcld(u, v) up to right units
+            g1 = (c * u).gcld(c * v)
+            g2 = c * u.gcld(v)
+            if g2:
+                self.assertTrue(g1.is_right_associate(g2))
+            g1 = (u * c).gcrd(v * c)
+            g2 = u.gcrd(v) * c
+            if g2:
+                self.assertTrue(g1.is_left_associate(g2))
+
+    def test_coprime_construction(self):
+        rng = random.Random(13)
+        found = 0
+        for _ in range(400):
+            c = nonzero_hu(rng, 3)
+            u, v = rand_hu(rng, 3), rand_hu(rng, 3)
+            if u.gcld(v) == ONE and (c * u or c * v):
+                self.assertEqual((c * u).gcld(c * v),
+                                 c.canonical_associate("right"))
+                found += 1
+        self.assertGreater(found, 20)
+
+    def test_conjugation_relation(self):
+        rng = random.Random(17)
+        for _ in range(200):
+            a, b = rand_hu(rng), rand_hu(rng)
+            self.assertEqual(a.gcld(b).conjugate().canonical_associate("left"),
+                             a.conjugate().gcrd(b.conjugate()))
+
+    def test_symmetry_up_to_unit(self):
+        rng = random.Random(19)
+        for _ in range(100):
+            a, b = rand_hu(rng), rand_hu(rng)
+            self.assertEqual(a.gcld(b), b.gcld(a))
+            self.assertEqual(a.gcrd(b), b.gcrd(a))
+
+    def test_edge_cases(self):
+        zero = Hu(0)
+        self.assertEqual(zero.gcld(zero), zero)
+        self.assertEqual(zero.gcrd(zero), zero)
+        g, x, y = zero.xgcld(zero)
+        self.assertEqual(g, zero)
+        a = Hu(1, 2, 3, 4)
+        self.assertEqual(a.gcld(zero), a.canonical_associate("right"))
+        self.assertEqual(zero.gcrd(a), a.canonical_associate("left"))
+        for u in UNITS:
+            self.assertEqual(a.gcld(u), ONE)
+            self.assertEqual(u.gcrd(a), ONE)
+        self.assertEqual(a.gcld(a), a.canonical_associate("right"))
+
+    def test_int_operands(self):
+        self.assertEqual(Hu(6).gcld(4), Hu(6).gcld(Hu(4)))
+        g, x, y = Hu(6, 0, 0, 0).xgcld(10)
+        self.assertEqual(g, Hu(6) * x + 10 * y)
+
+    def test_bad_operand(self):
+        with self.assertRaises(TypeError):
+            Hu(1).gcld(1.5)
+        with self.assertRaises(TypeError):
+            Hu(1).xgcrd("2")
+
+    def test_huge(self):
+        c = Hu(10**15 + 7, 3, -10**14, 1)
+        u, v = Hu(10**12 + 1, 2, 3, 5), Hu(7, 10**11, -1, 4)
+        g, x, y = (c * u).xgcld(c * v)
+        self.assertEqual(g, c * u * x + c * v * y)
+        self.assertTrue(g.left_divides(c * u))
+
+    def test_gint_crosscheck(self):
+        try:
+            from gint import Zi
+        except ImportError:
+            self.skipTest("gint not installed")
+        rng = random.Random(23)
+        for _ in range(100):
+            x = [rng.randint(-30, 30) for _ in range(4)]
+            a = Hu(x[0], x[1])
+            b = Hu(x[2], x[3])
+            if not (a or b):
+                continue
+            zg = Zi.gcd(Zi(x[0], x[1]), Zi(x[2], x[3]))
+            g = a.gcld(b)
+            # the Gaussian gcd is unique up to the four Gaussian units;
+            # the Hurwitz gcld up to the 24 Hurwitz units. Both are
+            # associates in the Hurwitz sense.
+            zh = Hu(int(zg.real), int(zg.imag))
+            self.assertEqual(g.norm(), zh.norm())
+            self.assertTrue(g.is_right_associate(zh))
 
 
 def main():

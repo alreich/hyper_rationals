@@ -30,8 +30,36 @@ the half-integer kind).  The value is ``(A + B*i + C*j + D*k) / 2``.  All
 arithmetic is integer arithmetic, with no ``Fraction`` objects, and a value
 that is not a Hurwitz integer cannot be constructed.
 
-Division is deliberately absent from this class so far: the ring is not
-closed under ``/``.  Use :meth:`Hu.to_hy` for exact rational division.
+There is no ``/`` operator: the ring is not closed under division.  Use
+:meth:`Hu.to_hy` for exact rational division, or the Euclidean operations
+below.
+
+Division, gcds and associates
+-----------------------------
+
+The ring is Euclidean on both sides: for ``b != 0`` there is a ``q`` with
+``a = b*q + r`` and ``2*N(r) <= N(b)``, and likewise ``a = q*b + r``.
+Because the ring is not commutative, everything comes in left and right
+forms.  ``g`` is a *left divisor* of ``a`` when ``a = g*x``, and a *right
+divisor* when ``a = x*g``.
+
+* :meth:`Hu.divmod_left`, :meth:`Hu.divmod_right` -- division with remainder
+* :meth:`Hu.left_divides`, :meth:`Hu.right_divides`,
+  :meth:`Hu.div_exact_left`, :meth:`Hu.div_exact_right`
+* :meth:`Hu.gcld`, :meth:`Hu.gcrd` and the extended forms
+  :meth:`Hu.xgcld` (``g = a*x + b*y``) and :meth:`Hu.xgcrd`
+  (``g = x*a + y*b``)
+* :meth:`Hu.is_left_associate`, :meth:`Hu.is_right_associate`,
+  :meth:`Hu.canonical_associate`
+
+A gcld is determined only up to a unit on its right, a gcrd up to a unit on
+its left; the methods return the canonical associate (the greatest doubled
+coordinate tuple, so units map to 1)::
+
+    >>> a, b = Hu(1, 2, 3, 5), Hu(1, 1, 1, 0)
+    >>> q, r = a.divmod_left(b)
+    >>> a == b * q + r and 2 * r.norm() <= b.norm()
+    True
 
 Converting to and from ``Hy``
 -----------------------------
@@ -160,6 +188,16 @@ def _parse_coords(text: str):
 def _rebuild(cls, a, b, c, d):
     """Unpickling helper: rebuild from already-valid doubled coordinates."""
     return cls._raw(a, b, c, d)
+
+
+_UNIT_CACHE = []
+
+
+def _unit_values():
+    """The 24 units as a tuple of ``Hu`` (built once)."""
+    if not _UNIT_CACHE:
+        _UNIT_CACHE.append(tuple(Hu.units().values()))
+    return _UNIT_CACHE[0]
 
 
 # ---------------------------------------------------------------------------
@@ -575,3 +613,301 @@ class Hu:
             u = cls._raw(*signs)
             result[str(u)[1:-1]] = u
         return result
+
+    # ---------------------------------------------------------------- #
+    # exact division and divisibility
+    #
+    # The Hurwitz integers are not commutative, so "divides" has a side.
+    # In this module, "g is a LEFT divisor of a" means a = g*x for some
+    # Hurwitz integer x (g stands on the left of the product), and "g is
+    # a RIGHT divisor of a" means a = x*g.
+    # ---------------------------------------------------------------- #
+    def _operand(self, other, role):
+        o = self._coerce(other)
+        if o is None:
+            raise TypeError(
+                f"the {role} must be a Hu or an int (convert a Hy with "
+                f"Hu.from_hy), not {type(other).__name__}"
+            )
+        return o
+
+    def _exact(self, divisor, left):
+        """``x`` with ``self == divisor*x`` (``left`` true) or ``self ==
+        x*divisor`` (``left`` false), or None if there is no such Hurwitz
+        integer.  ``divisor`` must be a nonzero ``Hu``."""
+        n = divisor.conjugate() * self if left else self * divisor.conjugate()
+        norm = divisor.norm()
+        quotient = [v // norm for v in n.doubled]
+        if any(v % norm for v in n.doubled):
+            return None
+        if len({v & 1 for v in quotient}) != 1:
+            return None
+        return self._raw(*quotient)
+
+    def left_divides(self, other) -> bool:
+        """True iff this value is a *left divisor* of ``other``: ``other ==
+        self * x`` for some Hurwitz integer ``x``.  Zero divides only zero.
+
+            >>> g, x = Hu(1, 1, 1, 0), Hu(0, 0, 1, 1)
+            >>> g * x
+            Hu(-1, 1, 0, 2)
+            >>> g.left_divides(g * x), g.right_divides(g * x)
+            (True, False)
+        """
+        o = self._operand(other, "dividend")
+        if not self:
+            return not o
+        return o._exact(self, left=True) is not None
+
+    def right_divides(self, other) -> bool:
+        """True iff this value is a *right divisor* of ``other``: ``other ==
+        x * self`` for some Hurwitz integer ``x``.  Zero divides only zero.
+        """
+        o = self._operand(other, "dividend")
+        if not self:
+            return not o
+        return o._exact(self, left=False) is not None
+
+    def div_exact_left(self, divisor) -> "Hu":
+        """The ``x`` with ``self == divisor * x`` (``divisor`` is a left
+        divisor of ``self``).  Raises ``ValueError`` if there is none and
+        ``ZeroDivisionError`` for a zero divisor.
+
+            >>> a, g = Hu(1, 2, 3, 4), Hu(1, 1, 1, 0)
+            >>> (g * a).div_exact_left(g) == a
+            True
+            >>> a.div_exact_left(Hu(2))
+            Traceback (most recent call last):
+                ...
+            ValueError: (2) is not a left divisor of (1+2i+3j+4k)
+        """
+        g = self._operand(divisor, "divisor")
+        if not g:
+            raise ZeroDivisionError("division by zero in the Hurwitz integers")
+        x = self._exact(g, left=True)
+        if x is None:
+            raise ValueError(f"{g} is not a left divisor of {self}")
+        return x
+
+    def div_exact_right(self, divisor) -> "Hu":
+        """The ``x`` with ``self == x * divisor`` (``divisor`` is a right
+        divisor of ``self``).  Raises ``ValueError`` if there is none and
+        ``ZeroDivisionError`` for a zero divisor.
+        """
+        g = self._operand(divisor, "divisor")
+        if not g:
+            raise ZeroDivisionError("division by zero in the Hurwitz integers")
+        x = self._exact(g, left=False)
+        if x is None:
+            raise ValueError(f"{g} is not a right divisor of {self}")
+        return x
+
+    # ---------------------------------------------------------------- #
+    # division with remainder
+    # ---------------------------------------------------------------- #
+    @staticmethod
+    def _nearest_hurwitz(n2, norm):
+        """Doubled coordinates of a Hurwitz integer nearest to the rational
+        point ``t`` with ``t[i] = n2[i] / (2 * norm)``, using integer
+        arithmetic only.
+
+        There are two kinds of candidates: the nearest Lipschitz integer
+        (round each coordinate to an integer) and the nearest all-halves
+        point (round each coordinate to a half-odd-integer).  Whichever is
+        closer wins, and the Lipschitz one wins a tie; within each kind a
+        coordinate exactly halfway rounds up.
+        """
+        two_norm = 2 * norm
+        lip = tuple(2 * ((x + norm) // two_norm) for x in n2)
+        half = tuple(2 * (x // two_norm) + 1 for x in n2)
+        d_lip = sum((x - norm * c) ** 2 for x, c in zip(n2, lip))
+        d_half = sum((x - norm * c) ** 2 for x, c in zip(n2, half))
+        return lip if d_lip <= d_half else half
+
+    def divmod_left(self, divisor):
+        """``(q, r)`` with ``self == divisor * q + r`` and ``2 * r.norm()
+        <= divisor.norm()``: the divisor stands on the left of the
+        quotient.  The quotient is the Hurwitz integer nearest to the
+        exact rational quotient ``divisor**-1 * self``.
+
+        Unlike integer division, the pair is not always unique: when the
+        exact quotient is equally close to several Hurwitz integers, this
+        picks one deterministically (a Lipschitz integer before a
+        half-integer point, and a coordinate exactly halfway rounds up).
+        Raises ``ZeroDivisionError`` for a zero divisor.
+
+            >>> a, b = Hu(1, 2, 3, 5), Hu(1, 1, 1, 0)
+            >>> q, r = a.divmod_left(b)
+            >>> q, r
+            (Hu(2, -1, 2, 1), Hu(0, 0, 0, 1))
+            >>> b * q + r == a
+            True
+            >>> 2 * r.norm() <= b.norm()
+            True
+        """
+        b = self._operand(divisor, "divisor")
+        if not b:
+            raise ZeroDivisionError("division by zero in the Hurwitz integers")
+        n = b.conjugate() * self
+        q = self._raw(*self._nearest_hurwitz(n.doubled, b.norm()))
+        return q, self - b * q
+
+    def divmod_right(self, divisor):
+        """``(q, r)`` with ``self == q * divisor + r`` and ``2 * r.norm()
+        <= divisor.norm()``: the divisor stands on the right of the
+        quotient.  See :meth:`divmod_left` for what is chosen when the pair
+        is not unique.  Raises ``ZeroDivisionError`` for a zero divisor.
+
+            >>> a, b = Hu(1, 2, 3, 5), Hu(1, 1, 1, 0)
+            >>> q, r = a.divmod_right(b)
+            >>> q, r
+            (Hu(2, 2, -1, 2), Hu(0, 0, 0, 0))
+            >>> q * b + r == a
+            True
+        """
+        b = self._operand(divisor, "divisor")
+        if not b:
+            raise ZeroDivisionError("division by zero in the Hurwitz integers")
+        n = self * b.conjugate()
+        q = self._raw(*self._nearest_hurwitz(n.doubled, b.norm()))
+        return q, self - q * b
+
+    # ---------------------------------------------------------------- #
+    # associates
+    #
+    # u*a is a LEFT associate of a (unit on the left), a*u a RIGHT
+    # associate (unit on the right); every nonzero value has 24 of each.
+    # ---------------------------------------------------------------- #
+    def is_left_associate(self, other) -> bool:
+        """True iff ``other == u * self`` for a unit ``u`` (the unit stands
+        on the left).  Zero is an associate only of zero.
+
+            >>> a = Hu(1, 2, 3, 4)
+            >>> a.is_left_associate(Hu(0, 1, 0, 0) * a)
+            True
+            >>> a.is_left_associate(a * Hu(0, 1, 0, 0))
+            False
+        """
+        o = self._operand(other, "other value")
+        if not self:
+            return not o
+        return (bool(o) and o.norm() == self.norm()
+                and o._exact(self, left=False) is not None)
+
+    def is_right_associate(self, other) -> bool:
+        """True iff ``other == self * u`` for a unit ``u`` (the unit stands
+        on the right).  Zero is an associate only of zero."""
+        o = self._operand(other, "other value")
+        if not self:
+            return not o
+        return (bool(o) and o.norm() == self.norm()
+                and o._exact(self, left=True) is not None)
+
+    def canonical_associate(self, side: str) -> "Hu":
+        """The standard representative of this value's class of associates.
+
+        ``side="left"`` chooses among the 24 values ``u * self`` (the unit
+        on the left); ``side="right"`` among ``self * u``.  The
+        representative is the one with the greatest doubled coordinates,
+        compared as ``(a, b, c, d)`` in that order -- so the greatest real
+        part first -- which makes every unit's representative ``1`` and
+        every positive integer its own.  Zero is its own representative.
+
+            >>> Hu(-3).canonical_associate("left")
+            Hu(3, 0, 0, 0)
+            >>> Hu(0, 0, 1, 0).canonical_associate("right")
+            Hu(1, 0, 0, 0)
+            >>> a = Hu(1, 2, 3, 4)
+            >>> a.canonical_associate("left") == (Hu(0, 1, 0, 0) * a).canonical_associate("left")
+            True
+        """
+        if side not in ("left", "right"):
+            raise ValueError(f"side must be 'left' or 'right', not {side!r}")
+        if not self:
+            return self
+        if side == "left":
+            products = (u * self for u in _unit_values())
+        else:
+            products = (self * u for u in _unit_values())
+        best = max(products, key=lambda x: x.doubled)
+        return self._raw(*best.doubled)
+
+    # ---------------------------------------------------------------- #
+    # greatest common divisors (Euclid's algorithm on each side)
+    # ---------------------------------------------------------------- #
+    def xgcld(self, other):
+        """``(g, x, y)`` with ``g`` the greatest common *left* divisor of
+        ``self`` and ``other`` -- ``self == g * a'`` and ``other == g * b'``
+        -- and Bezout coefficients on the right: ``g == self * x + other *
+        y``.  Every common left divisor of the two is a left divisor of
+        ``g``.
+
+        ``g`` is determined only up to a unit on its right (``g * u`` is
+        equally good), so the canonical representative is returned:
+        ``g.canonical_associate("right")``.  ``g`` is 0 only when both
+        values are 0.
+
+            >>> a, b = Hu(-2, 1, 3, 3), Hu(3, -3, -1, -3)    # norms 23 and 28
+            >>> g, x, y = a.xgcld(b)
+            >>> g, x, y
+            (Hu(1, 0, 0, 0), Hu(0, -1, -1, -1), Hu(0, -1, 0, -1))
+            >>> a * x + b * y == g
+            True
+        """
+        b = self._operand(other, "other value")
+        r0, s0, t0 = self, self._raw(2, 0, 0, 0), self._raw(0, 0, 0, 0)
+        r1, s1, t1 = b, t0, s0
+        while r1:
+            q, r2 = r0.divmod_left(r1)
+            r0, r1 = r1, r2
+            s0, s1 = s1, s0 - s1 * q
+            t0, t1 = t1, t0 - t1 * q
+        if r0:
+            unit = r0.canonical_associate("right").div_exact_left(r0)
+            r0, s0, t0 = r0 * unit, s0 * unit, t0 * unit
+        return r0, s0, t0
+
+    def xgcrd(self, other):
+        """``(g, x, y)`` with ``g`` the greatest common *right* divisor of
+        ``self`` and ``other`` -- ``self == a' * g`` and ``other == b' * g``
+        -- and Bezout coefficients on the left: ``g == x * self + y *
+        other``.  Every common right divisor of the two is a right divisor
+        of ``g``.
+
+        ``g`` is determined only up to a unit on its left, so the canonical
+        representative ``g.canonical_associate("left")`` is returned.
+        """
+        b = self._operand(other, "other value")
+        r0, s0, t0 = self, self._raw(2, 0, 0, 0), self._raw(0, 0, 0, 0)
+        r1, s1, t1 = b, t0, s0
+        while r1:
+            q, r2 = r0.divmod_right(r1)
+            r0, r1 = r1, r2
+            s0, s1 = s1, s0 - q * s1
+            t0, t1 = t1, t0 - q * t1
+        if r0:
+            unit = r0.canonical_associate("left").div_exact_right(r0)
+            r0, s0, t0 = unit * r0, unit * s0, unit * t0
+        return r0, s0, t0
+
+    def gcld(self, other) -> "Hu":
+        """The greatest common left divisor of ``self`` and ``other``, in
+        its canonical form (see :meth:`xgcld`).
+
+            >>> a, b, c = Hu(-2, 1, 3, 3), Hu(3, -3, -1, -3), Hu(1, 1, 1, 0)
+            >>> a.gcld(b)                       # a and b have no common divisor
+            Hu(1, 0, 0, 0)
+            >>> (c * a).gcld(c * b) == c.canonical_associate("right")
+            True
+        """
+        return self.xgcld(other)[0]
+
+    def gcrd(self, other) -> "Hu":
+        """The greatest common right divisor of ``self`` and ``other``, in
+        its canonical form (see :meth:`xgcrd`).
+
+            >>> a, b, c = Hu(-2, 1, 3, 3), Hu(3, -3, -1, -3), Hu(1, 1, 1, 0)
+            >>> (a * c).gcrd(b * c) == c.canonical_associate("left")
+            True
+        """
+        return self.xgcrd(other)[0]

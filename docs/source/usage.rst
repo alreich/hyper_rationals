@@ -1837,3 +1837,121 @@ arithmetic, either is a check on the other:
     True
     True
     True
+
+Division with Remainder, GCDs and Associates
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The Hurwitz integers are a Euclidean domain on *both* sides, but the
+ring is not commutative, so each notion comes in a left and a right
+form. In this class, ``g`` is a **left divisor** of ``a`` when
+``a = g*x``, and a **right divisor** when ``a = x*g``. For ``b != 0``,
+``divmod_left`` finds ``q``, ``r`` with ``a = b*q + r``, and
+``divmod_right`` finds ``a = q*b + r``. In both cases
+``2*N(r) <= N(b)``, which is what makes Euclid’s algorithm terminate.
+There is no ``/`` operator, because the ring is not closed under
+division.
+
+.. code:: ipython3
+
+    >>> from hyprat import Hu
+    >>> a, b = Hu(1, 2, 3, 5), Hu(1, 1, 1, 0)
+
+    >>> q, r = a.divmod_left(b)
+    >>> print(repr(q), repr(r))
+    >>> print(a == b * q + r, 2 * r.norm() <= b.norm())
+
+    >>> q, r = a.divmod_right(b)
+    >>> print(repr(q), repr(r))
+    >>> print(a == q * b + r)
+
+
+.. parsed-literal::
+
+    Hu(2, -1, 2, 1) Hu(0, 0, 0, 1)
+    True True
+    Hu(2, 2, -1, 2) Hu(0, 0, 0, 0)
+    True
+
+
+Divisibility
+~~~~~~~~~~~~
+
+Because multiplication does not commute, ``g*x`` and ``x*g`` are
+different numbers, and a product is generally divisible on one side
+only.
+
+.. code:: ipython3
+
+    >>> g, x = Hu(1, 1, 1, 0), Hu(0, 0, 1, 1)
+    >>> a = g * x
+    >>> print(repr(a))
+    >>> print(g.left_divides(a), g.right_divides(a))
+    >>> print(repr(a.div_exact_left(g)))
+    >>> try:
+    ...     a.div_exact_right(g)
+    ... except ValueError as e:
+    ...     print(e)
+
+
+.. parsed-literal::
+
+    Hu(-1, 1, 0, 2)
+    True False
+    Hu(0, 0, 1, 1)
+    (1+i+j) is not a right divisor of (-1+i+2k)
+
+
+Associates and the Canonical Associate
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Two numbers are **left associates** if ``b = u*a`` for a unit ``u``, and
+**right associates** if ``b = a*u``. A nonzero number has 24 associates
+on each side, and ``canonical_associate(side)`` picks one of them, the
+one whose doubled coordinates are largest, so that every unit becomes
+``1``.
+
+.. code:: ipython3
+
+    >>> a = Hu(1, 2, 3, 0)
+    >>> i = Hu(0, 1, 0, 0)
+    >>> print(a.is_left_associate(i * a), a.is_right_associate(i * a))
+    >>> print(repr(a.canonical_associate('left')))
+    >>> print(repr((i * a).canonical_associate('left')))
+    >>> print(repr(Hu('1/2', '1/2', '-1/2', '1/2').canonical_associate('right')))
+
+
+.. parsed-literal::
+
+    True False
+    Hu(3, 2, 0, -1)
+    Hu(3, 2, 0, -1)
+    Hu(1, 0, 0, 0)
+
+
+Greatest Common Divisors
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+``gcld`` is the greatest common *left* divisor, determined only up to a
+unit on its right, so the canonical right associate is returned.
+``gcrd`` is the mirror image. The extended forms also return Bezout
+coefficients: ``g = a*x + b*y`` for ``xgcld`` and ``g = x*a + y*b`` for
+``xgcrd``.
+
+.. code:: ipython3
+
+    >>> a, b = Hu(-2, 1, 3, 3), Hu(3, -3, -1, -3)
+    >>> g, x, y = a.xgcld(b)
+    >>> print(repr(g), repr(x), repr(y))
+    >>> print(g == a * x + b * y)
+
+    >>> c = Hu(1, 1, 1, 0)
+    >>> print(repr((c * a).gcld(c * b)))
+    >>> print(repr(c.canonical_associate('right')))
+
+
+.. parsed-literal::
+
+    Hu(1, 0, 0, 0) Hu(0, -1, -1, -1) Hu(0, -1, 0, -1)
+    True
+    Hu('3/2', '1/2', '-1/2', '1/2')
+    Hu('3/2', '1/2', '-1/2', '1/2')
