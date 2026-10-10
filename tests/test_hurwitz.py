@@ -45,6 +45,12 @@ Organization:
     TestFactor              - factor(order): products, all orderings, repeated
                               primes, uniqueness (brute force), unit migration,
                               reorder(), content reported separately
+    TestOfNorm              - of_norm(), count_of_norm(): brute force, the
+                              24*sigma_odd(n) count, Jacobi's four-square
+                              count, primitive elements
+    TestPrimesOfNorm        - primes_of_norm(): the p + 1 classes
+    TestFourSquares         - with_norm(), four_squares(): Lagrange's theorem
+                              built from Hurwitz primes, huge inputs
 
 Algebraic laws are checked empirically via seeded random fuzzing
 (deterministic across runs), in addition to fixed hand-verified examples.
@@ -1573,6 +1579,195 @@ class TestFactor(unittest.TestCase):
         self.assertGreater(max(abs(x) for x in a.doubled), 10 ** 10)
         f = self.check(a)
         self.assertEqual(f.content, a.content())
+
+
+# ----------------------------------------------------------------------------
+# phase 4: enumeration and sums of four squares
+# ----------------------------------------------------------------------------
+
+def jacobi_r4(n):
+    """Number of integer solutions of a^2+b^2+c^2+d^2 = n (Jacobi)."""
+    return 8 * sum(d for d in range(1, n + 1) if n % d == 0 and d % 4)
+
+
+def primitive_count(n):
+    """Number of primitive Hurwitz integers of norm n (Conway and Smith)."""
+    from hyprat.intfactor import factorint
+    if n % 4 == 0:
+        return 0
+    total = 24
+    for p, e in factorint(n).items():
+        if p != 2:
+            total *= (p + 1) * p ** (e - 1)
+    return total
+
+
+class TestOfNorm(unittest.TestCase):
+
+    def test_against_brute_force(self):
+        for n in range(0, 41):
+            expected = sorted(elements_of_norm(n), key=lambda h: h.doubled) if n else [Hu(0)]
+            self.assertEqual(Hu.of_norm(n), expected, n)
+
+    def test_count_formula(self):
+        for n in range(1, 61):
+            self.assertEqual(len(Hu.of_norm(n)), 24 * sigma_odd(n), n)
+            self.assertEqual(Hu.count_of_norm(n), 24 * sigma_odd(n), n)
+        self.assertEqual(Hu.count_of_norm(0), 1)
+
+    def test_count_of_norm_large(self):
+        self.assertEqual(Hu.count_of_norm(2 ** 100), 24)
+        self.assertEqual(Hu.count_of_norm(10 ** 18), 24 * (5 ** 19 - 1) // 4)
+        p = 1000000007
+        self.assertEqual(Hu.count_of_norm(p), 24 * (p + 1))
+        self.assertEqual(Hu.count_of_norm(3 * p * p), 24 * 4 * (p ** 3 - 1) // (p - 1))
+
+    def test_distinct_sorted_right_norm(self):
+        for n in (1, 2, 5, 9, 12, 30, 49, 100):
+            elems = Hu.of_norm(n)
+            self.assertEqual(len(set(elems)), len(elems))
+            self.assertEqual([h.doubled for h in elems], sorted(h.doubled for h in elems))
+            self.assertTrue(all(h.norm() == n for h in elems))
+
+    def test_closed_under_units_and_conjugation(self):
+        for n in (1, 3, 6, 10, 15):
+            elems = set(Hu.of_norm(n))
+            for u in UNITS:
+                self.assertEqual({u * h for h in elems}, elems)
+                self.assertEqual({h * u for h in elems}, elems)
+            self.assertEqual({h.conjugate() for h in elems}, elems)
+
+    def test_jacobi_four_square_count(self):
+        # the Lipschitz ones among them are counted by Jacobi's formula
+        for n in range(1, 61):
+            lip = [h for h in Hu.of_norm(n) if h.is_lipschitz()]
+            self.assertEqual(len(lip), jacobi_r4(n), n)
+
+    def test_primitive(self):
+        for n in range(1, 61):
+            prim = Hu.of_norm(n, primitive=True)
+            self.assertTrue(all(h.content() == 1 for h in prim))
+            self.assertEqual(len(prim), primitive_count(n), n)
+            self.assertEqual(prim, [h for h in Hu.of_norm(n) if h.is_primitive()])
+
+    def test_zero(self):
+        self.assertEqual(Hu.of_norm(0), [Hu(0)])
+        self.assertEqual(Hu.of_norm(0, primitive=True), [])
+
+    def test_larger(self):
+        self.assertEqual(len(Hu.of_norm(360)), Hu.count_of_norm(360))
+
+    def test_errors(self):
+        with self.assertRaises(ValueError):
+            Hu.of_norm(-1)
+        with self.assertRaises(ValueError):
+            Hu.count_of_norm(-4)
+        for bad in (2.0, "5", None, True):
+            with self.assertRaises(TypeError):
+                Hu.of_norm(bad)
+            with self.assertRaises(TypeError):
+                Hu.count_of_norm(bad)
+
+    def test_called_on_subclass(self):
+        self.assertTrue(all(type(h) is _MyHu for h in _MyHu.of_norm(3)))
+
+
+class TestPrimesOfNorm(unittest.TestCase):
+
+    def test_class_counts(self):
+        self.assertEqual(len(Hu.primes_of_norm(2)), 1)
+        for p in (3, 5, 7, 11, 13, 17, 19, 23):
+            self.assertEqual(len(Hu.primes_of_norm(p)), p + 1, p)
+            self.assertEqual(len(Hu.primes_of_norm(p, associates=True)), 24 * (p + 1))
+        self.assertEqual(len(Hu.primes_of_norm(2, associates=True)), 24)
+
+    def test_representatives(self):
+        for p in (2, 3, 5, 7, 13):
+            reps = Hu.primes_of_norm(p)
+            every = Hu.primes_of_norm(p, associates=True)
+            for r in reps:
+                self.assertTrue(r.is_prime())
+                self.assertEqual(r.norm(), p)
+                self.assertEqual(r, r.canonical_associate("right"))
+            for i, r in enumerate(reps):
+                for s in reps[i + 1:]:
+                    self.assertFalse(r.is_right_associate(s))
+            for h in every:
+                self.assertEqual(sum(h.is_right_associate(r) for r in reps), 1)
+
+    def test_conjugates_of_classes(self):
+        # conjugation permutes the classes of right associates only after
+        # swapping sides, so check the weaker fact that conj(pi) is prime
+        for r in Hu.primes_of_norm(7):
+            self.assertTrue(r.conjugate().is_prime())
+
+    def test_not_a_prime(self):
+        for bad in (0, 1, 4, 9, 15, -3):
+            with self.assertRaises(ValueError):
+                Hu.primes_of_norm(bad)
+
+
+class TestFourSquares(unittest.TestCase):
+
+    def test_with_norm_small(self):
+        for n in range(0, 2001):
+            h = Hu.with_norm(n)
+            self.assertEqual(h.norm(), n)
+            self.assertTrue(h.is_lipschitz())
+
+    def test_four_squares_small(self):
+        for n in range(0, 3001):
+            a, b, c, d = Hu.four_squares(n)
+            self.assertEqual(a * a + b * b + c * c + d * d, n)
+            self.assertTrue(a >= b >= c >= d >= 0)
+
+    def test_hand_checked(self):
+        self.assertEqual(Hu.four_squares(0), (0, 0, 0, 0))
+        self.assertEqual(Hu.four_squares(1), (1, 0, 0, 0))
+        self.assertEqual(Hu.four_squares(7), (2, 1, 1, 1))
+        self.assertEqual(Hu.four_squares(310), (13, 10, 5, 4))
+
+    def test_prime_helper(self):
+        from hyprat.intfactor import primes_upto
+        for p in primes_upto(600):
+            h = Hu._lipschitz_prime(p)
+            self.assertEqual(h.norm(), p)
+            self.assertTrue(h.is_lipschitz())
+            self.assertTrue(h.is_prime())
+
+    def test_big_primes_all_residue_classes(self):
+        # 998244353 = 119 * 2**23 + 1 exercises the full Tonelli-Shanks loop
+        for p in (2 ** 31 - 1, 998244353, 1000000007, 2 ** 61 - 1, 2 ** 64 - 59):
+            h = Hu._lipschitz_prime(p)
+            self.assertEqual(h.norm(), p)
+            self.assertTrue(h.is_lipschitz())
+            a, b, c, d = Hu.four_squares(p)
+            self.assertEqual(a * a + b * b + c * c + d * d, p)
+
+    def test_powers_and_composites(self):
+        for n in (2 ** 20, 3 ** 13, 7 ** 9, 2 ** 5 * 3 ** 4 * 5 ** 3 * 7 ** 2,
+                  10 ** 30, 10 ** 30 + 7, 2 ** 89 - 1):
+            h = Hu.with_norm(n)
+            self.assertEqual(h.norm(), n)
+            self.assertTrue(h.is_lipschitz())
+
+    def test_random(self):
+        rng = random.Random(61)
+        for _ in range(60):
+            n = rng.getrandbits(rng.randint(2, 64))
+            a, b, c, d = Hu.four_squares(n)
+            self.assertEqual(a * a + b * b + c * c + d * d, n)
+
+    def test_errors(self):
+        with self.assertRaises(ValueError):
+            Hu.with_norm(-1)
+        with self.assertRaises(ValueError):
+            Hu.four_squares(-5)
+        for bad in (2.0, "5", None, True):
+            with self.assertRaises(TypeError):
+                Hu.with_norm(bad)
+            with self.assertRaises(TypeError):
+                Hu.four_squares(bad)
 
 
 def main():

@@ -2090,3 +2090,109 @@ very large inputs only if it happens to be installed.
     True
     1871115411549373812 {2: 2, 3: 5, 2855261: 1, 674199611: 1}
     18 (3, 2855261, 674199611) True
+
+Enumerating Hurwitz Integers of a Given Norm
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Exactly :math:`24\,\sigma_{\mathrm{odd}}(n)` Hurwitz integers have norm
+:math:`n`, where :math:`\sigma_{\mathrm{odd}}(n)` is the sum of the odd
+divisors of :math:`n`. ``Hu.of_norm(n)`` lists them (the work grows
+roughly like :math:`n`), and ``Hu.count_of_norm(n)`` counts them from
+the factorization of :math:`n` without listing anything.
+
+.. code:: ipython3
+
+    >>> from hyprat import Hu
+    >>> print([len(Hu.of_norm(n)) for n in range(1, 9)])
+    >>> print([Hu.count_of_norm(n) for n in range(1, 9)])
+    >>> print(Hu.count_of_norm(10**18))
+
+    >>> for h in Hu.of_norm(2)[:4]:
+    ...     print(repr(h))
+
+
+.. parsed-literal::
+
+    [24, 24, 96, 24, 144, 96, 192, 24]
+    [24, 24, 96, 24, 144, 96, 192, 24]
+    114440917968744
+    Hu(-1, -1, 0, 0)
+    Hu(-1, 0, -1, 0)
+    Hu(-1, 0, 0, -1)
+    Hu(-1, 0, 0, 1)
+
+
+Restricting to elements with integer coordinates recovers Jacobi’s
+four-square count, and ``primitive=True`` keeps only the elements of
+content 1:
+
+.. code:: ipython3
+
+    >>> n = 3
+    >>> print(len(Hu.of_norm(n)), len([h for h in Hu.of_norm(n) if h.is_lipschitz()]))
+    >>> print(len(Hu.of_norm(n, primitive=True)), len(Hu.of_norm(4, primitive=True)))
+
+
+.. parsed-literal::
+
+    96 32
+    96 0
+
+
+Primes of a Given Norm
+~~~~~~~~~~~~~~~~~~~~~~
+
+For an odd prime :math:`p` the :math:`24(p+1)` primes of norm :math:`p`
+fall into :math:`p+1` classes of right associates, and for :math:`p=2`
+there is a single class. ``primes_of_norm`` returns one canonical
+representative of each class, or every prime with ``associates=True``.
+
+.. code:: ipython3
+
+    >>> for p in (2, 3, 5):
+    ...     print(p, len(Hu.primes_of_norm(p)), len(Hu.primes_of_norm(p, associates=True)))
+
+    >>> for h in Hu.primes_of_norm(3):
+    ...     print(repr(h))
+
+
+.. parsed-literal::
+
+    2 1 24
+    3 4 96
+    5 6 144
+    Hu('3/2', '1/2', '-1/2', '-1/2')
+    Hu('3/2', '1/2', '-1/2', '1/2')
+    Hu('3/2', '1/2', '1/2', '-1/2')
+    Hu('3/2', '1/2', '1/2', '1/2')
+
+
+Sums of Four Squares
+~~~~~~~~~~~~~~~~~~~~
+
+Lagrange’s four-square theorem falls out of the same machinery. For an
+odd prime :math:`p` one finds :math:`x, y` with
+:math:`x^2 + y^2 + 1 \equiv 0 \pmod p` and takes
+:math:`\pi = \gcd_{\text{left}}(x + y\,i + j,\ p)`, a prime of norm
+:math:`p`; multiplying a unit onto it gives integer coordinates. Norms
+multiply, so ``Hu.with_norm(n)`` gets an element of norm :math:`n` by
+multiplying such primes, and ``Hu.four_squares(n)`` reads off the four
+squares. The cost is that of factoring :math:`n`.
+
+.. code:: ipython3
+
+    >>> print(Hu.four_squares(310))
+    >>> a, b, c, d = Hu.four_squares(2**89 - 1)
+    >>> print(a, b, c, d)
+    >>> print(a*a + b*b + c*c + d*d == 2**89 - 1)
+
+    >>> h = Hu.with_norm(1000003)
+    >>> print(repr(h), h.norm())
+
+
+.. parsed-literal::
+
+    (13, 10, 5, 4)
+    16505493659067 16505493659067 7162758386013 4775172257342
+    True
+    Hu(699, 151, 699, 0) 1000003

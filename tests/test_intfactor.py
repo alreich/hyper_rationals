@@ -15,7 +15,7 @@ import unittest
 from unittest import mock
 
 from hyprat import intfactor
-from hyprat.intfactor import factorint, is_probable_prime, primes_upto
+from hyprat.intfactor import factorint, is_probable_prime, primes_upto, sqrt_mod_prime
 
 
 def naive_is_prime(n):
@@ -197,6 +197,38 @@ class TestFactorint(unittest.TestCase):
                 factorint(12, method="sympy")
             big = (2 ** 89 - 1) * 7
             self.assertEqual(factorint(big, method="auto"), {7: 1, 2 ** 89 - 1: 1})
+
+
+class TestSqrtModPrime(unittest.TestCase):
+
+    def test_exhaustive_small_primes(self):
+        for p in primes_upto(400)[1:]:
+            squares = {x * x % p for x in range(p)}
+            for a in range(p):
+                if a in squares:
+                    r = sqrt_mod_prime(a, p)
+                    self.assertEqual(r * r % p, a, (a, p))
+                else:
+                    with self.assertRaises(ValueError):
+                        sqrt_mod_prime(a, p)
+
+    def test_large_primes(self):
+        # 998244353 - 1 = 119 * 2**23 and 2**64 - 59 with 2**64 - 60 = 4 * odd
+        # exercise the Tonelli-Shanks loop; 2**61 - 1 is 3 mod 4
+        rng = random.Random(12)
+        for p in (998244353, 2 ** 64 - 59, 2 ** 61 - 1, 1000000007):
+            for _ in range(20):
+                a = rng.randrange(1, p)
+                r = sqrt_mod_prime(a * a % p, p)
+                self.assertIn(r, (a, p - a))
+
+    def test_reduces_and_zero(self):
+        self.assertEqual(sqrt_mod_prime(0, 13), 0)
+        self.assertEqual(sqrt_mod_prime(13, 13), 0)
+        r = sqrt_mod_prime(10 + 13 * 5, 13)
+        self.assertEqual(r * r % 13, 10)
+        r = sqrt_mod_prime(-3, 13)                  # -3 = 10 (mod 13)
+        self.assertEqual(r * r % 13, 10)
 
 
 def main():

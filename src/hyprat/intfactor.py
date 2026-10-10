@@ -11,6 +11,8 @@ module provides what is needed and nothing more:
 * :func:`is_probable_prime` -- exact below 3.3e24, and above that a
   Baillie-PSW test (a strong Fermat test to base 2 followed by a strong
   Lucas test).  No composite number is known that passes Baillie-PSW.
+* :func:`sqrt_mod_prime` -- square roots modulo a prime (Tonelli-Shanks),
+  needed to write a prime as a sum of four squares.
 * :func:`factorint` -- trial division by the primes below 1000, then
   Brent's variant of Pollard's rho method, with the primality test above
   deciding when to stop.  If ``sympy`` happens to be installed it can be
@@ -28,7 +30,7 @@ module provides what is needed and nothing more:
 
 import math
 
-__all__ = ["is_probable_prime", "factorint", "primes_upto"]
+__all__ = ["is_probable_prime", "factorint", "primes_upto", "sqrt_mod_prime"]
 
 
 def primes_upto(limit: int) -> list:
@@ -50,7 +52,7 @@ def primes_upto(limit: int) -> list:
 _SMALL_PRIMES = tuple(primes_upto(1000))
 
 # Deterministic Miller-Rabin: these bases are enough for every n < 3.3e24
-# (Sorenson & Webster, 2015).
+# (Sorenson & Webster, Math. Comp. 2017).
 _MR_BASES = (2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41)
 _MR_LIMIT = 3317044064679887385961981
 
@@ -244,3 +246,39 @@ def factorint(n: int, method: str = "python") -> dict:
         else:
             _factor_rec(n, out)
     return dict(sorted(out.items()))
+
+
+def sqrt_mod_prime(a: int, p: int) -> int:
+    """A square root of ``a`` modulo the odd prime ``p`` (Tonelli-Shanks).
+
+    Raises ``ValueError`` if ``a`` is not a square modulo ``p``.  The caller
+    is responsible for ``p`` being an odd prime.
+
+    >>> r = sqrt_mod_prime(10, 13)
+    >>> r * r % 13
+    10
+    """
+    a %= p
+    if a == 0:
+        return 0
+    if pow(a, (p - 1) // 2, p) != 1:
+        raise ValueError(f"{a} is not a square modulo {p}")
+    if p % 4 == 3:
+        return pow(a, (p + 1) // 4, p)
+    q, s = p - 1, 0
+    while q % 2 == 0:
+        q //= 2
+        s += 1
+    z = 2
+    while pow(z, (p - 1) // 2, p) != p - 1:
+        z += 1
+    m, c, t, r = s, pow(z, q, p), pow(a, q, p), pow(a, (q + 1) // 2, p)
+    while t != 1:
+        i, t2 = 0, t
+        while t2 != 1:
+            t2 = t2 * t2 % p
+            i += 1
+        b = pow(c, 1 << (m - i - 1), p)
+        m, c = i, b * b % p
+        t, r = t * c % p, r * b % p
+    return r

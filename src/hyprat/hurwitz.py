@@ -87,6 +87,23 @@ list.  Factoring needs the factorization of the norm, which is done by
 prime factor is up to about 1e15, and sympy (if installed) is used for
 larger inputs.
 
+Enumeration and sums of four squares
+------------------------------------
+
+Exactly ``24 * sigma_odd(n)`` Hurwitz integers have norm ``n``, where
+``sigma_odd(n)`` is the sum of the odd divisors of ``n``.  They can be
+listed with :meth:`Hu.of_norm` and counted, without listing, by
+:meth:`Hu.count_of_norm`; :meth:`Hu.primes_of_norm` gives the ``p + 1``
+classes of primes of norm ``p``.  The same machinery proves Lagrange's
+theorem constructively: :meth:`Hu.with_norm` builds an element with integer
+coordinates and norm ``n``, so :meth:`Hu.four_squares` writes ``n`` as a sum
+of four squares, even for huge ``n``::
+
+    >>> Hu.count_of_norm(6)
+    96
+    >>> Hu.four_squares(1000003)
+    (699, 699, 151, 0)
+
 Converting to and from ``Hy``
 -----------------------------
 
@@ -127,7 +144,7 @@ import re
 from typing import NamedTuple
 
 from .hypercomplex import Hy, _flatten, _DEFAULT_MU
-from .intfactor import factorint, is_probable_prime
+from .intfactor import factorint, is_probable_prime, sqrt_mod_prime
 
 __all__ = ["Hu", "HuFactorization"]
 
@@ -1052,6 +1069,170 @@ class Hu:
             q = q.div_exact_left(pi)
         factors.append(q)               # norm is the last prime: itself prime
         return HuFactorization(content, Hu(1), tuple(factors))
+
+    # ------------------------------------------------------------------
+    # enumeration and sums of four squares
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def of_norm(cls, n: int, primitive: bool = False) -> list:
+        """All Hurwitz integers of norm ``n``, as a list in increasing order
+        of their doubled coordinates.
+
+        There are ``24 * sigma_odd(n)`` of them, where ``sigma_odd(n)`` is
+        the sum of the odd divisors of ``n`` (see :meth:`count_of_norm`).
+        With ``primitive=True`` only those of content 1 are returned.  The
+        work grows roughly like ``n``, so this is meant for modest ``n``.
+
+            >>> len(Hu.of_norm(1)), len(Hu.of_norm(2)), len(Hu.of_norm(3))
+            (24, 24, 96)
+            >>> sorted(h.norm() for h in Hu.of_norm(5))[:2]
+            [5, 5]
+            >>> len(Hu.of_norm(4)), len(Hu.of_norm(4, primitive=True))
+            (24, 0)
+        """
+        if isinstance(n, bool) or not isinstance(n, numbers.Integral):
+            raise TypeError(f"n must be an int, not {type(n).__name__}")
+        n = int(n)
+        if n < 0:
+            raise ValueError(f"n must be non-negative, not {n}")
+        if n == 0:
+            return [cls(0)] if not primitive else []
+        four_n = 4 * n
+        bound = math.isqrt(four_n)
+        found = []
+        for parity in (0, 1):
+            by_sum = {}
+            for x in range(-bound, bound + 1):
+                if x % 2 != parity:
+                    continue
+                ybound = math.isqrt(four_n - x * x)
+                for y in range(-ybound, ybound + 1):
+                    if y % 2 == parity:
+                        by_sum.setdefault(x * x + y * y, []).append((x, y))
+            for total, pairs in by_sum.items():
+                partners = by_sum.get(four_n - total)
+                if partners:
+                    for a, b in pairs:
+                        for c, d in partners:
+                            found.append((a, b, c, d))
+        found.sort()
+        out = [cls._raw(*v) for v in found]
+        if primitive:
+            out = [h for h in out if h.content() == 1]
+        return out
+
+    @staticmethod
+    def count_of_norm(n: int) -> int:
+        """How many Hurwitz integers have norm ``n``: ``24 * sigma_odd(n)``
+        (Hurwitz), computed from the factorization of ``n`` without listing
+        them.  The count for ``n = 0`` is 1.
+
+            >>> [Hu.count_of_norm(n) for n in range(1, 8)]
+            [24, 24, 96, 24, 144, 96, 192]
+            >>> Hu.count_of_norm(2 ** 40)
+            24
+            >>> Hu.count_of_norm(10 ** 18)          # 24 * (5**19 - 1) / 4
+            114440917968744
+        """
+        if isinstance(n, bool) or not isinstance(n, numbers.Integral):
+            raise TypeError(f"n must be an int, not {type(n).__name__}")
+        n = int(n)
+        if n < 0:
+            raise ValueError(f"n must be non-negative, not {n}")
+        if n == 0:
+            return 1
+        total = 24
+        for p, e in factorint(n, method="auto").items():
+            if p != 2:
+                total *= (p ** (e + 1) - 1) // (p - 1)
+        return total
+
+    @classmethod
+    def primes_of_norm(cls, p: int, associates: bool = False) -> list:
+        """The Hurwitz primes of norm ``p``, for a rational prime ``p``.
+
+        By default one representative of each class of right associates
+        (a canonical one, see :meth:`canonical_associate`): there are
+        ``p + 1`` classes for odd ``p`` and a single class for ``p = 2``.
+        With ``associates=True`` all ``24 * (p + 1)`` (or 24) primes of that
+        norm are returned.  The work grows roughly like ``p``.
+
+            >>> [len(Hu.primes_of_norm(p)) for p in (2, 3, 5, 7)]
+            [1, 4, 6, 8]
+            >>> [len(Hu.primes_of_norm(p, associates=True)) for p in (2, 3, 5)]
+            [24, 96, 144]
+        """
+        if not is_probable_prime(p):
+            raise ValueError(f"{p} is not a prime")
+        every = cls.of_norm(p)
+        if associates:
+            return every
+        reps = {h.canonical_associate("right").doubled: h.canonical_associate("right")
+                for h in every}
+        return [reps[key] for key in sorted(reps)]
+
+    @classmethod
+    def _lipschitz_prime(cls, p: int) -> "Hu":
+        """A prime of norm ``p`` with integer coordinates."""
+        if p == 2:
+            return cls(1, 1, 0, 0)
+        # x^2 + y^2 + 1 = 0 (mod p) has a solution; alpha = x + y*i + j is
+        # primitive with p dividing its norm, so gcld(alpha, p) has norm p
+        x = 0
+        while True:
+            t = (-1 - x * x) % p
+            if t == 0 or pow(t, (p - 1) // 2, p) == 1:
+                y = sqrt_mod_prime(t, p)
+                break
+            x += 1
+        pi = cls(x, y, 1, 0).gcld(p)
+        assert pi.norm() == p
+        for u in _unit_values():
+            if (pi * u).is_lipschitz():
+                return pi * u
+        raise AssertionError("no unit makes the prime Lipschitz")  # pragma: no cover
+
+    @classmethod
+    def with_norm(cls, n: int) -> "Hu":
+        """A Hurwitz integer with integer coordinates and norm ``n >= 0``.
+
+        This is Lagrange's four-square theorem: the four coordinates are
+        integers whose squares add up to ``n``.  It is built from primes: a
+        prime ``p`` gets ``gcld(x + y*i + j, p)`` where
+        ``x**2 + y**2 + 1 = 0 (mod p)``, and the answers are multiplied
+        together, since norms multiply.  The cost is that of factoring ``n``.
+
+            >>> h = Hu.with_norm(2026)
+            >>> h.norm(), h.is_lipschitz()
+            (2026, True)
+        """
+        if isinstance(n, bool) or not isinstance(n, numbers.Integral):
+            raise TypeError(f"n must be an int, not {type(n).__name__}")
+        n = int(n)
+        if n < 0:
+            raise ValueError(f"n must be non-negative, not {n}")
+        result = cls(1) if n else cls(0)
+        if n:
+            for p, e in factorint(n, method="auto").items():
+                pi = cls._lipschitz_prime(p)
+                for _ in range(e):
+                    result = result * pi
+        return result
+
+    @classmethod
+    def four_squares(cls, n: int) -> tuple:
+        """Non-negative integers ``(a, b, c, d)``, in decreasing order, with
+        ``a**2 + b**2 + c**2 + d**2 == n``.
+
+            >>> Hu.four_squares(310)
+            (13, 10, 5, 4)
+            >>> a, b, c, d = Hu.four_squares(10 ** 30 + 7)
+            >>> a * a + b * b + c * c + d * d == 10 ** 30 + 7
+            True
+        """
+        h = cls.with_norm(n)
+        return tuple(sorted((abs(x) // 2 for x in h.doubled), reverse=True))
 
 
 class HuFactorization(NamedTuple):

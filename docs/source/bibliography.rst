@@ -236,3 +236,50 @@ associativity fails -- background for ``hyprat``'s
   2x2-quaternionic-block pattern for computing octonion products by
   hand, which extends verbatim to every level of the Cayley-Dickson
   tower as a computational mnemonic.
+
+
+Hurwitz Quaternions, Factorization and Sums of Four Squares
+-------------------------------------------------------------
+
+Sources behind ``hyprat``'s ``Hu`` class: the number theory of the
+Hurwitz integers, the classical theorem on sums of four squares, and
+the integer-factoring algorithms that its ``factor()`` method relies
+on. Conway and Smith's *On Quaternions and Octonions* and Voight's
+*Quaternion Algebras*, both listed above, are the main references for
+the Euclidean algorithm, the prime factorization theorem, and the count
+of :math:`24\,\sigma_{\mathrm{odd}}(n)` Hurwitz integers of norm
+:math:`n`.
+
+* Adolf Hurwitz, *Vorlesungen über die Zahlentheorie der Quaternionen*,
+  Springer, Berlin, 1919. The book in which the integers now named for
+  Hurwitz are developed, with unique factorization into primes (up to
+  the order-and-unit ambiguity that Conway and Smith later made
+  precise) and a quaternionic proof of Lagrange's four-square theorem.
+
+* G. H. Hardy and E. M. Wright, *An Introduction to the Theory of
+  Numbers*, Oxford University Press, many editions, Chapter XX ("The
+  Representation of Numbers by Sums of Squares"). The classical
+  treatment of Lagrange's and Jacobi's four-square theorems, including
+  Hurwitz's proof using integral quaternions.
+
+* J. M. Pollard, "A Monte Carlo method for factorization", *BIT*
+  **15** (1975), 331-334. The original rho method.
+
+* Richard P. Brent, `"An improved Monte Carlo factorization algorithm"
+  <https://maths-people.anu.edu.au/~brent/pub/pub051.html>`_, *BIT*
+  **20** (1980), 176-184. The cycle-finding and gcd-batching refinement
+  of Pollard's method that ``hyprat.intfactor`` uses.
+
+* Robert Baillie and Samuel S. Wagstaff, Jr., `"Lucas pseudoprimes"
+  <https://www.ams.org/mcom/1980-35-152/S0025-5718-1980-0583518-6/>`_,
+  *Mathematics of Computation* **35** (1980). Introduces the strong
+  Lucas test that, together with a strong Fermat test to base 2, forms
+  the Baillie-PSW primality test; no composite number is known to pass
+  it.
+
+* Jonathan Sorenson and Jonathan Webster, `"Strong pseudoprimes to
+  twelve prime bases" <https://arxiv.org/abs/1509.00864>`_,
+  *Mathematics of Computation* **86** (2017). Shows that the
+  Miller-Rabin test to the first thirteen prime bases is deterministic
+  for all :math:`n < 3317044064679887385961981`, the bound used by
+  ``is_probable_prime``.
