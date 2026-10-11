@@ -1,0 +1,14 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hypercomplex.py</file>
+  <line>1878</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hypercomplex.py" />
+  <problem_class id="GrazieInspection" severity="GRAMMAR_ERROR" attribute_key="GRAMMAR_ERROR">Grammar</problem_class>
+  <description>Commas should not be placed before a closing parenthesis. Either move the comma outside of the parentheses, or remove it altogether.</description>
+  <highlighted_element>1,)</highlighted_element>
+  <language>Python</language>
+  <offset>48</offset>
+  <length>3</length>
+</problem>
+</problems>
