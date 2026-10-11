@@ -1327,8 +1327,8 @@ class Hy:
         The last two are mutually exclusive.  ``nan`` and ``inf`` raise
         ``ValueError``.
 
-            >>> import numpy as np, quaternion  # doctest: +SKIP
-            >>> Hy.from_numpy_quaternion(np.quaternion(1.5, -0.25, 3, 0.1))  # doctest: +SKIP
+            >>> import quaternion  # doctest: +SKIP
+            >>> Hy.from_numpy_quaternion(quaternion.quaternion(1.5, -0.25, 3, 0.1))  # doctest: +SKIP
             Hy(Hy('3/2', '-1/4'), Hy('3', '1/10'))
         """
         if getattr(q, "ndim", 0) != 0:

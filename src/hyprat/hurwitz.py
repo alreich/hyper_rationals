@@ -141,7 +141,7 @@ from itertools import product
 import math
 import numbers
 import re
-from typing import Any, Iterable, Iterator, NamedTuple, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, Iterator, List, NamedTuple, Optional, Sequence, Tuple
 
 from .hypercomplex import Hy, _DEFAULT_MU
 from .intfactor import factorint, is_probable_prime, sqrt_mod_prime
@@ -372,7 +372,7 @@ class Hu:
         ``Hy.is_hurwitz``): a rank-1 value ``a + b*j`` is read as the
         quaternion ``a + b*i``, a value of higher rank must have zero
         coordinates beyond the first four, and the coordinates must be
-        all integers or all halves of odd integers.  Otherwise
+        all integers or all halves of odd integers.  Otherwise,
         ``ValueError``; a non-``Hy`` raises ``TypeError``.
 
             >>> Hu.from_hy(Hy(Hy('1/2', '1/2'), Hy('1/2', '-3/2')))
@@ -416,7 +416,7 @@ class Hu:
     def doubled(self) -> tuple:
         """The stored coordinates ``(A, B, C, D)``, all ints of the same
         parity, with ``value == (A + B*i + C*j + D*k) / 2``."""
-        return (self._a, self._b, self._c, self._d)
+        return self._a, self._b, self._c, self._d
 
     @property
     def coords(self) -> tuple:
@@ -481,7 +481,7 @@ class Hu:
         raise AttributeError(f"{type(self).__name__} is immutable")
 
     def __reduce__(self) -> Any:
-        return (_rebuild, (type(self),) + self.doubled)
+        return _rebuild, (type(self),) + self.doubled
 
     def __copy__(self) -> "Hu":
         return self
@@ -1004,7 +1004,7 @@ class Hu:
             raise ValueError("zero has no content")
         g = math.gcd(math.gcd(self._a, self._b), math.gcd(self._c, self._d))
         # g divides every doubled coordinate.  The quotients have a common
-        # parity unless g is even and they are mixed; then g/2 works.
+        # parity unless g is even, and they are mixed; then g/2 works.
         if g % 2 == 0 and any((x // g) % 2 == 0 for x in self.doubled):
             g //= 2
         return g
@@ -1112,7 +1112,7 @@ class Hu:
         bound = math.isqrt(four_n)
         found = []
         for parity in (0, 1):
-            by_sum = {}
+            by_sum: Dict[int, List[Tuple[int, int]]] = {}
             for x in range(-bound, bound + 1):
                 if x % 2 != parity:
                     continue
@@ -1121,7 +1121,7 @@ class Hu:
                     if y % 2 == parity:
                         by_sum.setdefault(x * x + y * y, []).append((x, y))
             for total, pairs in by_sum.items():
-                partners = by_sum.get(four_n - total)
+                partners = by_sum.get(four_n - total, [])
                 if partners:
                     for a, b in pairs:
                         for c, d in partners:
@@ -1162,7 +1162,7 @@ class Hu:
     def primes_of_norm(cls, p: int, associates: bool = False) -> list:
         """The Hurwitz primes of norm ``p``, for a rational prime ``p``.
 
-        By default one representative of each class of right associates
+        By default, one representative of each class of right associates
         (a canonical one, see :meth:`canonical_associate`): there are
         ``p + 1`` classes for odd ``p`` and a single class for ``p = 2``.
         With ``associates=True`` all ``24 * (p + 1)`` (or 24) primes of that
