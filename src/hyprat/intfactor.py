@@ -135,7 +135,7 @@ def is_probable_prime(n: int) -> bool:
     The answer is certain for ``n < 3.3e24``.  Beyond that it is the
     Baillie-PSW test, which has no known counterexample.
 
-    >>> [n for n in range(30) if is_probable_prime(n)]
+    >>> [k for k in range(30) if is_probable_prime(k)]
     [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]
     >>> is_probable_prime(3215031751)        # a strong pseudoprime to 2, 3, 5, 7
     False
@@ -263,8 +263,8 @@ def sqrt_mod_prime(a: int, p: int) -> int:
     Raises ``ValueError`` if ``a`` is not a square modulo ``p``.  The caller
     is responsible for ``p`` being an odd prime.
 
-    >>> r = sqrt_mod_prime(10, 13)
-    >>> r * r % 13
+    >>> root = sqrt_mod_prime(10, 13)
+    >>> root * root % 13
     10
     """
     a %= p

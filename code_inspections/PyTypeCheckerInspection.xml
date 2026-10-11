@@ -1,0 +1,74 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hurwitz.py</file>
+  <line>394</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hurwitz.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'Hy', got 'Literal[1, &quot;1+2i&quot;] | Fraction | float | None | list[int] | complex | int' instead</description>
+  <highlighted_element>bad</highlighted_element>
+  <language>Python</language>
+  <offset>27</offset>
+  <length>3</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hurwitz.py</file>
+  <line>848</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hurwitz.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'Hu' (matched generic type '_KT'), got 'Literal[5]' instead</description>
+  <highlighted_element>5</highlighted_element>
+  <language>Python</language>
+  <offset>27</offset>
+  <length>1</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hurwitz.py</file>
+  <line>912</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hurwitz.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'int', got 'Hu' instead</description>
+  <highlighted_element>x</highlighted_element>
+  <language>Python</language>
+  <offset>16</offset>
+  <length>1</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hurwitz.py</file>
+  <line>944</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hurwitz.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'int', got 'Hu' instead</description>
+  <highlighted_element>Hu(1)</highlighted_element>
+  <language>Python</language>
+  <offset>12</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hurwitz.py</file>
+  <line>949</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hurwitz.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>No signature matches the arguments. Argument types: (Hu). Expected one of: (x: str | Buffer | SupportsInt | SupportsIndex | SupportsTrunc), (x: str | Buffer | SupportsFloat | SupportsIndex), (real: complex | float | int | SupportsComplex | SupportsFloat | SupportsIndex), (real: str | SupportsComplex | SupportsFloat | SupportsIndex | complex | float | int)</description>
+  <highlighted_element>Hu(1)</highlighted_element>
+  <language>Python</language>
+  <offset>21</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/tests/test_hurwitz.py</file>
+  <line>1500</line>
+  <module>hyprat</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/tests/test_hurwitz.py" />
+  <problem_class id="PyTypeCheckerInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Incorrect type</problem_class>
+  <description>Expected type 'Iterable[int] | None', got 'list[Literal[2, 3, &quot;5&quot;]]' instead</description>
+  <highlighted_element>order=[2, 3, &quot;5&quot;]</highlighted_element>
+  <language>Python</language>
+  <offset>21</offset>
+  <length>17</length>
+</problem>
+</problems>

@@ -17,8 +17,9 @@ See :mod:`hyprat.hypercomplex` and :mod:`hyprat.hurwitz` for the full
 implementation and API documentation.
 """
 
+from . import intfactor
 from .hypercomplex import Hy
 from .hurwitz import Hu
 
-__all__ = ["Hy", "Hu"]
+__all__ = ["Hy", "Hu", "intfactor"]
 __version__ = "0.1.0"

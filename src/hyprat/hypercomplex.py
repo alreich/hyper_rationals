@@ -1057,13 +1057,13 @@ class Hy:
 
         Examples
         --------
-            >>> import numpy as np  # doctest: +SKIP
+            >>> import numpy  # doctest: +SKIP
             >>> Hy('2', '3').to_matrix()  # doctest: +SKIP
             array([[Fraction(2, 1), Fraction(-3, 1)],
                    [Fraction(3, 1), Fraction(2, 1)]], dtype=object)
             >>> x, y = Hy.random(2), Hy.random(2)  # doctest: +SKIP
-            >>> np.array_equal(  # doctest: +SKIP
-            ...     np.dot(x.to_matrix(), y.to_matrix()), (x * y).to_matrix()
+            >>> numpy.array_equal(  # doctest: +SKIP
+            ...     numpy.dot(x.to_matrix(), y.to_matrix()), (x * y).to_matrix()
             ... )
             True
 

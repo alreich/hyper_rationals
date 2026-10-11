@@ -143,12 +143,15 @@ import numbers
 import re
 from typing import Any, Dict, Iterable, Iterator, List, NamedTuple, Optional, Sequence, Tuple
 
-from .hypercomplex import Hy, _DEFAULT_MU
+from .hypercomplex import Hy
 from .intfactor import factorint, is_probable_prime, sqrt_mod_prime
 
 __all__ = ["Hu", "HuFactorization"]
 
 _Quad = Tuple[int, int, int, int]
+
+# The sign of the classical (Hamilton) Cayley-Dickson doubling.
+_CLASSICAL = Fraction(-1)
 
 
 # ---------------------------------------------------------------------------
@@ -193,7 +196,7 @@ def _show(x2: int) -> str:
 def _why_not_quaternion(h: Hy) -> str:
     """Why a ``Hy`` is outside the classical quaternion subalgebra."""
     signs = h.signs
-    if signs[0] != _DEFAULT_MU or (h.rank >= 2 and signs[1] != _DEFAULT_MU):
+    if signs[0] != _CLASSICAL or (h.rank >= 2 and signs[1] != _CLASSICAL):
         return ("its two lowest doubling levels do not both have mu = -1, "
                 "so it is not in the classical quaternions")
     return ("it has nonzero coordinates beyond the first four, so it is "
@@ -386,6 +389,7 @@ class Hu:
         """
         if not isinstance(h, Hy):
             raise TypeError(f"from_hy() expects a Hy, not {type(h).__name__}")
+        # noinspection PyProtectedMember
         coords = h._hamilton_coords()
         if coords is None:
             raise ValueError(f"not a Hurwitz integer: {_why_not_quaternion(h)}")
@@ -652,7 +656,7 @@ class Hu:
 
             >>> list(Hu.units())[:8]
             ['1', '-1', 'i', '-i', 'j', '-j', 'k', '-k']
-            >>> len(Hu.units()), all(u.is_unit() for u in Hu.units().values())
+            >>> len(Hu.units()), all(unit.is_unit() for unit in Hu.units().values())
             (24, True)
             >>> Hu.units()['1/2-1/2i-1/2j+1/2k']
             Hu('1/2', '-1/2', '-1/2', '1/2')
@@ -728,8 +732,8 @@ class Hu:
         divisor of ``self``).  Raises ``ValueError`` if there is none and
         ``ZeroDivisionError`` for a zero divisor.
 
-            >>> a, g = Hu(1, 2, 3, 4), Hu(1, 1, 1, 0)
-            >>> (g * a).div_exact_left(g) == a
+            >>> a, d = Hu(1, 2, 3, 4), Hu(1, 1, 1, 0)
+            >>> (d * a).div_exact_left(d) == a
             True
             >>> a.div_exact_left(Hu(2))
             Traceback (most recent call last):
@@ -791,13 +795,13 @@ class Hu:
         half-integer point, and a coordinate exactly halfway rounds up).
         Raises ``ZeroDivisionError`` for a zero divisor.
 
-            >>> a, b = Hu(1, 2, 3, 5), Hu(1, 1, 1, 0)
-            >>> q, r = a.divmod_left(b)
-            >>> q, r
+            >>> a, d = Hu(1, 2, 3, 5), Hu(1, 1, 1, 0)
+            >>> quo, rem = a.divmod_left(d)
+            >>> quo, rem
             (Hu(2, -1, 2, 1), Hu(0, 0, 0, 1))
-            >>> b * q + r == a
+            >>> d * quo + rem == a
             True
-            >>> 2 * r.norm() <= b.norm()
+            >>> 2 * rem.norm() <= d.norm()
             True
         """
         b = self._operand(divisor, "divisor")
@@ -813,11 +817,11 @@ class Hu:
         quotient.  See :meth:`divmod_left` for what is chosen when the pair
         is not unique.  Raises ``ZeroDivisionError`` for a zero divisor.
 
-            >>> a, b = Hu(1, 2, 3, 5), Hu(1, 1, 1, 0)
-            >>> q, r = a.divmod_right(b)
-            >>> q, r
+            >>> a, d = Hu(1, 2, 3, 5), Hu(1, 1, 1, 0)
+            >>> quo, rem = a.divmod_right(d)
+            >>> quo, rem
             (Hu(2, 2, -1, 2), Hu(0, 0, 0, 0))
-            >>> q * b + r == a
+            >>> quo * d + rem == a
             True
         """
         b = self._operand(divisor, "divisor")
@@ -902,11 +906,11 @@ class Hu:
         ``g.canonical_associate("right")``.  ``g`` is 0 only when both
         values are 0.
 
-            >>> a, b = Hu(-2, 1, 3, 3), Hu(3, -3, -1, -3)    # norms 23 and 28
-            >>> g, x, y = a.xgcld(b)
+            >>> a, d = Hu(-2, 1, 3, 3), Hu(3, -3, -1, -3)    # norms 23 and 28
+            >>> g, x, y = a.xgcld(d)
             >>> g, x, y
             (Hu(1, 0, 0, 0), Hu(0, -1, -1, -1), Hu(0, -1, 0, -1))
-            >>> a * x + b * y == g
+            >>> a * x + d * y == g
             True
         """
         b = self._operand(other, "other value")
@@ -1044,12 +1048,12 @@ class Hu:
         returned as :attr:`HuFactorization.content`.  Zero cannot be factored.
 
             >>> f = Hu(1, 2, 3, 4).factor()          # norm 30 = 2 * 3 * 5
-            >>> [p.norm() for p in f.factors]
+            >>> [fac.norm() for fac in f.factors]
             [2, 3, 5]
             >>> f.product() == Hu(1, 2, 3, 4)
             True
             >>> g = Hu(1, 2, 3, 4).factor(order=[5, 3, 2])
-            >>> [p.norm() for p in g.factors]
+            >>> [fac.norm() for fac in g.factors]
             [5, 3, 2]
             >>> g.product() == Hu(1, 2, 3, 4)
             True
@@ -1138,7 +1142,7 @@ class Hu:
         (Hurwitz), computed from the factorization of ``n`` without listing
         them.  The count for ``n = 0`` is 1.
 
-            >>> [Hu.count_of_norm(n) for n in range(1, 8)]
+            >>> [Hu.count_of_norm(k) for k in range(1, 8)]
             [24, 24, 96, 24, 144, 96, 192]
             >>> Hu.count_of_norm(2 ** 40)
             24
@@ -1168,9 +1172,9 @@ class Hu:
         With ``associates=True`` all ``24 * (p + 1)`` (or 24) primes of that
         norm are returned.  The work grows roughly like ``p``.
 
-            >>> [len(Hu.primes_of_norm(p)) for p in (2, 3, 5, 7)]
+            >>> [len(Hu.primes_of_norm(prime)) for prime in (2, 3, 5, 7)]
             [1, 4, 6, 8]
-            >>> [len(Hu.primes_of_norm(p, associates=True)) for p in (2, 3, 5)]
+            >>> [len(Hu.primes_of_norm(prime, associates=True)) for prime in (2, 3, 5)]
             [24, 96, 144]
         """
         if not is_probable_prime(p):
