@@ -820,7 +820,7 @@ class Hy:
         lo: int = -9,
         hi: int = 9,
         dmax: int = 6,
-        rng: "random.Random | None" = None,
+        rng: Optional[random.Random] = None,
         seed=None,
     ) -> "Hy":
         """A random rank-``rank`` Hy.

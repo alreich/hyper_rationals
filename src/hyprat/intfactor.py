@@ -29,6 +29,7 @@ module provides what is needed and nothing more:
 """
 
 import math
+from typing import Callable, Optional
 
 __all__ = ["is_probable_prime", "factorint", "primes_upto", "sqrt_mod_prime"]
 
@@ -203,7 +204,7 @@ def _factor_rec(n: int, out: dict) -> None:
     _factor_rec(n // factor, out)
 
 
-def _sympy_factorint():
+def _sympy_factorint() -> Optional[Callable[[int], dict]]:
     """``sympy.factorint``, or ``None`` if sympy is not installed."""
     try:
         from sympy import factorint

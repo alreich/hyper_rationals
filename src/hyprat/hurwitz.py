@@ -141,19 +141,21 @@ from itertools import product
 import math
 import numbers
 import re
-from typing import NamedTuple
+from typing import Any, Iterable, Iterator, NamedTuple, Optional, Sequence, Tuple
 
-from .hypercomplex import Hy, _flatten, _DEFAULT_MU
+from .hypercomplex import Hy, _DEFAULT_MU
 from .intfactor import factorint, is_probable_prime, sqrt_mod_prime
 
 __all__ = ["Hu", "HuFactorization"]
+
+_Quad = Tuple[int, int, int, int]
 
 
 # ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------
 
-def _double(v, what="coordinate") -> int:
+def _double(v: Any, what: str = "coordinate") -> int:
     """``2*v`` as an int, for ``v`` an integer or a half-integer given as an
     int, ``Fraction``, float or string; ``ValueError``/``TypeError``
     otherwise."""
@@ -201,7 +203,7 @@ def _why_not_quaternion(h: Hy) -> str:
 _TERM_RE = re.compile(r"^([+-]?)(\d+(?:\.\d+|/\d+)?)?([ijk])?$")
 
 
-def _parse_coords(text: str):
+def _parse_coords(text: str) -> Tuple[Fraction, Fraction, Fraction, Fraction]:
     """Read ``'1+2i-j+3/2k'``-style quaternion text into four Fractions."""
     s = text.strip()
     if s.startswith("(") and s.endswith(")"):
@@ -230,7 +232,7 @@ def _parse_coords(text: str):
     return coeffs[""], coeffs["i"], coeffs["j"], coeffs["k"]
 
 
-def _rebuild(cls, a, b, c, d):
+def _rebuild(cls: Any, a: int, b: int, c: int, d: int) -> "Hu":
     """Unpickling helper: rebuild from already-valid doubled coordinates."""
     return cls._raw(a, b, c, d)
 
@@ -238,7 +240,7 @@ def _rebuild(cls, a, b, c, d):
 _UNIT_CACHE: list = []
 
 
-def _unit_values():
+def _unit_values() -> Tuple["Hu", ...]:
     """The 24 units as a tuple of ``Hu`` (built once)."""
     if not _UNIT_CACHE:
         _UNIT_CACHE.append(tuple(Hu.units().values()))
@@ -289,7 +291,8 @@ class Hu:
     # ---------------------------------------------------------------- #
     # construction
     # ---------------------------------------------------------------- #
-    def __new__(cls, a=0, b=None, c=None, d=None):
+    def __new__(cls, a: Any = 0, b: Any = None, c: Any = None,
+                d: Any = None) -> "Hu":
         if b is None and c is None and d is None:
             if type(a) is cls:
                 return a
@@ -299,14 +302,14 @@ class Hu:
                 return cls.parse(a)
             if isinstance(a, Hy):
                 return cls.from_hy(a)
-            coords = (a, 0, 0, 0)
+            coords: tuple = (a, 0, 0, 0)
         else:
             coords = tuple(0 if v is None else v for v in (a, b, c, d))
         doubled = tuple(_double(v) for v in coords)
         return cls.from_doubled(*doubled)
 
     @classmethod
-    def _raw(cls, a2, b2, c2, d2):
+    def _raw(cls, a2: int, b2: int, c2: int, d2: int) -> "Hu":
         """Build from doubled coordinates already known to be valid."""
         self = object.__new__(cls)
         object.__setattr__(self, "_a", a2)
@@ -316,7 +319,7 @@ class Hu:
         return self
 
     @classmethod
-    def from_doubled(cls, a2, b2, c2, d2) -> "Hu":
+    def from_doubled(cls, a2: int, b2: int, c2: int, d2: int) -> "Hu":
         """Build the value ``(a2 + b2*i + c2*j + d2*k) / 2`` from four ints
         of equal parity -- the way a ``Hu`` stores itself.
 
@@ -362,7 +365,7 @@ class Hu:
     from_string = parse
 
     @classmethod
-    def from_hy(cls, h) -> "Hu":
+    def from_hy(cls, h: Hy) -> "Hu":
         """Convert a ``Hy`` whose value is a Hurwitz integer, exactly.
 
         The value must lie in the classical quaternion subalgebra (see
@@ -440,10 +443,10 @@ class Hu:
         """The coordinate of ``k``."""
         return Fraction(self._d, 2)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Fraction]:
         return iter(self.coords)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: Any) -> Any:
         return self.coords[index]
 
     def is_lipschitz(self) -> bool:
@@ -471,22 +474,22 @@ class Hu:
     # ---------------------------------------------------------------- #
     # immutability, copying, hashing, comparison
     # ---------------------------------------------------------------- #
-    def __setattr__(self, name, value):
+    def __setattr__(self, name: str, value: Any) -> None:
         raise AttributeError(f"{type(self).__name__} is immutable")
 
-    def __delattr__(self, name):
+    def __delattr__(self, name: str) -> None:
         raise AttributeError(f"{type(self).__name__} is immutable")
 
-    def __reduce__(self):
+    def __reduce__(self) -> Any:
         return (_rebuild, (type(self),) + self.doubled)
 
-    def __copy__(self):
+    def __copy__(self) -> "Hu":
         return self
 
-    def __deepcopy__(self, memo):
+    def __deepcopy__(self, memo: Any) -> "Hu":
         return self
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, Hu):
             return self.doubled == other.doubled
         if isinstance(other, numbers.Integral):
@@ -496,7 +499,7 @@ class Hu:
             return self._b == self._c == self._d == 0 and Fraction(self._a, 2) == other
         return NotImplemented
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         if self._b == self._c == self._d == 0:
             return hash(self._a // 2)          # same as hash(int), as == requires
         return hash(self.doubled)
@@ -508,7 +511,7 @@ class Hu:
     # ring arithmetic
     # ---------------------------------------------------------------- #
     @staticmethod
-    def _coerce(other):
+    def _coerce(other: Any) -> Optional["Hu"]:
         """``other`` as a ``Hu`` if it is one or an integer, else None."""
         if isinstance(other, Hu):
             return other
@@ -518,13 +521,13 @@ class Hu:
             return Hu._raw(2 * int(other), 0, 0, 0)
         return None
 
-    def __neg__(self):
+    def __neg__(self) -> "Hu":
         return self._raw(-self._a, -self._b, -self._c, -self._d)
 
-    def __pos__(self):
+    def __pos__(self) -> "Hu":
         return self
 
-    def __add__(self, other):
+    def __add__(self, other: Any) -> Any:
         o = self._coerce(other)
         if o is None:
             return NotImplemented
@@ -533,21 +536,21 @@ class Hu:
 
     __radd__ = __add__
 
-    def __sub__(self, other):
+    def __sub__(self, other: Any) -> Any:
         o = self._coerce(other)
         if o is None:
             return NotImplemented
         return self._raw(self._a - o._a, self._b - o._b,
                          self._c - o._c, self._d - o._d)
 
-    def __rsub__(self, other):
+    def __rsub__(self, other: Any) -> Any:
         o = self._coerce(other)
         if o is None:
             return NotImplemented
         return o.__sub__(self)
 
     @staticmethod
-    def _product(x, y):
+    def _product(x: _Quad, y: _Quad) -> _Quad:
         """Hamilton product of two doubled-coordinate 4-tuples, giving the
         doubled coordinates of the product (always an exact integer)."""
         a0, a1, a2, a3 = x
@@ -559,7 +562,7 @@ class Hu:
             (a0 * b3 + a1 * b2 - a2 * b1 + a3 * b0) // 2,
         )
 
-    def __mul__(self, other):
+    def __mul__(self, other: Any) -> Any:
         if isinstance(other, numbers.Integral):
             n = int(other)
             return self._raw(self._a * n, self._b * n, self._c * n, self._d * n)
@@ -568,13 +571,13 @@ class Hu:
             return NotImplemented
         return self._raw(*self._product(self.doubled, o.doubled))
 
-    def __rmul__(self, other):
+    def __rmul__(self, other: Any) -> Any:
         o = self._coerce(other)
         if o is None:
             return NotImplemented
         return self._raw(*self._product(o.doubled, self.doubled))
 
-    def __pow__(self, exponent, modulus=None):
+    def __pow__(self, exponent: Any, modulus: Any = None) -> Any:
         if modulus is not None or not isinstance(exponent, numbers.Integral):
             return NotImplemented
         n = int(exponent)
@@ -674,7 +677,7 @@ class Hu:
     # Hurwitz integer x (g stands on the left of the product), and "g is
     # a RIGHT divisor of a" means a = x*g.
     # ---------------------------------------------------------------- #
-    def _operand(self, other, role):
+    def _operand(self, other: Any, role: str) -> "Hu":
         o = self._coerce(other)
         if o is None:
             raise TypeError(
@@ -683,7 +686,7 @@ class Hu:
             )
         return o
 
-    def _exact(self, divisor, left):
+    def _exact(self, divisor: Any, left: bool) -> Optional["Hu"]:
         """``x`` with ``self == divisor*x`` (``left`` true) or ``self ==
         x*divisor`` (``left`` false), or None if there is no such Hurwitz
         integer.  ``divisor`` must be a nonzero ``Hu``."""
@@ -696,7 +699,7 @@ class Hu:
             return None
         return self._raw(*quotient)
 
-    def left_divides(self, other) -> bool:
+    def left_divides(self, other: Any) -> bool:
         """True iff this value is a *left divisor* of ``other``: ``other ==
         self * x`` for some Hurwitz integer ``x``.  Zero divides only zero.
 
@@ -711,7 +714,7 @@ class Hu:
             return not o
         return o._exact(self, left=True) is not None
 
-    def right_divides(self, other) -> bool:
+    def right_divides(self, other: Any) -> bool:
         """True iff this value is a *right divisor* of ``other``: ``other ==
         x * self`` for some Hurwitz integer ``x``.  Zero divides only zero.
         """
@@ -720,7 +723,7 @@ class Hu:
             return not o
         return o._exact(self, left=False) is not None
 
-    def div_exact_left(self, divisor) -> "Hu":
+    def div_exact_left(self, divisor: Any) -> "Hu":
         """The ``x`` with ``self == divisor * x`` (``divisor`` is a left
         divisor of ``self``).  Raises ``ValueError`` if there is none and
         ``ZeroDivisionError`` for a zero divisor.
@@ -741,7 +744,7 @@ class Hu:
             raise ValueError(f"{g} is not a left divisor of {self}")
         return x
 
-    def div_exact_right(self, divisor) -> "Hu":
+    def div_exact_right(self, divisor: Any) -> "Hu":
         """The ``x`` with ``self == x * divisor`` (``divisor`` is a right
         divisor of ``self``).  Raises ``ValueError`` if there is none and
         ``ZeroDivisionError`` for a zero divisor.
@@ -758,7 +761,7 @@ class Hu:
     # division with remainder
     # ---------------------------------------------------------------- #
     @staticmethod
-    def _nearest_hurwitz(n2, norm):
+    def _nearest_hurwitz(n2: Sequence[int], norm: int) -> Tuple[int, ...]:
         """Doubled coordinates of a Hurwitz integer nearest to the rational
         point ``t`` with ``t[i] = n2[i] / (2 * norm)``, using integer
         arithmetic only.
@@ -776,7 +779,7 @@ class Hu:
         d_half = sum((x - norm * c) ** 2 for x, c in zip(n2, half))
         return lip if d_lip <= d_half else half
 
-    def divmod_left(self, divisor):
+    def divmod_left(self, divisor: Any) -> Tuple["Hu", "Hu"]:
         """``(q, r)`` with ``self == divisor * q + r`` and ``2 * r.norm()
         <= divisor.norm()``: the divisor stands on the left of the
         quotient.  The quotient is the Hurwitz integer nearest to the
@@ -804,7 +807,7 @@ class Hu:
         q = self._raw(*self._nearest_hurwitz(n.doubled, b.norm()))
         return q, self - b * q
 
-    def divmod_right(self, divisor):
+    def divmod_right(self, divisor: Any) -> Tuple["Hu", "Hu"]:
         """``(q, r)`` with ``self == q * divisor + r`` and ``2 * r.norm()
         <= divisor.norm()``: the divisor stands on the right of the
         quotient.  See :meth:`divmod_left` for what is chosen when the pair
@@ -830,7 +833,7 @@ class Hu:
     # u*a is a LEFT associate of a (unit on the left), a*u a RIGHT
     # associate (unit on the right); every nonzero value has 24 of each.
     # ---------------------------------------------------------------- #
-    def is_left_associate(self, other) -> bool:
+    def is_left_associate(self, other: Any) -> bool:
         """True iff ``other == u * self`` for a unit ``u`` (the unit stands
         on the left).  Zero is an associate only of zero.
 
@@ -846,7 +849,7 @@ class Hu:
         return (bool(o) and o.norm() == self.norm()
                 and o._exact(self, left=False) is not None)
 
-    def is_right_associate(self, other) -> bool:
+    def is_right_associate(self, other: Any) -> bool:
         """True iff ``other == self * u`` for a unit ``u`` (the unit stands
         on the right).  Zero is an associate only of zero."""
         o = self._operand(other, "other value")
@@ -887,7 +890,7 @@ class Hu:
     # ---------------------------------------------------------------- #
     # greatest common divisors (Euclid's algorithm on each side)
     # ---------------------------------------------------------------- #
-    def xgcld(self, other):
+    def xgcld(self, other: Any) -> Tuple["Hu", "Hu", "Hu"]:
         """``(g, x, y)`` with ``g`` the greatest common *left* divisor of
         ``self`` and ``other`` -- ``self == g * a'`` and ``other == g * b'``
         -- and Bezout coefficients on the right: ``g == self * x + other *
@@ -919,7 +922,7 @@ class Hu:
             r0, s0, t0 = r0 * unit, s0 * unit, t0 * unit
         return r0, s0, t0
 
-    def xgcrd(self, other):
+    def xgcrd(self, other: Any) -> Tuple["Hu", "Hu", "Hu"]:
         """``(g, x, y)`` with ``g`` the greatest common *right* divisor of
         ``self`` and ``other`` -- ``self == a' * g`` and ``other == b' * g``
         -- and Bezout coefficients on the left: ``g == x * self + y *
@@ -942,7 +945,7 @@ class Hu:
             r0, s0, t0 = unit * r0, unit * s0, unit * t0
         return r0, s0, t0
 
-    def gcld(self, other) -> "Hu":
+    def gcld(self, other: Any) -> "Hu":
         """The greatest common left divisor of ``self`` and ``other``, in
         its canonical form (see :meth:`xgcld`).
 
@@ -954,7 +957,7 @@ class Hu:
         """
         return self.xgcld(other)[0]
 
-    def gcrd(self, other) -> "Hu":
+    def gcrd(self, other: Any) -> "Hu":
         """The greatest common right divisor of ``self`` and ``other``, in
         its canonical form (see :meth:`xgcrd`).
 
@@ -1020,7 +1023,7 @@ class Hu:
         """Whether ``self`` is nonzero with :meth:`content` 1."""
         return bool(self) and self.content() == 1
 
-    def factor(self, order=None) -> "HuFactorization":
+    def factor(self, order: Optional[Iterable[int]] = None) -> "HuFactorization":
         """Factor ``self`` into Hurwitz primes (Conway and Smith).
 
         Write ``self = m * q`` with ``m = content`` and ``q`` primitive.
@@ -1270,7 +1273,7 @@ class HuFactorization(NamedTuple):
         """The norms of the factors, in order."""
         return tuple(p.norm() for p in self.factors)
 
-    def reorder(self, order) -> "HuFactorization":
+    def reorder(self, order: Iterable[int]) -> "HuFactorization":
         """The factorization of the same value with the primes in a new order.
 
             >>> f = Hu(3, 1, 4, 1).factor()
