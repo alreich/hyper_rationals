@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hyprat"
-version = "0.1.0"
-description = "Exact rational hypercomplex numbers via the Cayley-Dickson construction (reals, complex, quaternions, octonions, ...)."
+version = "0.2.0"
+description = "Exact rational hypercomplex numbers via the Cayley-Dickson construction (reals, complex, quaternions, octonions, ...), split-hypercomplex numbers, and Hurwitz-quaternion number theory."
 readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"
@@ -20,6 +20,8 @@ keywords = [
     "cayley-dickson",
     "rational numbers",
     "abstract algebra",
+    "split-complex",
+    "hurwitz quaternions",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",

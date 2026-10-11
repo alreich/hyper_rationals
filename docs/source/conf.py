@@ -15,7 +15,7 @@ author = "Alfred J. Reich"
 try:
     from hyprat import __version__ as release
 except ImportError:  # pragma: no cover
-    release = "0.1.0"
+    release = "0.2.0"
 version = release
 
 # -- General configuration -----------------------------------------------

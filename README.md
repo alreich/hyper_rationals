@@ -8,7 +8,15 @@ numbers, quaternions, octonions, and beyond -- built via the
 [Cayley-Dickson construction](https://en.wikipedia.org/wiki/Cayley%E2%80%93Dickson_construction),
 implemented in the `hyprat` package (pure Python, 3.9+, no runtime dependencies).
 
-![hypercomplex numbers](papers/hypercomplex_numbers.png)
+Features:
+
+- Exact `fractions.Fraction` arithmetic at every rank: reals, complex numbers, quaternions, octonions, sedenions, and beyond.
+- **Split-hypercomplex numbers**: split-complex numbers, split-quaternions, split-octonions, or any nonzero rational sign at each level, with exact zero-divisor tests.
+- **Hurwitz integers**: the integer-backed class `Hu`, with division with remainder, GCDs, primes, factorization, and sums of four squares.
+- Conversions to and from SymPy, `numpy-quaternion`, `quaternionic`, `gint` (Gaussian integers and rationals), and exact matrix form.
+- Seedable random values, LaTeX output, and parsing from strings.
+
+![hypercomplex numbers](docs/source/_static/hypercomplex_numbers.png)
 <center><sub><sup>(Figure Source: "Hypercomplex Numbers - A Tool for Enhanced Efficiency and Intelligence in Digital Signal Processing" by Zlatka Valkova-Jarvis, et al.)</sup></sub></center>
 
 ### Rational Complex Numbers (rank 1)
@@ -256,6 +264,47 @@ and `to_quaternionic`/`from_quaternionic`. All three packages are optional and i
     Hy.from_sympy(s) == qa = True
 
 
+### Split-hypercomplex numbers
+
+Every level of the tower has a sign `mu` (any nonzero rational). The default, -1, gives the classical numbers; `mu=1` gives the split versions, where `j * j` is `+1`. Such algebras have zero divisors, which `Hy` can detect exactly.
+
+
+```python
+>>> js = Hy(0, 1, mu=1)          # split-complex: j*j = +1
+>>> print(f"{js * js = }")
+>>> n_plus, n_minus = Hy(1, 1, mu=1), Hy(1, -1, mu=1)
+>>> print(f"{n_plus * n_minus = }")
+>>> print(f"{n_plus.is_null() = }")
+```
+
+    js * js = Hy('1', '0', mu=1)
+    n_plus * n_minus = Hy('0', '0', mu=1)
+    n_plus.is_null() = True
+
+
+### Hurwitz integers
+
+`Hu` holds Hurwitz quaternions (coordinates all integers or all halves of odd integers) as exact Python integers, and adds number theory: division with remainder, left and right GCDs, primes, and factorization into primes.
+
+
+```python
+>>> from hyprat import Hu
+>>> a = Hu(1, 2, 3, 4)
+>>> print(f"{a.norm() = }")
+>>> f = a.factor()               # norm 30 = 2 * 3 * 5
+>>> print(f"{[p.norm() for p in f.factors] = }")
+>>> print(f"{f.product() == a = }")
+>>> print(f"{Hu.count_of_norm(10) = }")     # 24 * (1 + 5) elements of norm 10
+>>> print(f"{Hu.four_squares(310) = }")     # Lagrange's four-square theorem
+```
+
+    a.norm() = 30
+    [p.norm() for p in f.factors] = [2, 3, 5]
+    f.product() == a = True
+    Hu.count_of_norm(10) = 144
+    Hu.four_squares(310) = (13, 10, 5, 4)
+
+
 ## Documentation
 
 Full documentation, including a usage guide, the API reference, and a bibliography of
@@ -320,10 +369,9 @@ hyper_rationals/
 +-- tests/               unit tests (unittest, run via pytest or unittest)
 +-- docs/source/         Sphinx documentation source (usage guide, API, bibliography)
 +-- notebooks/           Jupyter notebooks (examples, editable sources of the docs, ...)
-+-- bibliography/        Freely available papers and books cited in the bibliography
-+-- papers/              Additional papers on hypercomplex numbers
 +-- .github/workflows/   CI (tests, interoperability tests, docs build)
 +-- pyproject.toml       packaging / metadata
++-- CHANGELOG.md         release notes
 +-- .readthedocs.yaml    Read the Docs build config
 ```
 
