@@ -13,13 +13,14 @@ import math
 import random
 import sys
 import unittest
+from typing import Any, Optional
 from unittest import mock
 
 from hyprat import intfactor
 from hyprat.intfactor import factorint, is_probable_prime, primes_upto, sqrt_mod_prime
 
 
-def _need_module(name, attribute=None):
+def _need_module(name: str, attribute: Optional[str] = None) -> Any:
     """Import and return the module `name` (or one of its attributes),
     skipping the running test if it is not installed."""
     try:

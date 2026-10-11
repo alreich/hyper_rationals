@@ -157,6 +157,7 @@ class TestConstruction(unittest.TestCase):
             with self.assertRaises(ValueError, msg=repr(bad)):
                 Hu(bad, 0, 0, 0)
 
+    # noinspection PyStringConversionWithoutDunderMethod
     def test_wrong_types(self):
         for bad in ([1], (1, 2), {1: 2}, 1 + 2j, object()):
             with self.assertRaises(TypeError, msg=repr(bad)):
@@ -386,6 +387,7 @@ class TestConversions(unittest.TestCase):
             Hu.from_hy(Hy(Hy("1/2", 0), Hy(0, 0)))
         self.assertIn("all integers or all halves of odd integers", str(cm.exception))
 
+    # noinspection PyStringConversionWithoutDunderMethod
     def test_from_hy_rejects_non_hy(self):
         for bad in (1, "1+2i", Fraction(1), 1.5, None, [1, 2, 3, 4], 1 + 2j):
             with self.assertRaises(TypeError, msg=repr(bad)):
@@ -634,6 +636,7 @@ class TestPower(unittest.TestCase):
         self.assertEqual(I ** (4 * 10 ** 30 + 1), I)
         self.assertEqual(OMEGA ** -(6 * 10 ** 6 + 1), OMEGA.conjugate())
 
+    # noinspection PyStringConversionWithoutDunderMethod
     def test_unsupported_exponents(self):
         for bad in (0.5, 2.0, Fraction(1, 2), "2", None, Hu(2)):
             with self.assertRaises(TypeError, msg=repr(bad)):
@@ -817,6 +820,7 @@ class TestEqualityHashImmutability(unittest.TestCase):
         self.assertNotEqual(OMEGA, Fraction(1, 2))
         self.assertNotEqual(Hu(5), Fraction(11, 2))
 
+    # noinspection PyStringConversionWithoutDunderMethod
     def test_never_equal_to_hy_or_other_types(self):
         for x in (Hu(1, 2, 3, 4), Hu(0), Hu(5), OMEGA):
             self.assertFalse(x == x.to_hy())
@@ -907,6 +911,7 @@ class TestUnsupportedOperations(unittest.TestCase):
         with self.assertRaises(TypeError):
             1 / x
 
+    # noinspection PyStringConversionWithoutDunderMethod
     def test_floats_and_non_integral_fractions_are_not_operands(self):
         x = Hu(1, 2, 3, 4)
         for bad in (1.5, 2.0, Fraction(1, 2), 1 + 2j, "1", None, [1], (1, 2, 3, 4)):

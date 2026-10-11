@@ -117,27 +117,27 @@ from typing import Any
 from unittest import mock
 
 
-def _try_import(name: str) -> Any:
-    """The module `name`, or None if it is not installed.  (Typed as Any so
-    that code guarded by the HAVE_* flags below is not flagged by IDEs.)"""
+def _try_import(name: str, *required: str) -> Any:
+    """The module `name`, or None if it is not installed.  If attribute names
+    are given, the module only counts when it has them all (an unrelated
+    package can share the name).  Typed as Any so that code guarded by the
+    HAVE_* flags below is not flagged by IDEs."""
     try:
-        return importlib.import_module(name)
+        module = importlib.import_module(name)
     except ImportError:                                 # pragma: no cover
         return None
+    return module if all(hasattr(module, a) for a in required) else None
 
 
 # Optional third-party quaternion packages, used only by the interoperability
 # tests (which are skipped if the relevant package is missing).
 np = _try_import("numpy")
 sympy = _try_import("sympy")
-npquat = _try_import("quaternion")                      # the numpy-quaternion package
-if npquat is not None and not hasattr(npquat, "quaternion"):
-    npquat = None                                       # some other 'quaternion' module
+# (some other 'quaternion' module may exist, and an unrelated package named
+# "gint" exists on PyPI, so the right attributes are insisted upon)
+npquat = _try_import("quaternion", "quaternion")        # the numpy-quaternion package
 quaternionic = _try_import("quaternionic")
-gint = _try_import("gint")                              # Gaussian integers / rationals
-# An unrelated package named "gint" exists on PyPI; insist on the right one.
-if gint is not None and not (hasattr(gint, "Zi") and hasattr(gint, "Qi")):
-    gint = None
+gint = _try_import("gint", "Zi", "Qi")                  # Gaussian integers / rationals
 
 HAVE_SYMPY = sympy is not None
 HAVE_NPQUAT = np is not None and npquat is not None
@@ -1417,7 +1417,7 @@ class _FakeSympyFloat:
 
 
 class _FakeSympyBad:
-    """Stands in for sympy's nan/oo/I/Symbol -- rejected one way or another."""
+    """Stands in for SymPy's nan/oo/I/Symbol -- rejected one way or another."""
     def __init__(self, is_number=True, is_real=False, is_finite=False):
         self.is_number, self.is_real, self.is_finite = is_number, is_real, is_finite
 
@@ -2501,6 +2501,7 @@ class TestSignatureEqualityHashRepr(unittest.TestCase):
 
 class TestSignatureCoercionAndMixing(unittest.TestCase):
 
+    # noinspection PyUnresolvedReferences
     def test_python_numbers_mix_with_any_signature(self):
         sc = Hy(1, 2, mu=1)
         for result in (sc + 3, 3 + sc, sc - 3, sc * 3, 3 * sc, sc / 2):
@@ -2567,6 +2568,7 @@ class TestSignatureCoercionAndMixing(unittest.TestCase):
         with self.assertRaises(ValueError):
             sq + Hy(5, 6, mu=1)
 
+    # noinspection PyUnresolvedReferences
     def test_embedding_helper_accepts_signature_tuples(self):
         e = _embed(Hy(1, 2, mu=1), (Fraction(1), Fraction(-3)))
         self.assertEqual(e.signs, (1, -3))
@@ -2793,6 +2795,7 @@ class TestSignatureHelpers(unittest.TestCase):
         self.assertEqual(mul(Fraction(2), Fraction(3)), 6)
         self.assertEqual(abs2(Fraction(-3)), 9)
 
+    # noinspection PyUnresolvedReferences
     def test_raw_fraction_embeds_into_any_signature(self):
         r = mul(Fraction(3), Hy(1, 2, mu=1))
         self.assertEqual(r, Hy(3, 6, mu=1))
@@ -3080,7 +3083,7 @@ class TestIsGaussian(unittest.TestCase):
                 self.assertFalse(Hy.from_array(coeffs).is_gaussian(), (rank, k))
 
     def test_lowest_level_signature_decides(self):
-        # lowest level mu=-1 (any higher levels): Gaussian when only 1, i used
+        # lowest level mu=-1 (any higher levels): Gaussian when only 1, 'i' used
         self.assertTrue(Hy(Hy(1, 2), 0, mu=1).is_gaussian())     # (-1, 1)
         # lowest level mu=+1: the (split) complex subalgebra, never Gaussian
         self.assertFalse(Hy.from_array([1, 2, 0, 0], signs=(1, -1)).is_gaussian())
@@ -3140,6 +3143,7 @@ class TestFromGint(unittest.TestCase):
                 Hy.from_gint(bad)
 
     # noinspection PyTypeChecker
+    # noinspection PyStringConversionWithoutDunderMethod
     def test_rejects_things_without_real_and_imag(self):
         for bad in ("1+2j", None, [1, 2], object()):
             with self.assertRaises(TypeError, msg=repr(bad)):
@@ -3344,6 +3348,7 @@ class TestGintConversions(unittest.TestCase):
             self.assertEqual(Hy.from_gint(z).is_unit(), bool(z.is_unit))
 
     # ---- strings: what Zi/Qi print is what Hy.parse reads -----------------
+    # noinspection PyTypeChecker
     def _check_parse_round_trip(self, symbol):
         old = (self.Zi.get_unit_symbol(), self.Qi.get_unit_symbol())
         self.addCleanup(self.Zi.set_unit_symbol, old[0])
@@ -3513,6 +3518,7 @@ class TestEmbed(unittest.TestCase):
             Hy(1, 2).embed(0)
 
     # noinspection PyTypeChecker
+    # noinspection PyStringConversionWithoutDunderMethod
     def test_bad_rank_type(self):
         for bad in (2.0, "2", None, True):
             with self.assertRaises(TypeError, msg=repr(bad)):
@@ -3581,3 +3587,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+# noinspection PyProtectedMember

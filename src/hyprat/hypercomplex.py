@@ -302,6 +302,7 @@ _Value = Union[Fraction, "Hy"]
 # the corresponding generalized algebra (e.g. quaternion algebras (-1, 2)).
 # --------------------------------------------------------------------------
 _DEFAULT_MU = Fraction(-1)
+_ONE = Fraction(1)
 
 # Named signature presets, as tuples ordered from the lowest doubling level
 # to the highest.  Names are matched case-insensitively, with '-', '_' and
@@ -357,6 +358,7 @@ class Hy:
     # ---------------------------------------------------------------- #
     # Construction
     # ---------------------------------------------------------------- #
+    # noinspection PyStringConversionWithoutDunderMethod
     def __init__(
         self,
         real: _Component,
@@ -855,10 +857,8 @@ class Hy:
         if rng is not None and seed is not None:
             raise ValueError("pass either `rng` or `seed`, not both")
         source: random.Random
-        if seed is not None:
-            source = random.Random(seed)
-        elif rng is None:
-            source = _default_rng
+        if rng is None:
+            source = _default_rng if seed is None else random.Random(seed)
         else:
             source = rng
 
@@ -1094,6 +1094,7 @@ class Hy:
             matrix = matrix.astype(float)
         return matrix
 
+    # noinspection PyStringConversionWithoutDunderMethod
     @classmethod
     def from_matrix(cls, matrix, *, kind: str = "left", rank: "int | None" = None,
                      allow_nonassociative: bool = False, validate: bool = False,
@@ -1309,6 +1310,7 @@ class Hy:
         w, x, y, z = _quaternion_floats(self, "a numpy quaternion")
         return quaternion.quaternion(w, x, y, z)
 
+    # noinspection PyStringConversionWithoutDunderMethod
     @classmethod
     def from_numpy_quaternion(cls, q, *, exact: bool = False,
                               max_denominator=None) -> "Hy":
@@ -1698,6 +1700,7 @@ def _coerce_signs(signs) -> tuple:
         raise
 
 
+# noinspection PyStringConversionWithoutDunderMethod
 def _resolve_rank_and_signs(rank, signs, *, min_rank: int):
     """Validate a (rank, signs) pair: either may be omitted (but not
     both); ``signs`` defaults to all -1. Returns ``(rank, signs_tuple)``."""
@@ -1855,9 +1858,9 @@ def _mul(x: _Value, y: _Value) -> _Value:
     c, d = y._real, y._imag
     mu: Fraction = x._mu
     cross = _mul(conj(d), b)
-    if mu == -1:
+    if mu == _DEFAULT_MU:
         real_part = _sub(_mul(a, c), cross)
-    elif mu == 1:
+    elif mu == _ONE:
         real_part = _add(_mul(a, c), cross)
     else:
         real_part = _add(_mul(a, c), _scale(cross, mu))
@@ -1885,7 +1888,7 @@ def _scalar_div(x: _Value, f: Fraction) -> _Value:
 
 def inverse(x: _Value) -> _Value:
     n = abs2(x)
-    if n == 0:
+    if not n:
         if _is_zero_val(x):
             message = "hypercomplex value has zero norm; not invertible"
         else:
@@ -1918,7 +1921,7 @@ def _values_equal(x: _Value, y: _Value) -> bool:
 
 
 # noinspection PyProtectedMember
-def _canonical_trim(x):
+def _canonical_trim(x: _Value) -> _Value:
     """Strip away outer (Fraction-zero-imag) layers, for hashing purposes."""
     while isinstance(x, Hy) and _is_zero_val(x._imag):
         x = x._real
@@ -1926,21 +1929,21 @@ def _canonical_trim(x):
 
 
 # noinspection PyProtectedMember
-def _to_nested_tuple(x):
+def _to_nested_tuple(x: _Value) -> Any:
     if isinstance(x, Fraction):
         return x
     return _to_nested_tuple(x._real), _to_nested_tuple(x._imag), x._mu
 
 
 # noinspection PyProtectedMember
-def _flatten(x) -> list:
+def _flatten(x: _Value) -> list:
     if isinstance(x, Fraction):
         return [x]
     return _flatten(x._real) + _flatten(x._imag)
 
 
 # noinspection PyProtectedMember
-def _unflatten(coeffs, rank, signs=None):
+def _unflatten(coeffs: list, rank: int, signs: Optional[tuple] = None) -> Any:
     if signs is None:
         signs = (_DEFAULT_MU,) * rank
     if rank == 0:
