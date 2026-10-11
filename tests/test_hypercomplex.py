@@ -146,6 +146,8 @@ HAVE_NUMPY = np is not None
 HAVE_GINT = gint is not None
 
 from hyprat import Hy
+# These tests exercise the module's internal helpers directly.
+# noinspection PyProtectedMember
 from hyprat.hypercomplex import (
     add,
     sub,
@@ -2755,6 +2757,7 @@ class TestSignatureInterop(unittest.TestCase):
 
     # noinspection PyTypeChecker
     def test_conversion_guard_rejects_non_classical_signatures(self):
+        # noinspection PyProtectedMember
         from hyprat.hypercomplex import _quaternion_fractions
         for sg in ((1,), (-1, 1), (1, 1), (-1, 2), (3,)):
             with self.assertRaises(ValueError):
