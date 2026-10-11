@@ -391,6 +391,7 @@ class TestConversions(unittest.TestCase):
     def test_from_hy_rejects_non_hy(self):
         for bad in (1, "1+2i", Fraction(1), 1.5, None, [1, 2, 3, 4], 1 + 2j):
             with self.assertRaises(TypeError, msg=repr(bad)):
+                # noinspection PyTypeChecker
                 Hu.from_hy(bad)
 
     def test_from_hy_succeeds_exactly_when_is_hurwitz(self):
@@ -845,6 +846,7 @@ class TestEqualityHashImmutability(unittest.TestCase):
         s = {Hu(1, 2, 3, 4), Hu(1, 2, 3, 4), OMEGA, Hu("1/2", "1/2", "1/2", "1/2")}
         self.assertEqual(len(s), 2)
         d = {Hu(5): "five"}
+        # noinspection PyTypeChecker
         self.assertEqual(d[5], "five")
         self.assertEqual(len(set(Hu.units().values())), 24)
 
@@ -863,6 +865,7 @@ class TestEqualityHashImmutability(unittest.TestCase):
             del x._a
         self.assertEqual(x, Hu(1, 2, 3, 4))
         with self.assertRaises(AttributeError):
+            # noinspection PyDunderSlots,PyUnresolvedReferences
             x.new_attribute = 1
 
     def test_no_instance_dict(self):
@@ -903,12 +906,16 @@ class TestUnsupportedOperations(unittest.TestCase):
         for op in ("__truediv__", "__floordiv__", "__mod__", "__divmod__"):
             self.assertFalse(hasattr(Hu, op), op)
         with self.assertRaises(TypeError):
+            # noinspection PyUnresolvedReferences
             x / y
         with self.assertRaises(TypeError):
+            # noinspection PyUnresolvedReferences
             x // y
         with self.assertRaises(TypeError):
+            # noinspection PyUnresolvedReferences
             x % y
         with self.assertRaises(TypeError):
+            # noinspection PyTypeChecker
             1 / x
 
     # noinspection PyStringConversionWithoutDunderMethod
@@ -940,12 +947,13 @@ class TestUnsupportedOperations(unittest.TestCase):
             # noinspection PyStatementEffect
             Hu(1) < Hu(2)
         with self.assertRaises(TypeError):
-            # noinspection PyStatementEffect
+            # noinspection PyStatementEffect,PyTypeChecker
             Hu(1) >= 0
 
     def test_no_int_float_complex_conversion(self):
         for conv in (int, float, complex):
             with self.assertRaises(TypeError):
+                # noinspection PyTypeChecker
                 conv(Hu(1))
 
 
@@ -1497,6 +1505,7 @@ class TestFactor(unittest.TestCase):
             with self.assertRaises(ValueError):
                 a.factor(order=bad)
         with self.assertRaises((ValueError, TypeError)):
+            # noinspection PyTypeChecker
             a.factor(order=[2, 3, "5"])
 
     def test_repeated_primes(self):
