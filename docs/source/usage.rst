@@ -1,6 +1,22 @@
 Usage
 =====
 
+``hyprat`` works with exact rational hypercomplex numbers: the real
+numbers, complex numbers, quaternions, octonions and so on, all with
+rational coordinates. Beyond that classical “tower”, two further topics
+have sections of their own below:
+
+-  **Split-hypercomplex numbers.** Every level of the tower has a sign
+   ``mu`` (any nonzero rational). The default, -1, gives the classical
+   numbers; +1 gives the split versions. So ``Hy`` also represents
+   split-complex numbers, split-quaternions, split-octonions, and so on.
+   See the section “Split-hypercomplex numbers and other signatures”.
+-  **Hurwitz integers.** The separate class ``Hu`` holds Hurwitz
+   quaternions (coordinates all integers or all halves of odd integers)
+   as exact Python integers, and adds number theory: division with
+   remainder, GCDs, primes, factorization, and sums of four squares. See
+   the section “Hurwitz Integers (the Class ``Hu``)”.
+
 .. code:: ipython3
 
     >>> from hyprat import Hy
