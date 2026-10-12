@@ -6,16 +6,16 @@ numbers, complex numbers, quaternions, octonions and so on, all with
 rational coordinates. Beyond that classical “tower”, two further topics
 have sections of their own below:
 
--  **Split-hypercomplex numbers.** Every level of the tower has a sign
-   ``mu`` (any nonzero rational). The default, -1, gives the classical
-   numbers; +1 gives the split versions. So ``Hy`` also represents
-   split-complex numbers, split-quaternions, split-octonions, and so on.
-   See the section “Split-hypercomplex numbers and other signatures”.
--  **Hurwitz integers.** The separate class ``Hu`` holds Hurwitz
-   quaternions (coordinates all integers or all halves of odd integers)
-   as exact Python integers, and adds number theory: division with
-   remainder, GCDs, primes, factorization, and sums of four squares. See
-   the section “Hurwitz Integers (the Class ``Hu``)”.
+- **Split-hypercomplex numbers.** Every level of the tower has a sign
+  ``mu`` (any nonzero rational). The default, -1, gives the classical
+  numbers; +1 gives the split versions. So ``Hy`` also represents
+  split-complex numbers, split-quaternions, split-octonions, and so on.
+  See the section “Split-hypercomplex numbers and other signatures”.
+- **Hurwitz integers.** The separate class ``Hu`` holds Hurwitz
+  quaternions (coordinates all integers or all halves of odd integers)
+  as exact Python integers, and adds number theory: division with
+  remainder, GCDs, primes, factorization, and sums of four squares. See
+  the section “Hurwitz Integers (the Class ``Hu``)”.
 
 .. code:: ipython3
 
@@ -131,9 +131,9 @@ Other Ways to Construct Hypercomplex Numbers
 
 There are three more ways to build a Hy:
 
--  from a flat list of coefficients (``to_array`` and ``Hy.from_array``)
--  from a string representation (``Hy.parse``)
--  randomly generated (``Hy.random``)
+- from a flat list of coefficients (``to_array`` and ``Hy.from_array``)
+- from a string representation (``Hy.parse``)
+- randomly generated (``Hy.random``)
 
 Examples follow:
 
@@ -207,10 +207,10 @@ From a Random Number Generator (RNG)
 
 .. parsed-literal::
 
-       complex: (7-8/5j)
-    quaternion: (1-3i-3/5j-8/3k)
-      octonion: (4+7/5i+6/5j-k+8L+2iL-9jL+5kL)
-      sedenion: (9/2-3/5e1+6/5e2-4/3e3-5e4-e5-8/5e6+e7+7e8+1/2e9-6e10+6e11+5/3e12-e13-7/5e14+1/2e15)
+       complex: (-6+1/3j)
+    quaternion: (8/3+2i-7/5j-k)
+      octonion: (5/6+2i-8/5j-5/3k-5/4L-iL-5/4jL+3/2kL)
+      sedenion: (-2/3-2/5e1+7/5e2-2/5e3+2e4-1/6e5+e6+6e7+7/2e8-1/3e9-8/5e10-2e11+2/3e12-3/2e13-9/5e15)
 
 
 There’s more below on random generation of hypercomplex numbers.
@@ -392,13 +392,13 @@ useful in a Jupyter notebook.
 
 Two keyword-only options are available:
 
--  ``vinculum`` controls how a non-integer coefficient’s fraction bar is
-   typeset: ``"horizontal"`` (the default) uses ``\frac{num}{den}``;
-   ``"diagonal"`` uses a plain slash, ``num/den``:
--  ``mode`` controls whether the result is wrapped in LaTeX math
-   delimiters: ``"plain"`` (the default) returns the bare expression,
-   ``"inline"`` wraps it in ``$...$``, and ``"display"`` wraps it in
-   ``\[...\]``.
+- ``vinculum`` controls how a non-integer coefficient’s fraction bar is
+  typeset: ``"horizontal"`` (the default) uses ``\frac{num}{den}``;
+  ``"diagonal"`` uses a plain slash, ``num/den``:
+- ``mode`` controls whether the result is wrapped in LaTeX math
+  delimiters: ``"plain"`` (the default) returns the bare expression,
+  ``"inline"`` wraps it in ``$...$``, and ``"display"`` wraps it in
+  ``\[...\]``.
 
 Basis units render the same way `the API reference <api.rst>`__
 describes for ``str()``: ``j`` at rank 1, ``i``/``j``/``k`` at rank 2,
@@ -1023,7 +1023,9 @@ with ``kind="right"`` the ``y`` with ``y * x == 0``:
 There is no left/right argument for ``is_zero_divisor()`` itself: a
 value is a zero divisor on one side exactly when it is on the other, and
 exactly when its conjugate is. The two annihilators always have the same
-dimension, but they can be different sets of values. In the classical sedenion cases checked they coincided, while in a split algebra they often do not:
+dimension, but they can be different sets of values. In the classical
+sedenion cases checked they coincided, while in a split algebra they
+often do not:
 
 .. code:: ipython3
 
@@ -1037,6 +1039,8 @@ dimension, but they can be different sets of values. In the classical sedenion c
 .. parsed-literal::
 
     (8, 8, False)
+
+
 
 Matrices and other packages
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1090,6 +1094,7 @@ else:
 
     cannot convert a Hy with signs ('-1', '1') to a sympy Quaternion; only ordinary complex/quaternion values (every mu equal to -1) can be converted
 
+
 Interoperability with Other Quaternion Packages
 -----------------------------------------------
 
@@ -1102,17 +1107,17 @@ that needs it is called, so install whichever you use:
 
    pip install sympy numpy-quaternion quaternionic
 
--  **SymPy**, ``sympy.algebras.quaternion.Quaternion``:
-   ``some_hy.to_sympy()`` and ``Hy.from_sympy(sq)``. SymPy, like ``Hy``,
-   represents rational numbers exactly, so this pair round-trips with no
-   rounding at all.
--  **numpy-quaternion**, imported as ``quaternion``:
-   ``some_hy.to_numpy_quaternion()`` and
-   ``Hy.from_numpy_quaternion(nq)``. It stores
-   ``numpy.quaternion(w, x, y, z)`` as ``float64``.
--  **quaternionic**: ``some_hy.to_quaternionic()`` and
-   ``Hy.from_quaternionic(qa)``. It stores an array ``[w, x, y, z]`` as
-   ``float64``.
+- **SymPy**, ``sympy.algebras.quaternion.Quaternion``:
+  ``some_hy.to_sympy()`` and ``Hy.from_sympy(sq)``. SymPy, like ``Hy``,
+  represents rational numbers exactly, so this pair round-trips with no
+  rounding at all.
+- **numpy-quaternion**, imported as ``quaternion``:
+  ``some_hy.to_numpy_quaternion()`` and
+  ``Hy.from_numpy_quaternion(nq)``. It stores
+  ``numpy.quaternion(w, x, y, z)`` as ``float64``.
+- **quaternionic**: ``some_hy.to_quaternionic()`` and
+  ``Hy.from_quaternionic(qa)``. It stores an array ``[w, x, y, z]`` as
+  ``float64``.
 
 All three packages use the same Hamilton convention as ``Hy``
 (``i*j == k``) and the coordinates always correspond to ``1, i, j, k``,
@@ -1228,13 +1233,13 @@ rounds, and converting *back* requires a choice of which rational each
 float stands for. Their ``from_*`` methods offer three choices, selected
 with two optional keyword arguments:
 
--  By default, each float becomes the rational with the same shortest
-   decimal representation (``0.1`` becomes ``1/10``), just as
-   ``Hy.from_array()`` does.
--  ``max_denominator=N`` chooses the closest fraction whose denominator
-   is at most ``N``. This recovers simple fractions such as ``1/3``.
--  ``exact=True`` uses the exact binary value of each float. (This
-   cannot be combined with ``max_denominator``.)
+- By default, each float becomes the rational with the same shortest
+  decimal representation (``0.1`` becomes ``1/10``), just as
+  ``Hy.from_array()`` does.
+- ``max_denominator=N`` chooses the closest fraction whose denominator
+  is at most ``N``. This recovers simple fractions such as ``1/3``.
+- ``exact=True`` uses the exact binary value of each float. (This cannot
+  be combined with ``max_denominator``.)
 
 .. code:: ipython3
 
@@ -1347,6 +1352,7 @@ sanity check on the conventions:
     numpy-quaternion : quaternion(1.55555555555555, 21.8333333333333, 9.75, -11.9444444444444)
     quaternionic     : [  1.55555556  21.83333333   9.75       -11.94444444]
 
+
 Interoperability with ``gint`` (Gaussian Integers and Rationals)
 ----------------------------------------------------------------
 
@@ -1371,14 +1377,13 @@ The conversions are explicit. A ``Zi`` or ``Qi`` is never ``==`` to a
 ``Hy``, so mixing them in arithmetic fails loudly instead of silently
 picking an algebra.
 
--  ``Hy.from_gint(x)`` builds a rank 1 ``Hy`` from a ``Zi`` or ``Qi``.
-   It needs no ``gint`` import at all.
--  ``some_hy.to_qi()`` returns a ``Qi``, which, as ``Qi`` itself does,
-   collapses to a ``Zi`` when both coordinates are integers.
--  ``some_hy.to_zi()`` returns a ``Zi``, or raises ``ValueError`` if a
-   coordinate is not an integer.
--  ``some_hy.is_gaussian()`` is a cheap predicate that needs no
-   ``gint``.
+- ``Hy.from_gint(x)`` builds a rank 1 ``Hy`` from a ``Zi`` or ``Qi``. It
+  needs no ``gint`` import at all.
+- ``some_hy.to_qi()`` returns a ``Qi``, which, as ``Qi`` itself does,
+  collapses to a ``Zi`` when both coordinates are integers.
+- ``some_hy.to_zi()`` returns a ``Zi``, or raises ``ValueError`` if a
+  coordinate is not an integer.
+- ``some_hy.is_gaussian()`` is a cheap predicate that needs no ``gint``.
 
 .. code:: ipython3
 
@@ -1568,6 +1573,7 @@ operate, and compare:
     True
     True
 
+
 Hurwitz Integers (the Class ``Hu``)
 -----------------------------------
 
@@ -1589,7 +1595,7 @@ constructed.
 .. code:: ipython3
 
     >>> from hyprat import Hu
-
+    
     >>> q = Hu(1, 2, 3, 4)
     >>> print(q)
     >>> q
@@ -1645,7 +1651,7 @@ integers. Multiplication is not commutative. There is deliberately no
 .. code:: ipython3
 
     >>> i, j, k = Hu(0, 1, 0, 0), Hu(0, 0, 1, 0), Hu(0, 0, 0, 1)
-
+    
     >>> print(i * j, j * i)
     >>> print(q * w)
     >>> print(w * w, w ** 3, w ** 6)
@@ -1723,7 +1729,7 @@ negative powers are allowed for units and only for units.
 
     >>> print(w ** -1, w ** -1 == w.conjugate())
     >>> print(w.is_unit(), q.is_unit())
-
+    
     >>> try:
     ...     q ** -1
     ... except ValueError as e:
@@ -1842,7 +1848,7 @@ arithmetic, either is a check on the other:
 
     >>> a, b = Hu(1, -2, 3, 4), Hu('3/2', '1/2', '-5/2', '1/2')
     >>> ha, hb = a.to_hy(), b.to_hy()
-
+    
     >>> print((a * b).to_hy() == ha * hb)
     >>> print((a + b).to_hy() == ha + hb)
     >>> print((a * b).norm() == (ha * hb).norm())
@@ -1853,6 +1859,7 @@ arithmetic, either is a check on the other:
     True
     True
     True
+
 
 Division with Remainder, GCDs and Associates
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1871,11 +1878,11 @@ division.
 
     >>> from hyprat import Hu
     >>> a, b = Hu(1, 2, 3, 5), Hu(1, 1, 1, 0)
-
+    
     >>> q, r = a.divmod_left(b)
     >>> print(repr(q), repr(r))
     >>> print(a == b * q + r, 2 * r.norm() <= b.norm())
-
+    
     >>> q, r = a.divmod_right(b)
     >>> print(repr(q), repr(r))
     >>> print(a == q * b + r)
@@ -1959,7 +1966,7 @@ coefficients: ``g = a*x + b*y`` for ``xgcld`` and ``g = x*a + y*b`` for
     >>> g, x, y = a.xgcld(b)
     >>> print(repr(g), repr(x), repr(y))
     >>> print(g == a * x + b * y)
-
+    
     >>> c = Hu(1, 1, 1, 0)
     >>> print(repr((c * a).gcld(c * b)))
     >>> print(repr(c.canonical_associate('right')))
@@ -1971,6 +1978,7 @@ coefficients: ``g = a*x + b*y`` for ``xgcld`` and ``g = x*a + y*b`` for
     True
     Hu('3/2', '1/2', '-1/2', '1/2')
     Hu('3/2', '1/2', '-1/2', '1/2')
+
 
 Primes, Content and Primitive Parts
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1985,7 +1993,7 @@ it, and it is **primitive** when its content is 1.
 
     >>> from hyprat import Hu
     >>> print(Hu(1, 1, 0, 0).is_prime(), Hu(2).is_prime(), Hu(1, 2, 3, 4).is_prime())
-
+    
     >>> a = Hu(2, 4, 6, 8)
     >>> print(a.content(), repr(a.primitive_part()), a.is_primitive())
     >>> print(Hu(1, 1, 1, 1).content())          # 2 times the unit (1+i+j+k)/2
@@ -2016,7 +2024,7 @@ other. ``factor`` returns the pieces as a named tuple with a
     >>> for p in f.factors:
     ...     print(repr(p), p.is_prime())
     >>> print(f.product() == q)
-
+    
     >>> g = q.factor(order=[5, 3, 2])
     >>> print(g.norms())
     >>> for p in g.factors:
@@ -2068,7 +2076,7 @@ the value is always ``content * unit * f1 * ... * fk``.
     >>> f = Hu(6, 12, 18, 24).factor()
     >>> print(f.content, f.norms())
     >>> print(f.product() == Hu(6, 12, 18, 24))
-
+    
     >>> f = Hu(14, 0, 0, 0).factor()
     >>> print(f.content, repr(f.unit), f.factors)
 
@@ -2093,7 +2101,7 @@ very large inputs only if it happens to be installed.
     >>> from hyprat.intfactor import factorint, is_probable_prime
     >>> print(factorint(2**64 + 1))
     >>> print(is_probable_prime(2**89 - 1))
-
+    
     >>> q = Hu(123456789, 987654321, 192837465, 918273645)
     >>> print(q.norm(), factorint(q.norm()))
     >>> f = q.factor()
@@ -2106,6 +2114,7 @@ very large inputs only if it happens to be installed.
     True
     1871115411549373812 {2: 2, 3: 5, 2855261: 1, 674199611: 1}
     18 (3, 2855261, 674199611) True
+
 
 Enumerating Hurwitz Integers of a Given Norm
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2122,7 +2131,7 @@ the factorization of :math:`n` without listing anything.
     >>> print([len(Hu.of_norm(n)) for n in range(1, 9)])
     >>> print([Hu.count_of_norm(n) for n in range(1, 9)])
     >>> print(Hu.count_of_norm(10**18))
-
+    
     >>> for h in Hu.of_norm(2)[:4]:
     ...     print(repr(h))
 
@@ -2167,7 +2176,7 @@ representative of each class, or every prime with ``associates=True``.
 
     >>> for p in (2, 3, 5):
     ...     print(p, len(Hu.primes_of_norm(p)), len(Hu.primes_of_norm(p, associates=True)))
-
+    
     >>> for h in Hu.primes_of_norm(3):
     ...     print(repr(h))
 
@@ -2201,7 +2210,7 @@ squares. The cost is that of factoring :math:`n`.
     >>> a, b, c, d = Hu.four_squares(2**89 - 1)
     >>> print(a, b, c, d)
     >>> print(a*a + b*b + c*c + d*d == 2**89 - 1)
-
+    
     >>> h = Hu.with_norm(1000003)
     >>> print(repr(h), h.norm())
 
@@ -2212,3 +2221,4 @@ squares. The cost is that of factoring :math:`n`.
     16505493659067 16505493659067 7162758386013 4775172257342
     True
     Hu(699, 151, 699, 0) 1000003
+
