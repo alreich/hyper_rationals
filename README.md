@@ -16,8 +16,7 @@ Features:
 - Conversions to and from SymPy, `numpy-quaternion`, `quaternionic`, `gint` (Gaussian integers and rationals), and exact matrix form.
 - Seedable random values, LaTeX output, and parsing from strings.
 
-![hypercomplex numbers](docs/source/_static/hypercomplex_numbers.png)
-<center><sub><sup>(Figure Source: "Hypercomplex Numbers - A Tool for Enhanced Efficiency and Intelligence in Digital Signal Processing" by Zlatka Valkova-Jarvis, et al.)</sup></sub></center>
+![hypercomplex numbers](docs/source/_static/hypercomplex_numbers.svg)
 
 ### Rational Complex Numbers (rank 1)
 

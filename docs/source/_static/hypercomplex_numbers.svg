@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 800" width="1040" height="800" font-family="'Segoe UI','DejaVu Sans','Helvetica Neue',Arial,sans-serif" role="img" aria-labelledby="t d">
+<title id="t">Hypercomplex numbers by Cayley-Dickson doubling</title>
+<desc id="d">Rows are ranks 0 to 5. Left column: the classical tower (reals, complex numbers, quaternions, octonions, sedenions). Middle column: the split versions. Right column: integer subrings (integers, Gaussian integers, Lipschitz and Hurwitz integers).</desc>
+<rect width="1040" height="800" rx="14" fill="#ffffff"/>
+<text x="520.0" y="40" text-anchor="middle" font-size="24" font-weight="700" fill="#1f2933">Hypercomplex numbers by Cayley–Dickson doubling</text>
+<text x="520.0" y="64" text-anchor="middle" font-size="14" fill="#5b6770">each step doubles the dimension (rank n has dimension 2ⁿ) using a sign μ:  (a, b)(c, d) = (ac + μ·d̄b,  da + b·c̄)</text>
+<text x="295.0" y="102" text-anchor="middle" font-size="17" font-weight="700" fill="#2d5f9a">Classical tower</text>
+<text x="295.0" y="122" text-anchor="middle" font-size="13" fill="#5b6770">μ = −1</text>
+<text x="615.0" y="102" text-anchor="middle" font-size="17" font-weight="700" fill="#b3631a">Split versions</text>
+<text x="615.0" y="122" text-anchor="middle" font-size="13" fill="#5b6770">μ = +1 at one or more levels</text>
+<text x="905.0" y="102" text-anchor="middle" font-size="17" font-weight="700" fill="#3b7b38">Integer subrings</text>
+<text x="905.0" y="122" text-anchor="middle" font-size="13" fill="#5b6770">discrete rings inside the tower</text>
+<text x="75" y="102" text-anchor="middle" font-size="14" font-weight="700" fill="#5b6770">rank · dim</text>
+<text x="75" y="175.0" text-anchor="middle" font-size="22" font-weight="700" fill="#1f2933">0</text>
+<text x="75" y="193.0" text-anchor="middle" font-size="13" fill="#5b6770">1 dim</text>
+<rect x="150" y="150" width="290" height="54" rx="9" fill="#dce9f8" stroke="#2d5f9a" stroke-width="1.6" opacity="1"/>
+<text x="295.0" y="182.0" text-anchor="middle" font-size="16" font-weight="600" fill="#1f2933">ℝ Real numbers</text>
+<rect x="470" y="150" width="290" height="54" rx="9" fill="#f4f4f4" stroke="#b5bcc2" stroke-width="1.6" stroke-dasharray="6 4" opacity="1"/>
+<text x="615.0" y="182.0" text-anchor="middle" font-size="14" font-weight="400" fill="#5b6770">(no split version)</text>
+<text x="75" y="267.0" text-anchor="middle" font-size="22" font-weight="700" fill="#1f2933">1</text>
+<text x="75" y="285.0" text-anchor="middle" font-size="13" fill="#5b6770">2 dim</text>
+<rect x="150" y="242" width="290" height="54" rx="9" fill="#dce9f8" stroke="#2d5f9a" stroke-width="1.6" opacity="1"/>
+<text x="295.0" y="274.0" text-anchor="middle" font-size="16" font-weight="600" fill="#1f2933">ℂ Complex numbers</text>
+<rect x="470" y="242" width="290" height="54" rx="9" fill="#fbe6d0" stroke="#b3631a" stroke-width="1.6" opacity="1"/>
+<text x="615.0" y="265.0" text-anchor="middle" font-size="16" font-weight="600" fill="#1f2933">Split-complex numbers</text>
+<text x="615.0" y="283.0" text-anchor="middle" font-size="13" font-weight="400" fill="#5b6770">≅ ℝ ⊕ ℝ,  j² = +1</text>
+<text x="75" y="359.0" text-anchor="middle" font-size="22" font-weight="700" fill="#1f2933">2</text>
+<text x="75" y="377.0" text-anchor="middle" font-size="13" fill="#5b6770">4 dim</text>
+<rect x="150" y="334" width="290" height="54" rx="9" fill="#dce9f8" stroke="#2d5f9a" stroke-width="1.6" opacity="1"/>
+<text x="295.0" y="366.0" text-anchor="middle" font-size="16" font-weight="600" fill="#1f2933">ℍ Quaternions</text>
+<rect x="470" y="334" width="290" height="54" rx="9" fill="#fbe6d0" stroke="#b3631a" stroke-width="1.6" opacity="1"/>
+<text x="615.0" y="357.0" text-anchor="middle" font-size="16" font-weight="600" fill="#1f2933">Split-quaternions</text>
+<text x="615.0" y="375.0" text-anchor="middle" font-size="13" font-weight="400" fill="#5b6770">≅ 2×2 real matrices</text>
+<text x="75" y="451.0" text-anchor="middle" font-size="22" font-weight="700" fill="#1f2933">3</text>
+<text x="75" y="469.0" text-anchor="middle" font-size="13" fill="#5b6770">8 dim</text>
+<rect x="150" y="426" width="290" height="54" rx="9" fill="#dce9f8" stroke="#2d5f9a" stroke-width="1.6" opacity="1"/>
+<text x="295.0" y="458.0" text-anchor="middle" font-size="16" font-weight="600" fill="#1f2933">𝕆 Octonions</text>
+<rect x="470" y="426" width="290" height="54" rx="9" fill="#fbe6d0" stroke="#b3631a" stroke-width="1.6" opacity="1"/>
+<text x="615.0" y="458.0" text-anchor="middle" font-size="16" font-weight="600" fill="#1f2933">Split-octonions</text>
+<text x="75" y="543.0" text-anchor="middle" font-size="22" font-weight="700" fill="#1f2933">4</text>
+<text x="75" y="561.0" text-anchor="middle" font-size="13" fill="#5b6770">16 dim</text>
+<rect x="150" y="518" width="290" height="54" rx="9" fill="#dce9f8" stroke="#2d5f9a" stroke-width="1.6" opacity="1"/>
+<text x="295.0" y="550.0" text-anchor="middle" font-size="16" font-weight="600" fill="#1f2933">𝕊 Sedenions</text>
+<rect x="470" y="518" width="290" height="54" rx="9" fill="#fbe6d0" stroke="#b3631a" stroke-width="1.6" opacity="1"/>
+<text x="615.0" y="550.0" text-anchor="middle" font-size="16" font-weight="600" fill="#1f2933">Split-sedenions</text>
+<text x="75" y="635.0" text-anchor="middle" font-size="22" font-weight="700" fill="#1f2933">5</text>
+<text x="75" y="653.0" text-anchor="middle" font-size="13" fill="#5b6770">32 dim</text>
+<rect x="150" y="610" width="290" height="54" rx="9" fill="#dce9f8" stroke="#2d5f9a" stroke-width="1.6" opacity="1"/>
+<text x="295.0" y="642.0" text-anchor="middle" font-size="16" font-weight="600" fill="#1f2933">32-dim (“pathions”)</text>
+<rect x="470" y="610" width="290" height="54" rx="9" fill="#fbe6d0" stroke="#b3631a" stroke-width="1.6" opacity="1"/>
+<text x="615.0" y="642.0" text-anchor="middle" font-size="16" font-weight="600" fill="#1f2933">32-dim split</text>
+<text x="295" y="696" text-anchor="middle" font-size="20" fill="#5b6770">⋮</text>
+<text x="615" y="696" text-anchor="middle" font-size="20" fill="#5b6770">⋮</text>
+<text x="450" y="720" text-anchor="middle" font-size="13" fill="#5b6770">…and so on, one more doubling at a time, with a sign at every level</text>
+<rect x="790" y="150" width="230" height="54" rx="9" fill="#e0f0de" stroke="#3b7b38" stroke-width="1.6" stroke-dasharray="6 4" opacity="1"/>
+<text x="905.0" y="173.0" text-anchor="middle" font-size="16" font-weight="600" fill="#1f2933">ℤ  Integers</text>
+<text x="905.0" y="191.0" text-anchor="middle" font-size="1" font-weight="600" fill="#1f2933"></text>
+<rect x="790" y="242" width="230" height="54" rx="9" fill="#e0f0de" stroke="#3b7b38" stroke-width="1.6" stroke-dasharray="6 4" opacity="1"/>
+<text x="905.0" y="265.0" text-anchor="middle" font-size="16" font-weight="600" fill="#1f2933">Gaussian integers ℤ[i]</text>
+<text x="905.0" y="283.0" text-anchor="middle" font-size="13" font-weight="400" fill="#5b6770">4 units · Euclidean</text>
+<rect x="790" y="322" width="230" height="78" rx="9" fill="#e0f0de" stroke="#3b7b38" stroke-width="1.6" stroke-dasharray="6 4"/>
+<text x="905" y="340" text-anchor="middle" font-size="15.5" font-weight="600" fill="#1f2933">Hurwitz ⊃ Lipschitz integers</text>
+<text x="905" y="361" text-anchor="middle" font-size="13" fill="#5b6770">Hurwitz: 24 units · Euclidean</text>
+<text x="905" y="379" text-anchor="middle" font-size="13" fill="#5b6770">Lipschitz: 8 units · not Euclidean</text>
+<rect x="790" y="426" width="230" height="54" rx="9" fill="#f4f4f4" stroke="#b5bcc2" stroke-width="1.6" stroke-dasharray="6 4" opacity="1"/>
+<text x="905.0" y="449.0" text-anchor="middle" font-size="14" font-weight="400" fill="#5b6770">integral octonions</text>
+<text x="905.0" y="467.0" text-anchor="middle" font-size="12" font-weight="400" fill="#5b6770">(not in hyprat)</text>
+<line x1="140" y1="499.0" x2="1030" y2="499.0" stroke="#2d5f9a" stroke-width="1" stroke-dasharray="3 4" opacity=".6"/>
+<text x="145" y="495.0" font-size="11.5" fill="#2d5f9a">classical column, above the line: normed division algebras (no zero divisors)</text>
+<text x="145" y="512.0" font-size="11.5" fill="#2d5f9a">below the line: zero divisors appear in the classical tower too (split algebras have them from rank 1)</text>
+<text x="30" y="752" font-size="13" fill="#5b6770"><tspan font-weight="700" fill="#2d5f9a">hyprat</tspan>: <tspan font-family="monospace">Hy</tspan> holds the classical and split columns with exact rational coordinates (any nonzero rational μ per level);</text>
+<text x="30" y="772" font-size="13" fill="#5b6770"><tspan font-family="monospace">Hu</tspan> holds the Hurwitz integers; <tspan font-family="monospace">Hy.is_lipschitz()</tspan> / <tspan font-family="monospace">is_hurwitz()</tspan> test membership; <tspan font-family="monospace">gint</tspan> holds the Gaussian integers (<tspan font-family="monospace">Zi</tspan>).</text>
+</svg>
