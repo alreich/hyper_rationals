@@ -413,6 +413,11 @@ class Hu:
              Fraction(self._c, 2), Fraction(self._d, 2)]
         )
 
+    # def to_int_array(self) -> list(int):
+    #     """Return the list of four integers represented by this Hu's elements."""
+    #     a, b, c, d = self
+    #     return [int(a), int(b), int(c), int(d)]
+
     # ---------------------------------------------------------------- #
     # coordinates
     # ---------------------------------------------------------------- #
