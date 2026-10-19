@@ -19,6 +19,8 @@ Organization:
     TestConversions         - to_hy()/from_hy() round trips, what from_hy
                               accepts and rejects, agreement with
                               Hy.is_hurwitz()
+    TestArrayConversion     - to_array()/from_array()/to_int_array(): round
+                              trips, agreement with Hy, error cases
     TestArithmeticFixed     - hand-checked products and the quaternion
                               identities
     TestArithmeticFuzz      - seeded random checks of + - * against Hy used
@@ -423,6 +425,89 @@ class TestConversions(unittest.TestCase):
             x = Hu.from_hy(g)
             self.assertEqual(x.doubled, (2 * int(g.real), 2 * int(g.imag), 0, 0))
             self.assertEqual(x.to_hy(), g.embed(2))
+
+
+# ============================================================================
+# flat-array conversion
+# ============================================================================
+
+class TestArrayConversion(unittest.TestCase):
+    def test_to_array_known(self):
+        self.assertEqual(Hu(1, -2, 3, 0).to_array(),
+                         [Fraction(1), Fraction(-2), Fraction(3), Fraction(0)])
+        self.assertEqual(OMEGA.to_array(as_str=True), ["1/2"] * 4)
+        self.assertEqual(Hu(1, -2, 3, 0).to_array(as_str=True),
+                         ["1", "-2", "3", "0"])
+
+    def test_to_array_returns_fresh_list_of_fractions(self):
+        arr = OMEGA.to_array()
+        self.assertIsInstance(arr, list)
+        self.assertTrue(all(isinstance(c, Fraction) for c in arr))
+        arr[0] = 99                      # mutating the list cannot affect the Hu
+        self.assertEqual(OMEGA, Hu("1/2", "1/2", "1/2", "1/2"))
+
+    def test_to_array_matches_iteration_and_hy(self):
+        rng = random.Random(2024)
+        for _ in range(50):
+            x = rand_hu(rng)
+            self.assertEqual(x.to_array(), list(x))
+            self.assertEqual(x.to_array(), x.to_hy().to_array())
+            self.assertEqual(x.to_array(as_str=True),
+                             x.to_hy().to_array(as_str=True))
+
+    def test_from_array_known(self):
+        self.assertEqual(Hu.from_array([1, 2, 3, 4]), Hu(1, 2, 3, 4))
+        self.assertEqual(Hu.from_array(["1/2", "-1/2", "1/2", "3/2"]),
+                         Hu("1/2", "-1/2", "1/2", "3/2"))
+        self.assertEqual(Hu.from_array((1, "2", Fraction(3), 4.0)), Hu(1, 2, 3, 4))
+        self.assertEqual(Hu.from_array(iter([0, 0, 0, 1])), K)
+
+    def test_round_trips(self):
+        rng = random.Random(7)
+        for _ in range(100):
+            x = rand_hu(rng)
+            self.assertEqual(Hu.from_array(x.to_array()), x)
+            self.assertEqual(Hu.from_array(x.to_array(as_str=True)), x)
+            self.assertEqual(Hu.from_array(x.to_hy().to_array()), x)
+
+    def test_from_array_bad_length(self):
+        for bad in ([], [1], [1, 2], [1, 2, 3], [1, 2, 3, 4, 5], [0] * 8):
+            with self.assertRaises(ValueError):
+                Hu.from_array(bad)
+
+    def test_from_array_bad_values(self):
+        with self.assertRaises(ValueError):
+            Hu.from_array(["1/2", 0, 0, 0])          # mixed parity
+        with self.assertRaises(ValueError):
+            Hu.from_array(["1/3", 0, 0, 0])
+        with self.assertRaises(ValueError):
+            Hu.from_array(["x", 0, 0, 0])
+        with self.assertRaises(TypeError):
+            Hu.from_array([None, 0, 0, 0])
+
+    def test_from_array_subclass(self):
+        self.assertIsInstance(_MyHu.from_array([1, 0, 0, 0]), _MyHu)
+
+    def test_to_int_array(self):
+        self.assertEqual(Hu(1, -2, 3, 0).to_int_array(), [1, -2, 3, 0])
+        out = Hu(5, 0, 0, 0).to_int_array()
+        self.assertTrue(all(type(c) is int for c in out))
+        rng = random.Random(11)
+        for _ in range(50):
+            x = Hu(*[rng.randint(-9, 9) for _ in range(4)])
+            self.assertEqual(Hu(*x.to_int_array()), x)
+
+    def test_to_int_array_rejects_half_integers(self):
+        with self.assertRaises(ValueError):
+            OMEGA.to_int_array()
+        with self.assertRaises(ValueError):
+            Hu("1/2", "3/2", "-1/2", "1/2").to_int_array()
+
+    def test_doubled_is_the_integer_data_for_every_hurwitz_integer(self):
+        rng = random.Random(3)
+        for _ in range(50):
+            x = rand_hu(rng)
+            self.assertEqual(Hu.from_doubled(*x.doubled), x)
 
 
 # ============================================================================

@@ -413,10 +413,65 @@ class Hu:
              Fraction(self._c, 2), Fraction(self._d, 2)]
         )
 
-    # def to_int_array(self) -> list(int):
-    #     """Return the list of four integers represented by this Hu's elements."""
-    #     a, b, c, d = self
-    #     return [int(a), int(b), int(c), int(d)]
+    # ---------------------------------------------------------------- #
+    # flat-array conversion
+    # ---------------------------------------------------------------- #
+    @classmethod
+    def from_array(cls, coeffs: Iterable[Any]) -> "Hu":
+        """Build a ``Hu`` from a flat sequence of its four coordinates
+        ``(a, b, c, d)``, the coefficients of ``1, i, j, k`` -- the
+        inverse of :meth:`to_array`, and the counterpart of
+        :meth:`Hy.from_array`.
+
+        Each coordinate may be an ``int``, ``Fraction``, ``float`` or
+        string (``'3'``, ``'5/2'``), freely mixed, as for the constructor;
+        the four values must be all integers or all halves of odd
+        integers. The length must be exactly 4.
+
+            >>> Hu.from_array([1, 2, 3, 4])
+            Hu(1, 2, 3, 4)
+            >>> Hu.from_array(['1/2', '-1/2', '1/2', '3/2'])
+            Hu('1/2', '-1/2', '1/2', '3/2')
+        """
+        values = list(coeffs)
+        if len(values) != 4:
+            raise ValueError(
+                f"from_array() requires exactly 4 coordinates; got {len(values)}"
+            )
+        return cls.from_doubled(*(_double(v) for v in values))
+
+    def to_array(self, as_str: bool = False) -> list:
+        """The four coordinates ``[a, b, c, d]`` as a plain list -- the
+        inverse of :meth:`from_array`.
+
+        By default the entries are ``Fraction`` objects (so
+        ``h.to_array() == list(h)``, matching :meth:`Hy.to_array`); pass
+        ``as_str=True`` for their string forms, e.g. ``'1/2'``, which is
+        convenient for JSON and which :meth:`from_array` reads back.
+
+            >>> Hu('1/2', '1/2', '1/2', '1/2').to_array(as_str=True)
+            ['1/2', '1/2', '1/2', '1/2']
+        """
+        coords = self.coords
+        return [str(c) for c in coords] if as_str else list(coords)
+
+    def to_int_array(self) -> list:
+        """The four coordinates as a list of plain ``int`` objects.
+
+        Only defined for Lipschitz integers (all four coordinates
+        integers); a Hurwitz integer with half-integer coordinates
+        raises ``ValueError``. Use :attr:`doubled` to get integers for
+        *every* Hurwitz integer.
+
+            >>> Hu(1, -2, 3, 0).to_int_array()
+            [1, -2, 3, 0]
+        """
+        if not self.is_lipschitz():
+            raise ValueError(
+                f"{self} has half-integer coordinates; use .doubled for "
+                "integer data that works for every Hurwitz integer"
+            )
+        return [x // 2 for x in self.doubled]
 
     # ---------------------------------------------------------------- #
     # coordinates

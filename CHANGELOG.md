@@ -3,6 +3,24 @@
 All notable changes to `hyprat` are listed here, newest first.  The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+
+- `Hu.from_array()`, `Hu.to_array()` and `Hu.to_int_array()`: conversion to and
+  from a flat list of the four coordinates, matching `Hy.from_array()` /
+  `Hy.to_array()` (`to_int_array()` is defined for Lipschitz integers only).
+- `notebooks/hyprat_examples.ipynb`: new examples on exact 3D rotations, the
+  binary tetrahedral group (with an optional check against `finalg`), sums of
+  four squares, and Hurwitz division and the Euclidean algorithm.
+
+### Changed
+
+- `notebooks/hyprat_examples.ipynb`: the two cryptography examples were
+  rewritten. The factorization example now compares factors up to unit
+  migration and no longer claims that factoring is hard; the key-exchange
+  example now shows the attack that breaks it.
+
 ## [0.2.0] - 2026-10-11
 
 ### Added
