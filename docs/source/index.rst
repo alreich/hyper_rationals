@@ -63,7 +63,9 @@ Quickstart
    :maxdepth: 2
    :caption: Contents
 
-   usage
+   classic_hy
+   split_hy_and_interop
+   hurwitz_and_examples
    api
    bibliography
 
