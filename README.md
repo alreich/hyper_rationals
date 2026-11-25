@@ -6,7 +6,7 @@
 Exact, rational-valued **hypercomplex numbers** -- reals, complex
 numbers, quaternions, octonions, and beyond -- built via the
 [Cayley-Dickson construction](https://en.wikipedia.org/wiki/Cayley%E2%80%93Dickson_construction),
-implemented in the `hyprat` package (pure Python, 3.9+, no runtime dependencies).
+implemented in the `hyprat` package (pure Python, 3.10+, no runtime dependencies).
 
 Features:
 
@@ -306,17 +306,13 @@ Every level of the tower has a sign `mu` (any nonzero rational). The default, -1
 
 ## Documentation
 
-Full documentation, including a usage guide, the API reference, and a bibliography of
+Full documentation, including classical hypercomplex, split-hypercomplex, Hurwitz integers, interoperability with other packages, example applications, the API reference, and a bibliography of
 papers and lecture notes on hypercomplex numbers, is on
 [Read the Docs](https://hyper-rationals.readthedocs.io/).
 
-Also see the Jupyter notebook
-['hyprat_examples.ipynb'](https://github.com/alreich/hyper_rationals/blob/main/notebooks/hyprat_examples.ipynb)
-in the `notebooks/` directory.
-
 ## Installation
 
-`hyprat` requires Python 3.9 or later and has no runtime dependencies.
+`hyprat` requires Python 3.10 or later and has no runtime dependencies.
 
 ```bash
 pip install git+https://github.com/alreich/hyper_rationals.git
@@ -367,7 +363,7 @@ hyper_rationals/
 +-- src/hyprat/          the hyprat package  (import as `from hyprat import Hy`)
 +-- tests/               unit tests (unittest, run via pytest or unittest)
 +-- docs/source/         Sphinx documentation source (usage guide, API, bibliography)
-+-- notebooks/           Jupyter notebooks (examples, editable sources of the docs, ...)
++-- notebooks/           Jupyter notebooks (editable sources of the docs, ...)
 +-- .github/workflows/   CI (tests, interoperability tests, docs build)
 +-- pyproject.toml       packaging / metadata
 +-- CHANGELOG.md         release notes

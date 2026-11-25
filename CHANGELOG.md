@@ -5,6 +5,11 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- Removed support for Python 3.9
+- Merged 'usage' and 'hyprat_examples' Jupyter notebooks, creating three notebooks for readthedocs
+
 ### Added
 
 - `Hu.from_array()`, `Hu.to_array()` and `Hu.to_int_array()`: conversion to and
