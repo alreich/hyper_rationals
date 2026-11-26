@@ -27,14 +27,21 @@ Features:
 
 >>> z1 = Hy('5/2', '-16/5')
 >>> print(f"{z1 = }\n")
->>> print(f"{str(z1) = }\n")
+>>> print("NOTE: Hy printing/parsing rule: \"Coefficient first, then unit symbol\"")
+>>> print("      e.g., \"16/5j\" is parsed as (16/5)j\n")
+>>> print(f"{str(z1) = }")
+>>> print(f"{Hy.from_string('(5/2-16/5j)') = }\n")
 >>> print(f"{complex(z1) = }\n")
 >>> display(Math(z1.latex()))
 ```
 
     z1 = Hy('5/2', '-16/5')
     
+    NOTE: Hy printing/parsing rule: "Coefficient first, then unit symbol"
+          e.g., "16/5j" is parsed as (16/5)j
+    
     str(z1) = '(5/2-16/5j)'
+    Hy.from_string('(5/2-16/5j)') = Hy('5/2', '-16/5')
     
     complex(z1) = (2.5-3.2j)
     
