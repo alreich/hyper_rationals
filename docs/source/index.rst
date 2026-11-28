@@ -22,7 +22,7 @@ arithmetic, no floating-point rounding.
 Installation
 ------------
 
-``hyprat`` requires Python 3.9 or later and has no runtime dependencies.
+``hyprat`` requires Python 3.10 or later and has no runtime dependencies.
 
 .. code-block:: bash
 

@@ -27,7 +27,8 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.doctest",
     # registers the "ipython3" Pygments lexer used by the nbconvert-generated
-    # code blocks in usage.rst (otherwise Sphinx warns and skips highlighting)
+    # code blocks in the notebook pages (otherwise Sphinx warns and skips
+    # highlighting)
     "IPython.sphinxext.ipython_console_highlighting",
 ]
 

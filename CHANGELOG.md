@@ -8,20 +8,21 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - Removed support for Python 3.9
-- Merged 'usage' and 'hyprat_examples' Jupyter notebooks, creating three notebooks for readthedocs
+- Reorganized the Jupyter notebooks for Read the Docs into three notebooks:
+  `classic_hy`, `split_hy_and_interop` and `hurwitz_and_examples`
 
 ### Added
 
 - `Hu.from_array()`, `Hu.to_array()` and `Hu.to_int_array()`: conversion to and
   from a flat list of the four coordinates, matching `Hy.from_array()` /
   `Hy.to_array()` (`to_int_array()` is defined for Lipschitz integers only).
-- `notebooks/hyprat_examples.ipynb`: new examples on exact 3D rotations, the
-  binary tetrahedral group (with an optional check against `finalg`), sums of
-  four squares, and Hurwitz division and the Euclidean algorithm.
+- `notebooks/hurwitz_and_examples.ipynb`: new examples on exact 3D rotations,
+  the binary tetrahedral group (with an optional check against `finalg`), sums
+  of four squares, and Hurwitz division and the Euclidean algorithm.
 
 ### Changed
 
-- `notebooks/hyprat_examples.ipynb`: the two cryptography examples were
+- `notebooks/hurwitz_and_examples.ipynb`: the two cryptography examples were
   rewritten. The factorization example now compares factors up to unit
   migration and no longer claims that factoring is hard; the key-exchange
   example now shows the attack that breaks it.
