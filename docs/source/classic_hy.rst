@@ -16,12 +16,12 @@ standard library.
 
 The package has two number classes and one small helper module:
 
--  ``Hy`` represents hypercomplex numbers of every rank, classical or
-   split.
--  ``Hu`` represents the Hurwitz integers (the integer points of the
-   quaternions) and adds number theory.
--  ``hyprat.intfactor`` provides the integer primality testing and
-   factoring that the number theory needs.
+- ``Hy`` represents hypercomplex numbers of every rank, classical or
+  split.
+- ``Hu`` represents the Hurwitz integers (the integer points of the
+  quaternions) and adds number theory.
+- ``hyprat.intfactor`` provides the integer primality testing and
+  factoring that the number theory needs.
 
 This documentation is a guided, hands-on tour, divided into three pages
 that follow one another:
@@ -55,13 +55,13 @@ A ``Hy`` supports ``+``, ``-``, ``*``, ``/`` and ``**``, conjugation,
 inverses and norms, all defined recursively by the Cayley-Dickson
 formulas, and all exact. It can be:
 
--  built from numbers, strings, flat lists of coefficients, or a
-   (seedable) random number generator,
--  printed and parsed back, and rendered as LaTeX,
--  turned into its regular-representation matrix,
--  tested for being a unit or a zero divisor,
--  converted to and from the quaternions of SymPy, numpy-quaternion and
-   quaternionic, and the Gaussian integers and rationals of ``gint``.
+- built from numbers, strings, flat lists of coefficients, or a
+  (seedable) random number generator,
+- printed and parsed back, and rendered as LaTeX,
+- turned into its regular-representation matrix,
+- tested for being a unit or a zero divisor,
+- converted to and from the quaternions of SymPy, numpy-quaternion and
+  quaternionic, and the Gaussian integers and rationals of ``gint``.
 
 Classical and Split Hypercomplex Numbers
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -148,7 +148,7 @@ Setup
 Requirements and Installation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``hyprat`` needs Python 3.9 or later and has **no runtime
+``hyprat`` needs Python 3.10 or later and has **no runtime
 dependencies**: ``Hy``, ``Hu`` and ``hyprat.intfactor`` use only the
 Python standard library. To install the package from GitHub:
 
@@ -179,23 +179,22 @@ for it.
 The optional packages can be installed one by one, or in groups through
 the *extras* of ``hyprat``:
 
-+-----------------------+-----------------------+-----------------------+
-| Extra                 | Installs              | Needed for            |
-+=======================+=======================+=======================+
-| ``interop``           | ``sympy``,            | the quaternion        |
-|                       | ``numpy-quaternion``, | conversions, and      |
-|                       | ``quaternionic``,     | ``to_matrix(          |
-|                       | ``numpy``             | )``/``from_matrix()`` |
-+-----------------------+-----------------------+-----------------------+
-| ``test``              | ``pytest``            | running the test      |
-|                       |                       | suite                 |
-+-----------------------+-----------------------+-----------------------+
-| ``docs``              | ``sphinx``,           | building this         |
-|                       | ``sphinx-rtd-theme``, | documentation         |
-|                       | ``ipython``           |                       |
-+-----------------------+-----------------------+-----------------------+
-| ``dev``               | everything above      | development           |
-+-----------------------+-----------------------+-----------------------+
++-----------------------+-----------------------+-----------------------------------+
+| Extra                 | Installs              | Needed for                        |
++=======================+=======================+===================================+
+| ``interop``           | ``sympy``,            | the quaternion conversions, and   |
+|                       | ``numpy-quaternion``, | ``to_matrix()``/``from_matrix()`` |
+|                       | ``quaternionic``,     |                                   |
+|                       | ``numpy``             |                                   |
++-----------------------+-----------------------+-----------------------------------+
+| ``test``              | ``pytest``            | running the test suite            |
++-----------------------+-----------------------+-----------------------------------+
+| ``docs``              | ``sphinx``,           | building this documentation       |
+|                       | ``sphinx-rtd-theme``, |                                   |
+|                       | ``ipython``           |                                   |
++-----------------------+-----------------------+-----------------------------------+
+| ``dev``               | everything above      | development                       |
++-----------------------+-----------------------+-----------------------------------+
 
 For example, to install ``hyprat`` together with the interoperability
 packages:
@@ -206,44 +205,37 @@ packages:
 
 The table below says which package each optional feature needs.
 
-+-----------------------------------+-----------------------------------+
-| Feature                           | Needs                             |
-+===================================+===================================+
-| ``some_hy.to_sympy()`` and        | ``sympy``                         |
-| ``Hy.from_sympy()``               |                                   |
-+-----------------------------------+-----------------------------------+
-| ``some_hy.to_numpy_quaternion()`` | ``numpy-quaternion`` (imported as |
-| and                               | ``quaternion``), which uses       |
-| ``Hy.from_numpy_quaternion()``    | ``numpy``                         |
-+-----------------------------------+-----------------------------------+
-| ``some_hy.to_quaternionic()`` and | ``quaternionic``                  |
-| ``Hy.from_quaternionic()``        |                                   |
-+-----------------------------------+-----------------------------------+
-| ``some_hy.to_matrix()`` and       | ``numpy``                         |
-| ``Hy.from_matrix()``              |                                   |
-+-----------------------------------+-----------------------------------+
-| ``some_hy.to_qi()`` and           | ``gint``                          |
-| ``some_hy.to_zi()``               |                                   |
-+-----------------------------------+-----------------------------------+
-| ``Hy.from_gint()`` and            | nothing extra (you only need      |
-| ``some_hy.is_gaussian()``         | ``gint`` to make the ``Zi`` or    |
-|                                   | ``Qi`` you pass in)               |
-+-----------------------------------+-----------------------------------+
-| ``some_hy.latex()``               | nothing, since it returns a       |
-|                                   | string; to *typeset* it in a      |
-|                                   | Jupyter notebook you use          |
-|                                   | ``IPython.display.Math``          |
-+-----------------------------------+-----------------------------------+
-| ``hyprat.intfact                  | ``sympy`` (never required: the    |
-| or.factorint(n, method="sympy")`` | default is pure Python)           |
-+-----------------------------------+-----------------------------------+
-| the group-theory check in `The    | ``finalg`` (optional: the cell    |
-| Hurwitz Units and the Binary      | skips the check when it is        |
-| Tetrahedral                       | missing)                          |
-| Group <hurwitz_and_ex             |                                   |
-| amples.html#the-hurwitz-units-and |                                   |
-| -the-binary-tetrahedral-group>`__ |                                   |
-+-----------------------------------+-----------------------------------+
++-----------------------------------------------------------------------------------------+-----------------------------------+
+| Feature                                                                                 | Needs                             |
++=========================================================================================+===================================+
+| ``some_hy.to_sympy()`` and ``Hy.from_sympy()``                                          | ``sympy``                         |
++-----------------------------------------------------------------------------------------+-----------------------------------+
+| ``some_hy.to_numpy_quaternion()`` and ``Hy.from_numpy_quaternion()``                    | ``numpy-quaternion`` (imported as |
+|                                                                                         | ``quaternion``), which uses       |
+|                                                                                         | ``numpy``                         |
++-----------------------------------------------------------------------------------------+-----------------------------------+
+| ``some_hy.to_quaternionic()`` and ``Hy.from_quaternionic()``                            | ``quaternionic``                  |
++-----------------------------------------------------------------------------------------+-----------------------------------+
+| ``some_hy.to_matrix()`` and ``Hy.from_matrix()``                                        | ``numpy``                         |
++-----------------------------------------------------------------------------------------+-----------------------------------+
+| ``some_hy.to_qi()`` and ``some_hy.to_zi()``                                             | ``gint``                          |
++-----------------------------------------------------------------------------------------+-----------------------------------+
+| ``Hy.from_gint()`` and ``some_hy.is_gaussian()``                                        | nothing extra (you only need      |
+|                                                                                         | ``gint`` to make the ``Zi`` or    |
+|                                                                                         | ``Qi`` you pass in)               |
++-----------------------------------------------------------------------------------------+-----------------------------------+
+| ``some_hy.latex()``                                                                     | nothing, since it returns a       |
+|                                                                                         | string; to *typeset* it in a      |
+|                                                                                         | Jupyter notebook you use          |
+|                                                                                         | ``IPython.display.Math``          |
++-----------------------------------------------------------------------------------------+-----------------------------------+
+| ``hyprat.intfactor.factorint(n, method="sympy")``                                       | ``sympy`` (never required: the    |
+|                                                                                         | default is pure Python)           |
++-----------------------------------------------------------------------------------------+-----------------------------------+
+| the group-theory check in `The Hurwitz Units and the Binary Tetrahedral                 | ``finalg`` (optional: the cell    |
+| Group <hurwitz_and_examples.html#the-hurwitz-units-and-the-binary-tetrahedral-group>`__ | skips the check when it is        |
+|                                                                                         | missing)                          |
++-----------------------------------------------------------------------------------------+-----------------------------------+
 
 The ``gint`` package (Gaussian integers and rationals) is not on PyPI
 under that name: ``pip install gint`` installs an unrelated package.
@@ -319,33 +311,25 @@ quaternions :math:`\mathbb{H}`; again gives the octonions
 on forever, with the dimension doubling (:math:`1, 2, 4, 8, 16, \dots`)
 at every step. Each doubling costs the algebra an algebraic property:
 
-+--------------+---+---+---------+---------+--------------------------+
-| Algebra      | R | D | Commu   | Assoc   | Division algebra (no     |
-|              | a | i | tative? | iative? | zero divisors)?          |
-|              | n | m |         |         |                          |
-|              | k |   |         |         |                          |
-+==============+===+===+=========+=========+==========================+
-| Reals        | 0 | 1 | yes     | yes     | yes                      |
-| :math:       |   |   |         |         |                          |
-| `\mathbb{R}` |   |   |         |         |                          |
-+--------------+---+---+---------+---------+--------------------------+
-| Complex      | 1 | 2 | yes     | yes     | yes                      |
-| :math:       |   |   |         |         |                          |
-| `\mathbb{C}` |   |   |         |         |                          |
-+--------------+---+---+---------+---------+--------------------------+
-| Quaternions  | 2 | 4 | **no**  | yes     | yes                      |
-| :math:       |   |   |         |         |                          |
-| `\mathbb{H}` |   |   |         |         |                          |
-+--------------+---+---+---------+---------+--------------------------+
-| Octonions    | 3 | 8 | no      | **no**  | yes                      |
-| :math:       |   |   |         | (only   |                          |
-| `\mathbb{O}` |   |   |         | *altern |                          |
-|              |   |   |         | ative*) |                          |
-+--------------+---+---+---------+---------+--------------------------+
-| Sedenions    | 4 | 1 | no      | no      | **no**                   |
-| :math:       |   | 6 |         |         |                          |
-| `\mathbb{S}` |   |   |         |         |                          |
-+--------------+---+---+---------+---------+--------------------------+
++--------------------+------+-----+--------------+----------------+--------------------------+
+| Algebra            | Rank | Dim | Commutative? | Associative?   | Division algebra (no     |
+|                    |      |     |              |                | zero divisors)?          |
++====================+======+=====+==============+================+==========================+
+| Reals              | 0    | 1   | yes          | yes            | yes                      |
+| :math:`\mathbb{R}` |      |     |              |                |                          |
++--------------------+------+-----+--------------+----------------+--------------------------+
+| Complex            | 1    | 2   | yes          | yes            | yes                      |
+| :math:`\mathbb{C}` |      |     |              |                |                          |
++--------------------+------+-----+--------------+----------------+--------------------------+
+| Quaternions        | 2    | 4   | **no**       | yes            | yes                      |
+| :math:`\mathbb{H}` |      |     |              |                |                          |
++--------------------+------+-----+--------------+----------------+--------------------------+
+| Octonions          | 3    | 8   | no           | **no** (only   | yes                      |
+| :math:`\mathbb{O}` |      |     |              | *alternative*) |                          |
++--------------------+------+-----+--------------+----------------+--------------------------+
+| Sedenions          | 4    | 16  | no           | no             | **no**                   |
+| :math:`\mathbb{S}` |      |     |              |                |                          |
++--------------------+------+-----+--------------+----------------+--------------------------+
 
 ``hyprat``\ ’s ``Hy`` class implements exactly this tower, using
 Python’s exact ``fractions.Fraction`` for every real coordinate – so
@@ -1024,9 +1008,9 @@ Other Ways to Construct Hypercomplex Numbers
 
 There are three more ways to build a Hy:
 
--  from a flat list of coefficients (``to_array`` and ``Hy.from_array``)
--  from a string representation (``Hy.parse``)
--  randomly generated (``Hy.random``)
+- from a flat list of coefficients (``to_array`` and ``Hy.from_array``)
+- from a string representation (``Hy.parse``)
+- randomly generated (``Hy.random``)
 
 Examples follow:
 
@@ -1388,13 +1372,13 @@ useful in a Jupyter notebook.
 
 Two keyword-only options are available:
 
--  ``vinculum`` controls how a non-integer coefficient’s fraction bar is
-   typeset: ``"horizontal"`` (the default) uses ``\frac{num}{den}``;
-   ``"diagonal"`` uses a plain slash, ``num/den``:
--  ``mode`` controls whether the result is wrapped in LaTeX math
-   delimiters: ``"plain"`` (the default) returns the bare expression,
-   ``"inline"`` wraps it in ``$...$``, and ``"display"`` wraps it in
-   ``\[...\]``.
+- ``vinculum`` controls how a non-integer coefficient’s fraction bar is
+  typeset: ``"horizontal"`` (the default) uses ``\frac{num}{den}``;
+  ``"diagonal"`` uses a plain slash, ``num/den``:
+- ``mode`` controls whether the result is wrapped in LaTeX math
+  delimiters: ``"plain"`` (the default) returns the bare expression,
+  ``"inline"`` wraps it in ``$...$``, and ``"display"`` wraps it in
+  ``\[...\]``.
 
 Basis units render the same way `the API reference <api.html>`__
 describes for ``str()``: ``j`` at rank 1, ``i``/``j``/``k`` at rank 2,
